@@ -619,10 +619,29 @@ export default {
   box-shadow: 
     0 -4px 20px rgba(0, 0, 0, 0.4) !important,
     0 -1px 0 rgba(232, 168, 85, 0.1) !important;
+  padding: 8px 12px !important;
+}
+
+:deep(.van-tabbar-item) {
+  color: rgba(255, 255, 255, 0.6) !important;
+  border-radius: 12px !important;
+  margin: 0 4px !important;
+  padding: 6px 8px !important;
+  transition: all 0.3s ease !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+:deep(.van-tabbar-item:hover) {
+  background: rgba(232, 168, 85, 0.1) !important;
+  transform: translateY(-1px) !important;
 }
 
 :deep(.van-tabbar-item--active) {
   color: #E8A855 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__text) {
@@ -635,9 +654,5 @@ export default {
   color: #E8A855 !important;
   filter: drop-shadow(0 0 8px rgba(232, 168, 85, 0.6)) !important;
   transform: scale(1.1) !important;
-}
-
-:deep(.van-tabbar-item) {
-  color: rgba(255, 255, 255, 0.6) !important;
 }
 </style>
