@@ -539,5 +539,33 @@ export default {
   border-radius: var(--radius-sm) !important;
 }
 
+/* 🔥 强制覆盖底部导航栏样式 */
+:deep(.van-tabbar) {
+  background: var(--bg-glass) !important;
+  backdrop-filter: blur(16px) !important;
+  border-top: 1px solid var(--border-glow) !important;
+  box-shadow: 
+    0 -4px 20px rgba(0, 0, 0, 0.4) !important,
+    0 -1px 0 rgba(232, 168, 85, 0.1) !important;
+}
 
+:deep(.van-tabbar-item--active) {
+  color: #E8A855 !important;
+}
+
+:deep(.van-tabbar-item--active .van-tabbar-item__text) {
+  color: #E8A855 !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 8px rgba(232, 168, 85, 0.6) !important;
+}
+
+:deep(.van-tabbar-item--active .van-tabbar-item__icon) {
+  color: #E8A855 !important;
+  filter: drop-shadow(0 0 8px rgba(232, 168, 85, 0.6)) !important;
+  transform: scale(1.1) !important;
+}
+
+:deep(.van-tabbar-item) {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
 </style>

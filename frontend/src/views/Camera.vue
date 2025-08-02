@@ -1,9 +1,10 @@
 <template>
   <div class="camera-page">
-    <!-- 产品介绍/照片选择区域 -->
-    <div class="camera-section">
-      <div class="camera-container tech-card" v-if="!selectedImages.length">
-        <div class="product-guide">
+    <!-- 主要内容区域 -->
+    <div class="main-section">
+      <div class="content-container tech-card">
+        <!-- 产品介绍 -->
+        <div v-if="!selectedImages.length" class="product-guide">
           <div class="guide-header">
             <h2 class="guide-title">📚 错题本整理助手</h2>
             <p class="guide-subtitle">智能识别 · 自动分类 · 高效复习</p>
@@ -31,68 +32,68 @@
               </div>
             </div>
           </div>
-        
+          
           <div class="guide-glow"></div>
         </div>
-      </div>
 
-      <!-- 已选择的图片预览 -->
-      <div v-else class="image-preview-container tech-card">
-        <div class="image-grid">
-          <div 
-            v-for="(image, index) in selectedImages" 
-            :key="index"
-            class="image-item card-interactive"
-          >
-            <img :src="image.url" alt="错题照片" class="preview-image" />
-            <div class="image-overlay">
-              <van-icon 
-                name="close" 
-                class="remove-icon" 
-                @click="removeImage(index)"
-              />
+        <!-- 已选择的图片预览 -->
+        <div v-else class="image-preview-area">
+          <div class="image-grid">
+            <div 
+              v-for="(image, index) in selectedImages" 
+              :key="index"
+              class="image-item card-interactive"
+            >
+              <img :src="image.url" alt="错题照片" class="preview-image" />
+              <div class="image-overlay">
+                <van-icon 
+                  name="close" 
+                  class="remove-icon" 
+                  @click="removeImage(index)"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
 
-    <!-- 操作按钮区域 -->
-    <div class="action-section">
-      <div class="action-buttons">
-        <van-button 
-          type="primary" 
-          icon="camera-o" 
-          size="large"
-          @click="takePhoto"
-          :disabled="processing"
-        >
-          开始拍照
-        </van-button>
-        
-        <van-button 
-          type="default" 
-          icon="photo-o" 
-          size="large"
-          @click="selectFromGallery"
-          :disabled="processing"
-        >
-          从相册选择
-        </van-button>
-      </div>
+        <!-- 操作按钮区域 -->
+        <div class="action-area">
+          <div class="action-buttons">
+            <van-button 
+              type="primary" 
+              icon="camera-o" 
+              size="large"
+              @click="takePhoto"
+              :disabled="processing"
+            >
+              开始拍照
+            </van-button>
+            
+            <van-button 
+              type="default" 
+              icon="photo-o" 
+              size="large"
+              @click="selectFromGallery"
+              :disabled="processing"
+            >
+              从相册选择
+            </van-button>
+          </div>
 
-      <!-- 处理按钮 -->
-      <van-button 
-        v-if="selectedImages.length > 0"
-        type="primary" 
-        size="large"
-        block
-        :loading="processing"
-        @click="processImages"
-        class="process-btn"
-      >
-        {{ processing ? '正在识别中...' : `开始识别 (${selectedImages.length}张)` }}
-      </van-button>
+          <!-- 处理按钮 -->
+          <van-button 
+            v-if="selectedImages.length > 0"
+            type="primary" 
+            size="large"
+            block
+            :loading="processing"
+            @click="processImages"
+            class="process-btn"
+          >
+            {{ processing ? '正在识别中...' : `开始识别 (${selectedImages.length}张)` }}
+          </van-button>
+        </div>
+      </div>
     </div>
 
     <!-- 最近处理记录 -->
@@ -105,7 +106,6 @@
           class="recent-item"
           @click="viewRecord(record)"
         >
-          <img :src="record.thumbnail" alt="缩略图" class="recent-thumbnail" />
           <div class="recent-info">
             <p class="recent-title">{{ record.title }}</p>
             <p class="recent-time">{{ formatTime(record.createdAt) }}</p>
@@ -253,14 +253,12 @@ export default {
         {
           id: 1,
           title: '数学题 - 二次函数',
-          thumbnail: 'https://via.placeholder.com/60x60',
           createdAt: Date.now() - 3600000,
           categoryId: 1
         },
         {
           id: 2,
           title: '物理题 - 力学',
-          thumbnail: 'https://via.placeholder.com/60x60',
           createdAt: Date.now() - 7200000,
           categoryId: 2
         }
@@ -303,32 +301,25 @@ export default {
 
 
 
-.camera-section {
+.main-section {
   padding: 16px;
   min-height: auto;
 }
 
-.camera-container {
+.content-container {
   min-height: auto;
-  max-height: 280px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border: 2px dashed var(--border-glow);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  padding: 20px;
 }
 
 /* 🌟 产品介绍指南样式 */
 .product-guide {
   position: relative;
   z-index: 2;
-  padding: 16px 20px;
   text-align: center;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  margin-bottom: 30px;
 }
 
 .guide-header {
@@ -439,8 +430,8 @@ export default {
   z-index: -1;
 }
 
-.image-preview-container {
-  padding: 20px;
+.image-preview-area {
+  margin-bottom: 30px;
 }
 
 .image-grid {
@@ -508,9 +499,8 @@ export default {
   transform: scale(1.1);
 }
 
-.action-section {
-  
-  padding: 20px;
+.action-area {
+  margin-top: auto;
 }
 
 .action-buttons {
@@ -602,15 +592,7 @@ export default {
   opacity: 1;
 }
 
-.recent-thumbnail {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-sm);
-  object-fit: cover;
-  margin-right: 16px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
+
 
 .recent-info {
   flex: 1;
@@ -627,5 +609,35 @@ export default {
   font-size: 12px;
   color: var(--text-secondary);
   margin: 0;
+}
+
+/* 🔥 强制覆盖底部导航栏样式 */
+:deep(.van-tabbar) {
+  background: var(--bg-glass) !important;
+  backdrop-filter: blur(16px) !important;
+  border-top: 1px solid var(--border-glow) !important;
+  box-shadow: 
+    0 -4px 20px rgba(0, 0, 0, 0.4) !important,
+    0 -1px 0 rgba(232, 168, 85, 0.1) !important;
+}
+
+:deep(.van-tabbar-item--active) {
+  color: #E8A855 !important;
+}
+
+:deep(.van-tabbar-item--active .van-tabbar-item__text) {
+  color: #E8A855 !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 8px rgba(232, 168, 85, 0.6) !important;
+}
+
+:deep(.van-tabbar-item--active .van-tabbar-item__icon) {
+  color: #E8A855 !important;
+  filter: drop-shadow(0 0 8px rgba(232, 168, 85, 0.6)) !important;
+  transform: scale(1.1) !important;
+}
+
+:deep(.van-tabbar-item) {
+  color: rgba(255, 255, 255, 0.6) !important;
 }
 </style>
