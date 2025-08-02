@@ -14,10 +14,10 @@ const routes = [
   },
   {
     path: '/camera',
-    name: 'Camera',
+    name: 'Homepage',
     component: Camera,
     meta: {
-      title: '拍照整理',
+      title: '错题本整理 - 首页',
       keepAlive: true
     }
   },

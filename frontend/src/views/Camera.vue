@@ -1,19 +1,52 @@
 <template>
   <div class="camera-page">
     <!-- 顶部标题栏 -->
-    <van-nav-bar title="拍照整理" fixed placeholder class="tech-nav">
+    <van-nav-bar title="错题本整理" fixed placeholder class="tech-nav">
       <template #right>
         <van-icon name="setting-o" @click="$router.push('/settings')" class="nav-icon" />
       </template>
     </van-nav-bar>
 
-    <!-- 相机/照片选择区域 -->
+    <!-- 产品介绍/照片选择区域 -->
     <div class="camera-section">
       <div class="camera-container tech-card" v-if="!selectedImages.length">
-        <div class="camera-placeholder">
-          <van-icon name="photograph" size="64" class="camera-icon" />
-          <p class="placeholder-text">点击下方按钮开始拍照或选择照片</p>
-          <div class="placeholder-glow"></div>
+        <div class="product-guide">
+          <div class="guide-header">
+            <h2 class="guide-title">📚 错题本整理助手</h2>
+            <p class="guide-subtitle">智能识别 · 自动分类 · 高效复习</p>
+          </div>
+          
+          <div class="guide-features">
+            <div class="feature-item">
+              <div class="feature-icon">📷</div>
+              <div class="feature-text">
+                <h4>拍照识别</h4>
+                <p>一键拍摄错题，AI自动识别文字内容</p>
+              </div>
+            </div>
+            
+            <div class="feature-item">
+              <div class="feature-icon">🤖</div>
+              <div class="feature-text">
+                <h4>智能分类</h4>
+                <p>大模型自动分析题目类型并归类整理</p>
+              </div>
+            </div>
+            
+            <div class="feature-item">
+              <div class="feature-icon">📝</div>
+              <div class="feature-text">
+                <h4>组卷练习</h4>
+                <p>自由组合错题生成试卷，支持打印导出</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="guide-cta">
+            <p class="cta-text">📱 点击下方按钮开始使用</p>
+          </div>
+          
+          <div class="guide-glow"></div>
         </div>
       </div>
 
@@ -48,7 +81,7 @@
           @click="takePhoto"
           :disabled="processing"
         >
-          拍照
+          开始拍照
         </van-button>
         
         <van-button 
@@ -122,7 +155,7 @@ import { Toast } from 'vant'
 import { imageRecognitionAPI } from '../api/recognition'
 
 export default {
-  name: 'Camera',
+  name: 'Homepage',
   setup() {
     const router = useRouter()
 
@@ -302,11 +335,11 @@ export default {
 
 .camera-section {
   padding: 20px;
-  min-height: 300px;
+  min-height: 320px;
 }
 
 .camera-container {
-  height: 280px;
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -315,36 +348,116 @@ export default {
   overflow: hidden;
 }
 
-.camera-placeholder {
-  text-align: center;
+/* 🌟 产品介绍指南样式 */
+.product-guide {
   position: relative;
   z-index: 2;
+  padding: 32px 24px;
+  text-align: center;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.camera-icon {
-  color: var(--text-accent) !important;
-  animation: glowPulse 3s ease-in-out infinite;
-  filter: drop-shadow(0 0 10px rgba(232, 168, 85, 0.3));
+.guide-header {
+  margin-bottom: 32px;
 }
 
-.placeholder-text {
-  margin-top: 20px;
-  color: var(--text-secondary);
-  font-size: 14px;
+.guide-title {
+  font-size: 24px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0 0 12px 0;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+.guide-subtitle {
+  font-size: 16px;
+  color: var(--text-accent);
   font-weight: 500;
+  margin: 0;
+  opacity: 0.9;
 }
 
-.placeholder-glow {
+.guide-features {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  text-align: left;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(232, 168, 85, 0.1);
+  backdrop-filter: blur(8px);
+  transition: all 0.3s var(--ease-smooth);
+}
+
+.feature-item:hover {
+  background: rgba(232, 168, 85, 0.05);
+  border-color: rgba(232, 168, 85, 0.2);
+  transform: translateY(-2px);
+}
+
+.feature-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232, 168, 85, 0.1);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.feature-text h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.feature-text p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.guide-cta {
+  margin-top: auto;
+}
+
+.cta-text {
+  font-size: 16px;
+  color: var(--text-accent);
+  font-weight: 600;
+  margin: 0;
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+.guide-glow {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 120px;
-  height: 120px;
-  background: radial-gradient(circle, rgba(232, 168, 85, 0.1) 0%, transparent 70%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(232, 168, 85, 0.08) 0%, transparent 70%);
   border-radius: 50%;
-  animation: glowPulse 4s ease-in-out infinite;
-  z-index: 1;
+  animation: floatingGlow 8s ease-in-out infinite;
+  z-index: -1;
 }
 
 .image-preview-container {
