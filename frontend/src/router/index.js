@@ -7,13 +7,13 @@ import CategoryDetail from '../views/CategoryDetail.vue'
 import PaperBuilder from '../views/PaperBuilder.vue'
 import Settings from '../views/Settings.vue'
 
-const routes = [
+const routes = [  
   {
     path: '/',
-    redirect: '/camera'
+    redirect: '/homepage'
   },
   {
-    path: '/camera',
+    path: '/homepage',
     name: 'Homepage',
     component: Camera,
     meta: {

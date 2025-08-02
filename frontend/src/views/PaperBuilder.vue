@@ -195,7 +195,7 @@
 
     <!-- 底部导航 -->
     <van-tabbar route>
-      <van-tabbar-item icon="home-o" to="/camera">首页</van-tabbar-item>
+      <van-tabbar-item icon="home-o" to="/homepage">首页</van-tabbar-item>
       <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
       <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
     </van-tabbar>
