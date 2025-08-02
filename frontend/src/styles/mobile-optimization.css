@@ -1,0 +1,320 @@
+/* 📱 移动端优化样式 - 参考frontend6精致设计 */
+
+/* 移动端基础优化 */
+@media (max-width: 768px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-size: 14px;
+  }
+
+  body {
+    overflow-x: hidden;
+    min-width: 320px;
+    font-size: 0.875rem;
+    /* 🌟 移动端背景增强 */
+    background-attachment: fixed;
+  }
+
+  /* 🌌 移动端背景光效 */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle 300px at 10% 20%, rgba(232, 168, 85, 0.03) 0%, transparent 50%),
+      radial-gradient(circle 200px at 90% 90%, rgba(244, 190, 126, 0.02) 0%, transparent 50%);
+    animation: floatingGlow 20s ease-in-out infinite;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  /* 容器优化 */
+  .content-wrapper {
+    padding: 8px;
+    max-width: 100%;
+  }
+
+  /* 卡片移动端优化 */
+  .card {
+    margin: 4px 0;
+    border-radius: 8px;
+    padding: 12px;
+  }
+
+  /* 按钮移动端优化 */
+  .btn-primary,
+  .van-button {
+    font-size: 14px;
+    padding: 8px 16px;
+    min-height: 44px; /* iOS 推荐最小点击区域 */
+    border-radius: 8px;
+  }
+
+  /* 表单元素优化 */
+  .van-field__control {
+    font-size: 16px; /* 防止iOS缩放 */
+  }
+
+  /* 图片响应式 */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* 拍照界面优化 */
+  .camera-container {
+    position: relative;
+    width: 100%;
+    height: calc(100vh - 120px);
+  }
+
+  .camera-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+  }
+
+  /* 照片网格优化 */
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .photo-item {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 🔮 精致错题分类卡片 */
+  .category-card {
+    position: relative;
+    padding: 20px;
+    margin: 12px 0;
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-color);
+    box-shadow: 
+      var(--shadow-glow),
+      var(--shadow-inner),
+      var(--shadow-card);
+    transition: all 0.3s var(--ease-smooth);
+    cursor: pointer;
+  }
+
+  .category-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    box-shadow: 0 0 8px rgba(232, 168, 85, 0.5);
+  }
+
+  .category-card:hover {
+    border-color: var(--border-glow);
+    box-shadow: 
+      0 0 40px rgba(232, 168, 85, 0.15),
+      var(--shadow-inner),
+      var(--shadow-hover);
+    transform: translateY(-4px);
+  }
+
+  .category-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--text-primary), var(--text-accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .category-count {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  /* ✨ 精致试题卡片 */
+  .question-card {
+    position: relative;
+    background: var(--bg-card);
+    backdrop-filter: blur(12px);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin: 12px 0;
+    border: 1px solid var(--border-color);
+    box-shadow: 
+      var(--shadow-glow),
+      var(--shadow-inner),
+      var(--shadow-card);
+    transition: all 0.3s var(--ease-smooth);
+    cursor: pointer;
+  }
+
+  .question-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, 
+      var(--primary-color) 0%, 
+      var(--primary-light) 50%,
+      var(--accent-color) 100%
+    );
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    opacity: 0.7;
+  }
+
+  .question-card:hover {
+    border-color: var(--border-glow);
+    box-shadow: 
+      0 0 30px rgba(232, 168, 85, 0.12),
+      var(--shadow-inner),
+      var(--shadow-hover);
+    transform: translateY(-2px);
+  }
+
+  .question-image {
+    width: 100%;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+
+  .question-text {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+
+  /* 底部导航优化 */
+  .van-tabbar {
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .van-tabbar-item {
+    padding: 8px 4px;
+  }
+
+  .van-tabbar-item__text {
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  /* 浮动操作按钮 */
+  .fab {
+    position: fixed;
+    bottom: 80px;
+    right: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .fab:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  /* 加载和空状态 */
+  .loading-container,
+  .empty-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+  }
+
+  .empty-icon {
+    font-size: 48px;
+    color: var(--text-disabled);
+    margin-bottom: 16px;
+  }
+
+  .empty-text {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  /* 搜索栏优化 */
+  .search-container {
+    padding: 8px 16px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* 滑动操作 */
+  .swipe-action {
+    background: #ff4444;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    font-size: 12px;
+  }
+}
+
+/* 超小屏优化 (320px 以下) */
+@media (max-width: 360px) {
+  .content-wrapper {
+    padding: 4px;
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 4px;
+  }
+
+  .category-card,
+  .question-card {
+    padding: 12px;
+    margin: 4px 0;
+  }
+
+  .fab {
+    width: 48px;
+    height: 48px;
+    bottom: 70px;
+    right: 12px;
+  }
+}
+
+/* 横屏适配 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .camera-container {
+    height: calc(100vh - 80px);
+  }
+
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+}
