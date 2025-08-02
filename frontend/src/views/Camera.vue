@@ -1,12 +1,5 @@
 <template>
   <div class="camera-page">
-    <!-- 顶部标题栏 -->
-    <van-nav-bar title="错题本整理" fixed placeholder class="tech-nav">
-      <template #right>
-        <van-icon name="setting-o" @click="$router.push('/settings')" class="nav-icon" />
-      </template>
-    </van-nav-bar>
-
     <!-- 产品介绍/照片选择区域 -->
     <div class="camera-section">
       <div class="camera-container tech-card" v-if="!selectedImages.length">
@@ -18,7 +11,6 @@
           
           <div class="guide-features">
             <div class="feature-item">
-              <div class="feature-icon">📷</div>
               <div class="feature-text">
                 <h4>拍照识别</h4>
                 <p>一键拍摄错题，AI自动识别文字内容</p>
@@ -26,7 +18,6 @@
             </div>
             
             <div class="feature-item">
-              <div class="feature-icon">🤖</div>
               <div class="feature-text">
                 <h4>智能分类</h4>
                 <p>大模型自动分析题目类型并归类整理</p>
@@ -34,18 +25,13 @@
             </div>
             
             <div class="feature-item">
-              <div class="feature-icon">📝</div>
               <div class="feature-text">
                 <h4>组卷练习</h4>
                 <p>自由组合错题生成试卷，支持打印导出</p>
               </div>
             </div>
           </div>
-          
-          <div class="guide-cta">
-            <p class="cta-text">📱 点击下方按钮开始使用</p>
-          </div>
-          
+        
           <div class="guide-glow"></div>
         </div>
       </div>
@@ -315,31 +301,16 @@ export default {
   position: relative;
 }
 
-/* 🌟 精致导航栏 */
-.tech-nav {
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(12px) !important;
-  border-bottom: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow-glow) !important;
-}
 
-.nav-icon {
-  color: var(--text-accent) !important;
-  transition: all 0.3s var(--ease-smooth);
-}
-
-.nav-icon:hover {
-  color: var(--primary-light) !important;
-  transform: scale(1.1);
-}
 
 .camera-section {
-  padding: 20px;
-  min-height: 320px;
+  padding: 16px;
+  min-height: auto;
 }
 
 .camera-container {
-  min-height: 300px;
+  min-height: auto;
+  max-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -352,22 +323,30 @@ export default {
 .product-guide {
   position: relative;
   z-index: 2;
-  padding: 32px 24px;
+  padding: 16px 20px;
   text-align: center;
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .guide-header {
-  margin-bottom: 32px;
+  margin-bottom: 16px;
 }
 
 .guide-title {
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, var(--text-primary), var(--text-accent));
+  background: linear-gradient(
+    90deg,
+    var(--text-primary) 0%,
+    var(--text-accent) 25%,
+    #FFD700 50%,
+    var(--text-accent) 75%,
+    var(--text-primary) 100%
+  );
+  background-size: 200% 100%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -386,16 +365,16 @@ export default {
 .guide-features {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  margin-bottom: 32px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .feature-item {
   display: flex;
   align-items: flex-start;
   text-align: left;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 10px;
   background: rgba(255, 255, 255, 0.03);
   border-radius: var(--radius-md);
   border: 1px solid rgba(232, 168, 85, 0.1);
@@ -530,6 +509,7 @@ export default {
 }
 
 .action-section {
+  
   padding: 20px;
 }
 
