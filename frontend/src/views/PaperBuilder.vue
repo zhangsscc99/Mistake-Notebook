@@ -9,7 +9,7 @@
       placeholder
     >
       <template #right>
-        <van-button type="primary" size="mini" @click="exportPaper">
+        <van-button type="primary" size="mini" @click="exportPaper" class="nav-export-btn">
           导出
         </van-button>
       </template>
@@ -17,7 +17,7 @@
 
     <!-- 试卷信息设置 -->
     <div class="paper-info-section">
-      <van-cell-group inset>
+      <van-cell-group inset class="tech-card">
         <van-field
           v-model="paperInfo.title"
           label="试卷标题"
@@ -40,16 +40,16 @@
     <div class="category-selector-section">
       <div class="section-header">
         <h3>选择题目分类</h3>
-        <van-button size="mini" type="primary" @click="showCategorySelector = true">
+        <van-button size="mini" type="primary" @click="showCategorySelector = true" class="add-category-btn">
           添加分类
         </van-button>
       </div>
       
-      <div v-if="selectedCategories.length === 0" class="empty-categories">
+      <div v-if="selectedCategories.length === 0" class="empty-categories tech-card">
         <van-empty description="请选择题目分类" image="search" />
       </div>
       
-      <div v-else class="category-list">
+      <div v-else class="category-list tech-card">
         <van-swipe-cell 
           v-for="category in selectedCategories" 
           :key="category.id"
@@ -84,7 +84,7 @@
         </van-button>
       </div>
       
-      <van-list>
+      <van-list class="tech-card">
         <van-swipe-cell 
           v-for="(question, index) in allSelectedQuestions" 
           :key="question.id"
@@ -118,7 +118,7 @@
 
     <!-- 试卷预览和导出 -->
     <div class="export-section" v-if="allSelectedQuestions.length > 0">
-      <div class="export-stats">
+      <div class="export-stats tech-card">
         <div class="stat-item">
           <span class="stat-label">题目数量</span>
           <span class="stat-value">{{ allSelectedQuestions.length }}</span>
@@ -194,8 +194,8 @@
     </van-popup>
 
     <!-- 底部导航 -->
-    <van-tabbar v-model="activeTab">
-      <van-tabbar-item icon="camera-o" to="/camera">拍照</van-tabbar-item>
+    <van-tabbar route>
+      <van-tabbar-item icon="home-o" to="/camera">首页</van-tabbar-item>
       <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
       <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
     </van-tabbar>
@@ -213,7 +213,7 @@ export default {
   setup() {
     const route = useRoute()
     const router = useRouter()
-    const activeTab = ref(2)
+
 
     // 状态管理
     const showDurationPicker = ref(false)
@@ -452,6 +452,34 @@ export default {
         }
       } catch (error) {
         console.error('加载分类失败:', error)
+        // 使用 mock 数据作为后备
+        const mockCategories = [
+          {
+            id: 1,
+            name: '数学 - 二次函数',
+            description: '关于二次函数的图像、性质等问题',
+            icon: 'chart-trending-o',
+            color: '#E8A855',
+            count: 15
+          },
+          {
+            id: 2,
+            name: '物理 - 力学',
+            description: '牛顿定律、受力分析相关题目',
+            icon: 'fire-o',
+            color: '#F4BE7E',
+            count: 8
+          },
+          {
+            id: 3,
+            name: '化学 - 有机化学',
+            description: '有机物的结构、反应机制等',
+            icon: 'experiment-o',
+            color: '#F8D5A8',
+            count: 12
+          }
+        ]
+        availableCategories.splice(0, availableCategories.length, ...mockCategories)
       }
     }
 
@@ -495,7 +523,6 @@ export default {
     })
 
     return {
-      activeTab,
       paperInfo,
       selectedCategories,
       allSelectedQuestions,
@@ -572,7 +599,7 @@ export default {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .empty-categories {
@@ -649,7 +676,7 @@ export default {
 }
 
 .question-number {
-  background: #1976d2;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
   color: white;
   border-radius: 50%;
   width: 24px;
@@ -669,7 +696,7 @@ export default {
 
 .question-text {
   font-size: 14px;
-  color: #333;
+  color: var(--text-primary);
   line-height: 1.4;
   margin-bottom: 8px;
 }
@@ -796,7 +823,7 @@ export default {
 
 .custom-tag-hard {
   background: rgba(244, 67, 54, 0.15) !important;
-  color: #f44336 !important;
+  color: #ff6b6b !important;
   border: 1px solid rgba(244, 67, 54, 0.3) !important;
   border-radius: var(--radius-sm) !important;
 }
@@ -806,5 +833,73 @@ export default {
   color: var(--text-secondary) !important;
   border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-sm) !important;
+}
+
+/* 🌟 PaperBuilder专属按钮样式 */
+.nav-export-btn {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  border: none !important;
+  color: var(--bg-primary) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+.add-category-btn {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  border: none !important;
+  color: var(--bg-primary) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+/* 🎯 本页面表单元素强制金色主题 */
+:deep(.tech-card .van-cell-group) {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-glow) !important;
+  overflow: hidden !important;
+}
+
+:deep(.tech-card .van-cell) {
+  background: var(--bg-glass) !important;
+  border-bottom: 1px solid var(--divider-color) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+:deep(.tech-card .van-cell:last-child) {
+  border-bottom: none !important;
+}
+
+:deep(.tech-card .van-field) {
+  background: transparent !important;
+}
+
+:deep(.tech-card .van-field__control) {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+:deep(.tech-card .van-field__control::placeholder) {
+  color: var(--text-secondary) !important;
+}
+
+:deep(.tech-card .van-field__label) {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+:deep(.tech-card .van-cell__title) {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+:deep(.tech-card .van-cell__value) {
+  color: var(--text-accent) !important;
+  font-weight: 500 !important;
 }
 </style>

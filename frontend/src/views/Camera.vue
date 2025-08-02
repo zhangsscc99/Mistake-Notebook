@@ -107,8 +107,8 @@
     />
 
     <!-- 底部导航 -->
-    <van-tabbar v-model="activeTab" @change="onTabChange">
-      <van-tabbar-item icon="camera-o" to="/camera">拍照</van-tabbar-item>
+    <van-tabbar route>
+      <van-tabbar-item icon="home-o" to="/camera">首页</van-tabbar-item>
       <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
       <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
     </van-tabbar>
@@ -125,7 +125,7 @@ export default {
   name: 'Camera',
   setup() {
     const router = useRouter()
-    const activeTab = ref(0)
+
     const processing = ref(false)
     const selectedImages = reactive([])
     const recentRecords = reactive([])
@@ -250,10 +250,7 @@ export default {
       recentRecords.splice(0, recentRecords.length, ...mockRecords)
     }
 
-    // 标签页切换
-    const onTabChange = (index) => {
-      activeTab.value = index
-    }
+
 
     // 组件挂载时加载数据
     onMounted(() => {
@@ -261,7 +258,6 @@ export default {
     })
 
     return {
-      activeTab,
       processing,
       selectedImages,
       recentRecords,
@@ -272,8 +268,7 @@ export default {
       removeImage,
       processImages,
       viewRecord,
-      formatTime,
-      onTabChange
+      formatTime
     }
   }
 }

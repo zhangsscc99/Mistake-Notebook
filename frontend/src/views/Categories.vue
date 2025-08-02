@@ -8,6 +8,7 @@
         @search="onSearch"
         show-action
         clearable
+        class="tech-search"
       >
         <template #action>
           <div @click="onSearch">搜索</div>
@@ -97,19 +98,11 @@
       </van-pull-refresh>
     </div>
 
-    <!-- 浮动操作按钮 -->
-    <van-floating-bubble 
-      axis="xy" 
-      v-model:offset="floatOffset"
-      @click="$router.push('/camera')"
-      class="custom-floating-bubble"
-    >
-      <van-icon name="camera-o" size="24" class="bubble-icon" />
-    </van-floating-bubble>
+
 
     <!-- 底部导航 -->
-    <van-tabbar v-model="activeTab">
-      <van-tabbar-item icon="camera-o" to="/camera">拍照</van-tabbar-item>
+    <van-tabbar route>
+      <van-tabbar-item icon="home-o" to="/camera">首页</van-tabbar-item>
       <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
       <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
     </van-tabbar>
@@ -125,12 +118,12 @@ export default {
   name: 'Categories',
   setup() {
     const router = useRouter()
-    const activeTab = ref(1)
+
     const searchText = ref('')
     const refreshing = ref(false)
     const loading = ref(false)
     const finished = ref(false)
-    const floatOffset = reactive({ x: 16, y: 100 })
+
     
     const categories = reactive([])
     const stats = reactive({
@@ -306,11 +299,47 @@ export default {
 }
 
 .search-section {
-  background: var(--bg-glass);
-  backdrop-filter: blur(12px);
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: var(--shadow-glow);
+  padding: 8px 16px 16px 16px;
+  background: var(--bg-primary);
+}
+
+/* 🌟 本地搜索框强制金色主题 */
+.tech-search {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-glow) !important;
+  margin: 0 !important;
+}
+
+:deep(.tech-search .van-search__content) {
+  background: var(--bg-glass) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 
+    0 4px 16px rgba(232, 168, 85, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+:deep(.tech-search .van-field) {
+  background: transparent !important;
+}
+
+:deep(.tech-search .van-field__control) {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+:deep(.tech-search .van-field__control::placeholder) {
+  color: var(--text-secondary) !important;
+}
+
+:deep(.tech-search .van-search__action) {
+  color: var(--text-accent) !important;
+  font-weight: 600 !important;
 }
 
 .stats-section {
@@ -510,28 +539,5 @@ export default {
   border-radius: var(--radius-sm) !important;
 }
 
-/* 🌟 自定义浮动按钮样式 - 移除蓝色 */
-:deep(.van-floating-bubble) {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
-  border: 2px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 
-    0 8px 32px rgba(232, 168, 85, 0.4),
-    0 4px 16px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-  backdrop-filter: blur(12px) !important;
-}
 
-:deep(.van-floating-bubble:hover) {
-  transform: scale(1.1) !important;
-  box-shadow: 
-    0 12px 48px rgba(232, 168, 85, 0.6),
-    0 6px 24px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-  transition: all 0.3s var(--ease-smooth) !important;
-}
-
-.bubble-icon {
-  color: var(--bg-primary) !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
-}
 </style>

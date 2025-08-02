@@ -75,14 +75,42 @@ export default {
 
 :deep(.van-tabbar-item) {
   color: var(--text-secondary) !important;
+  transition: all 0.3s ease !important;
 }
 
 :deep(.van-tabbar-item--active) {
   color: var(--text-accent) !important;
+  position: relative;
+}
+
+:deep(.van-tabbar-item--active::before) {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(232, 168, 85, 0.6);
+}
+
+:deep(.van-tabbar-item--active .van-tabbar-item__text) {
+  color: var(--text-accent) !important;
+  font-weight: 600 !important;
+  text-shadow: 0 0 8px rgba(232, 168, 85, 0.3) !important;
+}
+
+:deep(.van-tabbar-item--active .van-tabbar-item__icon) {
+  color: var(--text-accent) !important;
+  filter: drop-shadow(0 0 6px rgba(232, 168, 85, 0.4)) !important;
+  transform: scale(1.1) !important;
 }
 
 :deep(.van-tabbar-item__text) {
   font-weight: 500 !important;
+  font-size: 12px !important;
 }
 
 :deep(.van-button--primary) {
@@ -142,44 +170,180 @@ export default {
   color: var(--text-accent) !important;
 }
 
-/* 确保搜索框样式正确 */
+/* 🌟 搜索框金色主题样式 - 强制覆盖 */
 :deep(.van-search) {
-  background: var(--bg-glass) !important;
+  background: var(--bg-card) !important;
   backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-glow) !important;
+  margin: 16px !important;
 }
 
-:deep(.van-search__content) {
+:deep(.van-search__content),
+:deep(.van-search__content--square) {
   background: var(--bg-glass) !important;
-  border: 1px solid var(--border-color) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 
+    var(--shadow-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+:deep(.van-search__field),
+:deep(.van-search .van-field) {
+  background: transparent !important;
+}
+
+:deep(.van-search .van-field__control),
+:deep(.van-field__control) {
+  color: var(--text-primary) !important;
+  background: transparent !important;
+  font-weight: 500 !important;
+}
+
+:deep(.van-search .van-field__control::placeholder) {
+  color: var(--text-secondary) !important;
+}
+
+:deep(.van-search__action) {
+  color: var(--text-accent) !important;
+  font-weight: 600 !important;
+}
+
+/* 针对特定页面的搜索框 */
+:deep(.tech-search .van-search__content) {
+  background: var(--bg-glass) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+:deep(.tech-search .van-field__control) {
+  background: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+/* 🔥 超强优先级 - 移除所有白色背景 */
+:deep(.van-search__content--square),
+:deep(.van-search__content),
+:deep(.van-field__body),
+:deep(.van-field),
+:deep(.van-cell) {
+  background: var(--bg-glass) !important;
+  background-color: var(--bg-glass) !important;
+}
+
+/* 专门针对搜索框内部元素 */
+:deep(.van-search .van-field__body) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 🎯 精确覆盖Vant默认样式 */
+.van-search__content--square {
+  background: var(--bg-glass) !important;
+  background-color: var(--bg-glass) !important;
+}
+
+.van-search .van-field {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.van-search .van-field__body {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 🌟 表单字段金色主题样式 - 全面覆盖 */
+:deep(.van-cell-group),
+:deep(.van-cell-group--inset) {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-glow) !important;
+  overflow: hidden !important;
+  margin: 16px !important;
+}
+
+:deep(.van-cell) {
+  background: var(--bg-glass) !important;
+  background-color: var(--bg-glass) !important;
+  border-bottom: 1px solid var(--divider-color) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+:deep(.van-cell:last-child) {
+  border-bottom: none !important;
+}
+
+:deep(.van-cell__title) {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+:deep(.van-cell__value) {
+  color: var(--text-accent) !important;
+  font-weight: 500 !important;
+}
+
+:deep(.van-field__label) {
+  color: var(--text-primary) !important;
+  font-weight: 500 !important;
+}
+
+:deep(.van-field__body) {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+:deep(.van-field) {
+  background: transparent !important;
+  background-color: transparent !important;
 }
 
 :deep(.van-field__control) {
   color: var(--text-primary) !important;
   background: transparent !important;
+  background-color: transparent !important;
+  font-weight: 500 !important;
 }
 
-/* 🌟 浮动按钮全局样式覆盖 */
-:deep(.van-floating-bubble) {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
-  border: 2px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: 
-    0 8px 32px rgba(232, 168, 85, 0.4),
-    0 4px 16px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+:deep(.van-field__control::placeholder) {
+  color: var(--text-secondary) !important;
+}
+
+/* 🔥 强制移除任何白色背景 */
+:deep(.van-field),
+:deep(.van-field__body),
+:deep(.van-cell),
+:deep(.van-cell-group) {
+  background: var(--bg-glass) !important;
+  background-color: var(--bg-glass) !important;
+}
+
+:deep(.van-field__control),
+:deep(.van-field__body) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 🌟 下拉菜单金色主题 */
+:deep(.van-dropdown-menu) {
+  background: var(--bg-card) !important;
   backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid var(--border-glow) !important;
+  box-shadow: var(--shadow-glow) !important;
 }
 
-:deep(.van-floating-bubble:hover) {
-  transform: scale(1.1) !important;
-  box-shadow: 
-    0 12px 48px rgba(232, 168, 85, 0.6),
-    0 6px 24px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-  transition: all 0.3s var(--ease-smooth) !important;
+:deep(.van-dropdown-item) {
+  background: var(--bg-glass) !important;
+  color: var(--text-primary) !important;
+  border-right: 1px solid var(--divider-color) !important;
 }
 
-:deep(.van-floating-bubble .van-icon) {
-  color: var(--bg-primary) !important;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
-}
+
 </style>
