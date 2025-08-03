@@ -589,25 +589,25 @@ export default {
 }
 
 .question-box.selected {
-  border-color: var(--primary-color);
+  border-color: #B8860B;
   background: linear-gradient(135deg, 
-    rgba(232, 168, 85, 0.15) 0%, 
-    rgba(232, 168, 85, 0.08) 100%);
+    rgba(184, 134, 11, 0.18) 0%, 
+    rgba(184, 134, 11, 0.10) 100%);
   box-shadow: 
-    0 0 20px rgba(232, 168, 85, 0.3),
-    0 4px 16px rgba(232, 168, 85, 0.2),
+    0 0 20px rgba(184, 134, 11, 0.35),
+    0 4px 16px rgba(184, 134, 11, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   animation: selectedGlow 2s ease-in-out infinite;
 }
 
 @keyframes selectedGlow {
   0%, 100% { box-shadow: 
-    0 0 20px rgba(232, 168, 85, 0.3),
-    0 4px 16px rgba(232, 168, 85, 0.2),
+    0 0 20px rgba(184, 134, 11, 0.35),
+    0 4px 16px rgba(184, 134, 11, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.2); }
   50% { box-shadow: 
-    0 0 30px rgba(232, 168, 85, 0.4),
-    0 6px 24px rgba(232, 168, 85, 0.3),
+    0 0 30px rgba(184, 134, 11, 0.45),
+    0 6px 24px rgba(184, 134, 11, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.3); }
 }
 
@@ -642,11 +642,11 @@ export default {
 }
 
 .question-box.selected .select-indicator {
-  background: linear-gradient(135deg, #52c41a, #73d13d);
+  background: linear-gradient(135deg, #B8860B, #DAA520);
   transform: scale(1.1);
   box-shadow: 
-    0 0 16px rgba(82, 196, 26, 0.4),
-    0 2px 8px rgba(82, 196, 26, 0.3),
+    0 0 16px rgba(184, 134, 11, 0.45),
+    0 2px 8px rgba(184, 134, 11, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
@@ -764,7 +764,7 @@ export default {
   background: linear-gradient(135deg, 
     var(--primary-color) 0%, 
     var(--primary-light) 50%, 
-    #52c41a 100%) !important;
+    #B8860B 100%) !important;
   font-weight: 700 !important;
   font-size: 16px !important;
   letter-spacing: 0.5px !important;
@@ -773,7 +773,7 @@ export default {
   border: none !important;
   box-shadow: 
     0 8px 24px rgba(232, 168, 85, 0.3),
-    0 4px 16px rgba(82, 196, 26, 0.2),
+    0 4px 16px rgba(184, 134, 11, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
   transition: all 0.4s var(--ease-smooth) !important;
 }
@@ -800,7 +800,7 @@ export default {
   transform: translateY(-2px) !important;
   box-shadow: 
     0 12px 32px rgba(232, 168, 85, 0.4),
-    0 6px 24px rgba(82, 196, 26, 0.3),
+    0 6px 24px rgba(184, 134, 11, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 
@@ -900,7 +900,7 @@ export default {
 }
 
 .confirm-btn {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  background: linear-gradient(135deg, var(--primary-color), #B8860B) !important;
   border: none !important;
   box-shadow: 
     0 6px 20px rgba(232, 168, 85, 0.3),
