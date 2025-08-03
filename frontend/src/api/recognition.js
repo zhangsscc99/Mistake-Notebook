@@ -215,6 +215,44 @@ export const imageRecognitionAPI = {
   },
 
   /**
+   * 保存选中的题目到数据库
+   * @param {Array} selectedQuestions 选中的题目数组
+   * @param {String} category 分类
+   * @param {String} difficulty 难度
+   * @param {String} imageUrl 图片URL
+   * @returns {Promise} 保存结果
+   */
+  async saveSelectedQuestions(selectedQuestions, category, difficulty, imageUrl) {
+    try {
+      const requestData = {
+        questions: selectedQuestions,
+        category: category,
+        difficulty: difficulty,
+        imageUrl: imageUrl
+      }
+
+      const result = await apiClient.post('/upload/save-questions', requestData, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      return {
+        success: true,
+        data: result.data,
+        message: '题目保存成功'
+      }
+    } catch (error) {
+      console.error('保存题目失败:', error)
+      throw {
+        success: false,
+        message: error.response?.data?.message || '保存失败',
+        error: error
+      }
+    }
+  },
+
+  /**
    * 获取模拟题目分割识别结果
    * @param {Array} images - 图片文件数组
    * @returns {Promise} 模拟分割结果

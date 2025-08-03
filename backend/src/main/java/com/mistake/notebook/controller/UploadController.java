@@ -20,7 +20,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -230,6 +232,49 @@ public class UploadController {
             log.error("题目分割识别失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("识别失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 批量保存选中的题目
+     */
+    @PostMapping("/save-questions")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> saveSelectedQuestions(
+            @RequestBody Map<String, Object> request) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> selectedQuestions = (List<Map<String, Object>>) request.get("questions");
+            String category = (String) request.get("category");
+            String difficulty = (String) request.get("difficulty");
+            String imageUrl = (String) request.get("imageUrl");
+            
+            log.info("接收到批量保存题目请求，题目数量：{}", selectedQuestions.size());
+            
+            List<QuestionDTO> savedQuestions = new ArrayList<>();
+            
+            for (Map<String, Object> questionData : selectedQuestions) {
+                CreateQuestionRequest createRequest = new CreateQuestionRequest();
+                createRequest.setContent((String) questionData.get("text"));
+                createRequest.setImageUrl(imageUrl);
+                createRequest.setCategory(category);
+                createRequest.setDifficulty(difficulty);
+                createRequest.setOcrConfidence(((Number) questionData.get("confidence")).doubleValue());
+                
+                QuestionDTO savedQuestion = questionService.createQuestion(createRequest);
+                savedQuestions.add(savedQuestion);
+            }
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("savedCount", savedQuestions.size());
+            result.put("questions", savedQuestions);
+            
+            log.info("批量保存题目完成，成功保存{}道题目", savedQuestions.size());
+            return ResponseEntity.ok(ApiResponse.success("题目保存成功", result));
+            
+        } catch (Exception e) {
+            log.error("批量保存题目失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("保存失败：" + e.getMessage()));
         }
     }
 

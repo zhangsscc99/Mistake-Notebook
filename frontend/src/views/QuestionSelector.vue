@@ -156,6 +156,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showToast } from 'vant'
+import { imageRecognitionAPI } from '../api/recognition'
 
 export default {
   name: 'QuestionSelector',
@@ -345,8 +346,17 @@ export default {
       saving.value = true
 
       try {
-        // 这里调用API保存选中的题目
-        await new Promise(resolve => setTimeout(resolve, 1500)) // 模拟API调用
+        console.log('开始保存选中的题目...', selectedQuestions) // 调试信息
+        
+        // 调用真实的API保存选中的题目
+        const result = await imageRecognitionAPI.saveSelectedQuestions(
+          selectedQuestions,
+          getCategoryName(selectedCategory.value),
+          selectedDifficulty.value,
+          originalImage.value
+        )
+        
+        console.log('保存结果:', result) // 调试信息
 
         showToast(`已保存${selectedQuestions.length}道题目到错题本`)
         
@@ -359,6 +369,12 @@ export default {
       } finally {
         saving.value = false
       }
+    }
+
+    // 获取分类名称
+    const getCategoryName = (categoryId) => {
+      const category = categories.find(cat => cat.id === categoryId)
+      return category ? category.name : '数学'
     }
 
     // 生命周期
@@ -387,7 +403,8 @@ export default {
       showCategoryPicker,
       cancelCategoryEdit,
       confirmCategoryEdit,
-      saveSelectedQuestions
+      saveSelectedQuestions,
+      getCategoryName
     }
   }
 }
