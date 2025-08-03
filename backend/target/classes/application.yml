@@ -32,7 +32,7 @@ spring:
 
 # 跨域配置
 cors:
-  allowed-origins: "http://localhost:3000,http://127.0.0.1:3000"
+  allowed-origins: "http://localhost:3060,http://127.0.0.1:3060"
   allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
   allowed-headers: "*"
   allow-credentials: true
@@ -45,11 +45,14 @@ aliyun:
   
   # OCR 配置
   ocr:
-    endpoint: ocr.cn-hangzhou.aliyuncs.com
+    endpoint: ${ALIYUN_OCR_ENDPOINT:https://ocr-api.cn-hangzhou.aliyuncs.com}
     
   # 通义千问配置
   dashscope:
     api-key: ${DASHSCOPE_API_KEY:your-dashscope-api-key}
+    base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/}
+    model: ${DASHSCOPE_MODEL:qwen-turbo-latest}
+    application-id: ${DASHSCOPE_APPLICATION_ID:your-application-id}
 
 # 文件存储配置
 file:

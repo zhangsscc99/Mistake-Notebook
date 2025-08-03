@@ -6,6 +6,7 @@ import Categories from '../views/Categories.vue'
 import CategoryDetail from '../views/CategoryDetail.vue'
 import PaperBuilder from '../views/PaperBuilder.vue'
 import Settings from '../views/Settings.vue'
+import QuestionSelector from '../views/QuestionSelector.vue'
 
 const routes = [  
   {
@@ -52,6 +53,14 @@ const routes = [
     component: Settings,
     meta: {
       title: '设置'
+    }
+  },
+  {
+    path: '/question-selector',
+    name: 'QuestionSelector',
+    component: QuestionSelector,
+    meta: {
+      title: '选择题目'
     }
   }
 ]

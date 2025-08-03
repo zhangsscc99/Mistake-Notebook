@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -89,6 +90,74 @@ public class OCRService {
     }
 
     /**
+     * 识别图片中的多个题目并分割
+     */
+    public QuestionSegmentResult recognizeAndSegmentQuestions(MultipartFile file) {
+        try {
+            // 验证文件
+            if (file.isEmpty()) {
+                return new QuestionSegmentResult(false, null, "文件为空");
+            }
+
+            // 验证文件大小和类型
+            if (file.getSize() > 10 * 1024 * 1024) {
+                return new QuestionSegmentResult(false, null, "文件大小超过限制");
+            }
+
+            String contentType = file.getContentType();
+            if (contentType == null || !isImageFile(contentType)) {
+                return new QuestionSegmentResult(false, null, "不支持的文件类型");
+            }
+
+            log.info("开始题目分割OCR识别，文件名：{}，大小：{} bytes", file.getOriginalFilename(), file.getSize());
+
+            // 这里预留了真实的题目分割API调用
+            // 目前返回模拟数据用于开发测试
+            return performMockQuestionSegmentation();
+
+        } catch (Exception e) {
+            log.error("题目分割OCR识别失败", e);
+            return new QuestionSegmentResult(false, null, "识别过程中发生错误：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 模拟题目分割识别（用于开发测试）
+     */
+    private QuestionSegmentResult performMockQuestionSegmentation() {
+        // 模拟处理时间
+        try {
+            Thread.sleep(1500 + random.nextInt(2000)); // 1.5-3.5秒
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        // 模拟识别出的多个题目
+        List<QuestionSegment> questions = List.of(
+            new QuestionSegment(1, "1. (1+5i)的绝对值", 
+                new QuestionBounds(15, 10, 80, 12), 0.92, false),
+            new QuestionSegment(2, "2. 设集合U={1,2,3,4,5,6,7,8}，集合A={1,3,5,7}，B(A)表示A在全集U中的补集", 
+                new QuestionBounds(30, 10, 80, 12), 0.88, true),
+            new QuestionSegment(3, "3. 若直线l经过点P(1,2)且倾斜角为π/3，则直线l的方程为", 
+                new QuestionBounds(45, 10, 80, 12), 0.90, false),
+            new QuestionSegment(4, "4. 若点(a,b)(a>0)是圆M上一点，且到直线y=2tan(x-π/4)的距离为max，M的圆心的横坐标是", 
+                new QuestionBounds(60, 10, 80, 15), 0.85, false),
+            new QuestionSegment(5, "5. 设f(x)是定义在R上的函数，若对于任意x≤3时，f(x)=x-21，M=max{f(x)|x∈R}", 
+                new QuestionBounds(78, 10, 80, 15), 0.87, true),
+            new QuestionSegment(6, "6. 假设扔掷，运动总量的信息只需满足以下大小的的，是对信息风险的风力", 
+                new QuestionBounds(95, 10, 80, 25), 0.75, false)
+        );
+
+        double overallConfidence = questions.stream()
+            .mapToDouble(QuestionSegment::getConfidence)
+            .average()
+            .orElse(0.85);
+
+        log.info("模拟题目分割完成，识别到{}道题目", questions.size());
+        return new QuestionSegmentResult(true, questions, null, overallConfidence);
+    }
+
+    /**
      * 模拟OCR识别（用于开发测试）
      */
     private OCRResult performMockOCR() {
@@ -152,5 +221,81 @@ public class OCRService {
         public String getText() { return text; }
         public double getConfidence() { return confidence; }
         public String getError() { return error; }
+    }
+
+    /**
+     * 题目分割识别结果
+     */
+    public static class QuestionSegmentResult {
+        private final boolean success;
+        private final List<QuestionSegment> questions;
+        private final String error;
+        private final double overallConfidence;
+
+        public QuestionSegmentResult(boolean success, List<QuestionSegment> questions, String error) {
+            this.success = success;
+            this.questions = questions;
+            this.error = error;
+            this.overallConfidence = 0.0;
+        }
+
+        public QuestionSegmentResult(boolean success, List<QuestionSegment> questions, String error, double overallConfidence) {
+            this.success = success;
+            this.questions = questions;
+            this.error = error;
+            this.overallConfidence = overallConfidence;
+        }
+
+        public boolean isSuccess() { return success; }
+        public List<QuestionSegment> getQuestions() { return questions; }
+        public String getError() { return error; }
+        public double getOverallConfidence() { return overallConfidence; }
+    }
+
+    /**
+     * 单个题目分割信息
+     */
+    public static class QuestionSegment {
+        private final int id;
+        private final String text;
+        private final QuestionBounds bounds;
+        private final double confidence;
+        private final boolean isDifficult; // 是否为疑难题目
+
+        public QuestionSegment(int id, String text, QuestionBounds bounds, double confidence, boolean isDifficult) {
+            this.id = id;
+            this.text = text;
+            this.bounds = bounds;
+            this.confidence = confidence;
+            this.isDifficult = isDifficult;
+        }
+
+        public int getId() { return id; }
+        public String getText() { return text; }
+        public QuestionBounds getBounds() { return bounds; }
+        public double getConfidence() { return confidence; }
+        public boolean isDifficult() { return isDifficult; }
+    }
+
+    /**
+     * 题目边界信息（百分比坐标）
+     */
+    public static class QuestionBounds {
+        private final double top;    // 顶部位置（百分比）
+        private final double left;   // 左侧位置（百分比）
+        private final double width;  // 宽度（百分比）
+        private final double height; // 高度（百分比）
+
+        public QuestionBounds(double top, double left, double width, double height) {
+            this.top = top;
+            this.left = left;
+            this.width = width;
+            this.height = height;
+        }
+
+        public double getTop() { return top; }
+        public double getLeft() { return left; }
+        public double getWidth() { return width; }
+        public double getHeight() { return height; }
     }
 } 

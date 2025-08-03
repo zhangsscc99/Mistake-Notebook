@@ -1,15 +1,13 @@
 // 图像识别API服务
 import axios from 'axios'
 
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:3060/api'
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080/api'
 
 // 创建axios实例
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 图像识别可能需要较长时间
-  headers: {
-    'Content-Type': 'multipart/form-data'
-  }
+  // 移除默认的Content-Type，让axios自动设置FormData的Content-Type
 })
 
 // 请求拦截器
@@ -47,14 +45,14 @@ export const imageRecognitionAPI = {
   async recognizeImages(images) {
     const formData = new FormData()
     
-    // 添加图片文件到表单数据
-    images.forEach((image, index) => {
-      formData.append(`images`, image.file)
-    })
+    // 题目分割识别只支持单个文件，使用第一个图片
+    if (images && images.length > 0) {
+      formData.append('file', images[0].file)
+    }
     
     try {
-      // 发送识别请求
-      const result = await apiClient.post('/recognition/images', formData)
+      // 发送题目分割识别请求
+      const result = await apiClient.post('/upload/question-segment', formData)
       
       return {
         success: true,
@@ -65,12 +63,44 @@ export const imageRecognitionAPI = {
       // 如果后端还未实现，返回模拟数据
       if (error.code === 'ECONNREFUSED' || error.response?.status === 404) {
         console.warn('后端API未启动，使用模拟数据')
-        return this.getMockRecognitionResult(images)
+        return this.getMockQuestionSegmentResult(images)
       }
       
       throw {
         success: false,
         message: error.response?.data?.message || '识别失败',
+        error: error
+      }
+    }
+  },
+
+  /**
+   * 题目分割识别
+   * @param {File} imageFile - 单个图片文件
+   * @returns {Promise} 分割识别结果
+   */
+  async recognizeAndSegmentQuestions(imageFile) {
+    const formData = new FormData()
+    formData.append('file', imageFile)
+    
+    try {
+      const result = await apiClient.post('/upload/question-segment', formData)
+      
+      return {
+        success: true,
+        data: result.data,
+        message: '题目分割识别成功'
+      }
+    } catch (error) {
+      // 如果后端还未实现，返回模拟数据
+      if (error.code === 'ECONNREFUSED' || error.response?.status === 404) {
+        console.warn('后端API未启动，使用模拟数据')
+        return this.getMockQuestionSegmentResult([{ file: imageFile }])
+      }
+      
+      throw {
+        success: false,
+        message: error.response?.data?.message || '题目分割识别失败',
         error: error
       }
     }
@@ -182,6 +212,76 @@ export const imageRecognitionAPI = {
       }
     ]
     return categories[index % categories.length]
+  },
+
+  /**
+   * 获取模拟题目分割识别结果
+   * @param {Array} images - 图片文件数组
+   * @returns {Promise} 模拟分割结果
+   */
+  async getMockQuestionSegmentResult(images) {
+    // 模拟API延迟
+    await new Promise(resolve => setTimeout(resolve, 2500))
+    
+    // 模拟识别出的多个题目
+    const mockQuestions = [
+      {
+        id: 1,
+        text: "1. (1+5i)的绝对值",
+        bounds: { top: 15, left: 10, width: 80, height: 12 },
+        confidence: 0.92,
+        isDifficult: false
+      },
+      {
+        id: 2,
+        text: "2. 设集合U={1,2,3,4,5,6,7,8}，集合A={1,3,5,7}，B(A)表示A在全集U中的补集",
+        bounds: { top: 30, left: 10, width: 80, height: 12 },
+        confidence: 0.88,
+        isDifficult: true
+      },
+      {
+        id: 3,
+        text: "3. 若直线l经过点P(1,2)且倾斜角为π/3，则直线l的方程为",
+        bounds: { top: 45, left: 10, width: 80, height: 12 },
+        confidence: 0.90,
+        isDifficult: false
+      },
+      {
+        id: 4,
+        text: "4. 若点(a,b)(a>0)是圆M上一点，且到直线y=2tan(x-π/4)的距离为max，M的圆心的横坐标是",
+        bounds: { top: 60, left: 10, width: 80, height: 15 },
+        confidence: 0.85,
+        isDifficult: false
+      },
+      {
+        id: 5,
+        text: "5. 设f(x)是定义在R上的函数，若对于任意x≤3时，f(x)=x-21，M=max{f(x)|x∈R}",
+        bounds: { top: 78, left: 10, width: 80, height: 15 },
+        confidence: 0.87,
+        isDifficult: true
+      },
+      {
+        id: 6,
+        text: "6. 假设扔掷，运动总量的信息只需满足以下大小的的，是对信息风险的风力",
+        bounds: { top: 95, left: 10, width: 80, height: 25 },
+        confidence: 0.75,
+        isDifficult: false
+      }
+    ]
+
+    const overallConfidence = mockQuestions.reduce((sum, q) => sum + q.confidence, 0) / mockQuestions.length
+
+    return {
+      success: true,
+      data: {
+        success: true,
+        imageUrl: images[0]?.url || '/mock-image-url',
+        questionsCount: mockQuestions.length,
+        overallConfidence: overallConfidence,
+        questions: mockQuestions
+      },
+      message: '题目分割识别成功'
+    }
   }
 }
 

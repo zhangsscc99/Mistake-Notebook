@@ -31,7 +31,7 @@ import java.util.UUID;
 @RequestMapping("/upload")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
+@CrossOrigin(origins = {"http://localhost:3060", "http://127.0.0.1:3060"})
 public class UploadController {
 
     private final OCRService ocrService;
@@ -188,6 +188,48 @@ public class UploadController {
             log.error("AI分类失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("分类失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 题目分割识别（识别并分割多个题目）
+     */
+    @PostMapping("/question-segment")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> performQuestionSegmentation(
+            @RequestParam("file") MultipartFile file) {
+        try {
+            log.info("接收到题目分割识别请求，文件名：{}，大小：{} bytes", 
+                     file.getOriginalFilename(), file.getSize());
+
+            // 1. 保存文件
+            String imageUrl = saveFile(file);
+            if (imageUrl == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("文件保存失败"));
+            }
+
+            // 2. 题目分割识别
+            OCRService.QuestionSegmentResult segmentResult = ocrService.recognizeAndSegmentQuestions(file);
+            if (!segmentResult.isSuccess()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("题目分割识别失败：" + segmentResult.getError()));
+            }
+
+            // 3. 构建返回结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("imageUrl", imageUrl);
+            result.put("questionsCount", segmentResult.getQuestions().size());
+            result.put("overallConfidence", segmentResult.getOverallConfidence());
+            result.put("questions", segmentResult.getQuestions());
+
+            log.info("题目分割识别成功，识别到{}道题目", segmentResult.getQuestions().size());
+            return ResponseEntity.ok(ApiResponse.success("题目分割识别成功", result));
+
+        } catch (Exception e) {
+            log.error("题目分割识别失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("识别失败：" + e.getMessage()));
         }
     }
 

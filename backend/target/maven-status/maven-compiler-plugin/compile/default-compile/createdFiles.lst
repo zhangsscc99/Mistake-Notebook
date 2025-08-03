@@ -3,7 +3,9 @@ com\mistake\notebook\service\OCRService$OCRResult.class
 com\mistake\notebook\dto\ApiResponse.class
 com\mistake\notebook\service\AIClassificationService$ClassificationResult.class
 com\mistake\notebook\service\AIClassificationService.class
+com\mistake\notebook\service\OCRService$QuestionBounds.class
 com\mistake\notebook\dto\CreateQuestionRequest.class
+com\mistake\notebook\service\OCRService$QuestionSegment.class
 com\mistake\notebook\controller\UploadController.class
 com\mistake\notebook\service\PDFService.class
 com\mistake\notebook\service\QuestionService.class
@@ -13,6 +15,7 @@ com\mistake\notebook\controller\TestPaperController$TestPaperRequest.class
 com\mistake\notebook\dto\QuestionDTO.class
 com\mistake\notebook\entity\Question.class
 com\mistake\notebook\service\OCRService.class
+com\mistake\notebook\service\OCRService$QuestionSegmentResult.class
 com\mistake\notebook\MistakeNotebookApplication.class
 com\mistake\notebook\entity\Question$DifficultyLevel.class
 com\mistake\notebook\repository\QuestionRepository.class

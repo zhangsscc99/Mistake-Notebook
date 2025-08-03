@@ -137,7 +137,7 @@
 <script>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Toast } from 'vant'
+import { showToast } from 'vant'
 import { imageRecognitionAPI } from '../api/recognition'
 
 export default {
@@ -200,20 +200,52 @@ export default {
     // 处理图片识别
     const processImages = async () => {
       if (selectedImages.length === 0) {
-        Toast('请先选择图片')
+        showToast('请先选择图片')
         return
       }
 
       processing.value = true
       
       try {
-        // 调用图像识别API
+        console.log('开始调用API识别...') // 调试信息
+        
+        // 调用图像识别API进行OCR识别
         const results = await imageRecognitionAPI.recognizeImages(selectedImages)
         
-        Toast.success('识别完成!')
+        console.log('API识别结果:', results) // 调试信息
+        console.log('API调用成功，准备显示Toast...') // 调试信息
         
-        // 跳转到分类页面查看结果
-        router.push('/categories')
+        showToast('识别完成!')
+        
+        console.log('Toast显示完成，准备跳转...') // 调试信息
+        
+        // 获取第一张图片的URL用于题目选择页面
+        const firstImageUrl = selectedImages[0].url
+        
+        console.log('准备跳转到题目选择页面, 图片URL:', firstImageUrl) // 调试信息
+        
+        // 先尝试简单跳转测试
+        console.log('当前路由器对象:', router) // 调试信息
+        
+        // 跳转到题目选择页面，传递图片和识别结果
+        const routeData = {
+          path: '/question-selector',
+          query: {
+            image: encodeURIComponent(firstImageUrl),
+            results: JSON.stringify(results)
+          }
+        }
+        
+        console.log('路由数据:', routeData) // 调试信息
+        
+        // 先测试简单跳转
+        try {
+          console.log('开始执行路由跳转...') // 调试信息
+          await router.push(routeData)
+          console.log('路由跳转执行完成') // 调试信息
+        } catch (error) {
+          console.error('路由跳转失败:', error) // 调试信息
+        }
         
         // 清空已选择的图片
         selectedImages.splice(0)
@@ -223,7 +255,7 @@ export default {
         
       } catch (error) {
         console.error('图像识别失败:', error)
-        Toast.fail('识别失败，请重试')
+        showToast('识别失败，请重试')
       } finally {
         processing.value = false
       }
