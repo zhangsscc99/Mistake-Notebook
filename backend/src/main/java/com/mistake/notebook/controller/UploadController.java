@@ -257,7 +257,7 @@ public class UploadController {
                 createRequest.setContent((String) questionData.get("text"));
                 createRequest.setImageUrl(imageUrl);
                 createRequest.setCategory(category);
-                createRequest.setDifficulty(difficulty);
+                createRequest.setDifficulty(convertDifficultyToEnglish(difficulty));
                 createRequest.setOcrConfidence(((Number) questionData.get("confidence")).doubleValue());
                 
                 QuestionDTO savedQuestion = questionService.createQuestion(createRequest);
@@ -275,6 +275,53 @@ public class UploadController {
             log.error("批量保存题目失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("保存失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 将中文难度转换为英文枚举值
+     */
+    private String convertDifficultyToEnglish(String chineseDifficulty) {
+        if (chineseDifficulty == null) return "medium";
+        
+        switch (chineseDifficulty) {
+            case "简单":
+                return "easy";
+            case "困难":
+                return "hard";
+            case "中等":
+            default:
+                return "medium";
+        }
+    }
+
+    /**
+     * 将中文分类转换为英文（如果需要的话）
+     */
+    private String convertCategoryToEnglish(String chineseCategory) {
+        if (chineseCategory == null) return "数学";
+        
+        // 目前保持中文分类，因为数据库支持中文
+        // 如果需要英文分类，可以在这里添加转换逻辑
+        switch (chineseCategory) {
+            case "数学":
+                return "数学";
+            case "语文":
+                return "语文";
+            case "英语":
+                return "英语";
+            case "物理":
+                return "物理";
+            case "化学":
+                return "化学";
+            case "生物":
+                return "生物";
+            case "历史":
+                return "历史";
+            case "地理":
+                return "地理";
+            default:
+                return chineseCategory;
         }
     }
 
