@@ -87,7 +87,7 @@ const categoryAPI = {
    */
   async getCategoryQuestions(categoryId, params = {}) {
     try {
-      const result = await apiClient.get(`/categories/${categoryId}/questions`, { params })
+      const result = await apiClient.get(`/questions/by-category/${categoryId}`, { params })
       return {
         success: true,
         data: result.data

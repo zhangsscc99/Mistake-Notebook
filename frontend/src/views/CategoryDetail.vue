@@ -66,13 +66,14 @@
           >
             <!-- 题目内容 -->
             <div class="question-content">
-              <!-- 题目图片 -->
-              <div v-if="question.imageUrl" class="question-image-container">
+              <!-- 题目图片 - 只在有有效图片URL时显示 -->
+              <div v-if="question.imageUrl && question.imageUrl.trim() && !question.imageUrl.includes('placeholder')" class="question-image-container">
                 <img 
                   :src="question.imageUrl" 
                   alt="题目图片"
                   class="question-image"
                   @click.stop="previewImage(question.imageUrl)"
+                  @error="onImageError"
                 />
               </div>
               
@@ -149,7 +150,8 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Toast, Dialog, ImagePreview } from 'vant'
+import { showToast, showDialog, showConfirmDialog, ImagePreview } from 'vant'
+import categoryAPI from '../api/category'
 
 export default {
   name: 'CategoryDetail',
@@ -272,13 +274,48 @@ export default {
 
     // 查看题目详情
     const viewQuestion = (question) => {
-      // 这里可以打开题目详情弹窗或跳转到详情页
-      Toast(`查看题目: ${question.id}`)
+      // 创建题目详情弹窗
+      showDialog({
+        title: `题目 #${question.id}`,
+        message: `
+          <div style="text-align: left; line-height: 1.6;">
+            <div style="margin-bottom: 12px;">
+              <strong>题目内容：</strong><br/>
+              ${question.recognizedText}
+            </div>
+            ${question.tags.length > 0 ? `
+              <div style="margin-bottom: 12px;">
+                <strong>标签：</strong> ${question.tags.join(', ')}
+              </div>
+            ` : ''}
+            <div style="margin-bottom: 8px;">
+              <strong>难度：</strong> ${getDifficultyText(question.difficulty)}
+            </div>
+            <div style="margin-bottom: 8px;">
+              <strong>置信度：</strong> ${Math.round(question.confidence * 100)}%
+            </div>
+            <div>
+              <strong>添加时间：</strong> ${formatTime(question.createdAt)}
+            </div>
+          </div>
+        `,
+        allowHtml: true,
+        confirmButtonText: '关闭'
+      }).catch(() => {
+        // 用户关闭弹窗
+      })
     }
 
     // 预览图片
     const previewImage = (imageUrl) => {
       ImagePreview([imageUrl])
+    }
+
+    // 图片加载错误处理
+    const onImageError = (event) => {
+      console.log('图片加载失败:', event.target.src)
+      // 隐藏失败的图片容器
+      event.target.parentElement.style.display = 'none'
     }
 
     // 切换选择
@@ -289,17 +326,17 @@ export default {
     // 开始练习
     const startPractice = () => {
       if (questions.length === 0) {
-        Toast('该分类暂无题目')
+        showToast('该分类暂无题目')
         return
       }
-      Toast('开始练习功能待实现')
+      showToast('开始练习功能待实现')
     }
 
     // 加入组卷
     const addToExam = () => {
       const selectedCount = selectedQuestions.value.length
       if (selectedCount === 0) {
-        Toast('请先选择题目')
+        showToast('请先选择题目')
         return
       }
       
@@ -321,7 +358,7 @@ export default {
     // 批量删除
     const batchDelete = async () => {
       try {
-        await Dialog.confirm({
+        await showConfirmDialog({
           title: '确认删除',
           message: `确定要删除选中的 ${selectedQuestions.value.length} 道题目吗？`,
         })
@@ -330,7 +367,7 @@ export default {
         const selectedIds = selectedQuestions.value.map(q => q.id)
         questions.splice(0, questions.length, ...questions.filter(q => !selectedIds.includes(q.id)))
         
-        Toast.success('删除成功')
+        showToast({ message: '删除成功', type: 'success' })
       } catch (error) {
         // 用户取消删除
       }
@@ -338,70 +375,83 @@ export default {
 
     // 分享分类
     const shareCategory = () => {
-      Toast('分享功能待实现')
+      showToast('分享功能待实现')
     }
 
     // 加载分类信息
     const loadCategoryInfo = async () => {
       try {
-        // 模拟API调用
-        const mockInfo = {
-          id: categoryId,
-          name: '数学-二次函数',
-          description: '关于二次函数的图像、性质等问题',
-          icon: 'chart-trending-o',
-          color: '#1976d2'
-        }
+        console.log('开始加载分类信息，categoryId:', categoryId)
+        // 调用API获取所有分类，然后找到当前分类
+        const response = await categoryAPI.getCategories()
+        console.log('分类API响应:', response)
         
-        Object.assign(categoryInfo, mockInfo)
+        if (response.success && response.data && response.data.data) {
+          const category = response.data.data.find(cat => cat.id == categoryId)
+          if (category) {
+            const categoryData = {
+              id: category.id,
+              name: category.name || '未知分类',
+              description: category.description || '暂无描述',
+              icon: category.icon || 'apps-o',
+              color: category.color || '#E8A855'
+            }
+            Object.assign(categoryInfo, categoryData)
+            console.log('成功加载分类信息:', categoryData)
+          } else {
+            console.error('未找到指定分类:', categoryId)
+            showToast('分类不存在')
+          }
+        } else {
+          console.error('获取分类信息失败:', response)
+          showToast('获取分类信息失败')
+        }
       } catch (error) {
         console.error('加载分类信息失败:', error)
+        showToast('加载分类信息失败')
       }
     }
 
     // 加载题目列表
     const loadQuestions = async () => {
       try {
-        // 模拟API调用
-        const mockQuestions = [
-          {
-            id: 1,
-            recognizedText: '已知函数f(x) = x² - 2x + 1，求f(x)的最小值。',
-            imageUrl: 'https://via.placeholder.com/300x200?text=Math+Question+1',
-            tags: ['二次函数', '最值', '配方法'],
-            difficulty: 'medium',
-            confidence: 0.95,
-            createdAt: Date.now() - 3600000,
-            isCorrect: true,
-            selected: false
-          },
-          {
-            id: 2,
-            recognizedText: '求函数y = x² + 4x + 3的顶点坐标。',
-            imageUrl: 'https://via.placeholder.com/300x200?text=Math+Question+2',
-            tags: ['二次函数', '顶点', '坐标'],
-            difficulty: 'easy',
-            confidence: 0.88,
-            createdAt: Date.now() - 7200000,
-            isCorrect: false,
-            selected: false
-          },
-          {
-            id: 3,
-            recognizedText: '已知抛物线y = ax² + bx + c经过点(1,0), (2,0), (0,2)，求a, b, c的值。',
-            imageUrl: 'https://via.placeholder.com/300x200?text=Math+Question+3',
-            tags: ['二次函数', '待定系数法', '抛物线'],
-            difficulty: 'hard',
-            confidence: 0.82,
-            createdAt: Date.now() - 86400000,
-            isCorrect: true,
-            selected: false
-          }
-        ]
+        console.log('开始加载分类题目，categoryId:', categoryId)
+        // 调用API获取特定分类的题目
+        const response = await categoryAPI.getCategoryQuestions(categoryId)
+        console.log('题目API响应:', response)
         
-        questions.splice(0, questions.length, ...mockQuestions)
+        if (response.success && response.data && response.data.data) {
+          const apiQuestions = response.data.data.map(question => ({
+            id: question.id,
+            recognizedText: question.content || question.recognizedText || '暂无内容',
+            imageUrl: question.imageUrl || '',
+            tags: (() => {
+              if (!question.tags) return [];
+              if (typeof question.tags === 'string') {
+                return question.tags.split(',').filter(tag => tag.trim());
+              }
+              if (Array.isArray(question.tags)) {
+                return question.tags;
+              }
+              return [];
+            })(),
+            difficulty: question.difficulty || 'medium',
+            confidence: question.aiConfidence || 0.85,
+            createdAt: new Date(question.createdAt).getTime(),
+            isCorrect: false, // 默认值，如果需要可以从API获取
+            selected: false
+          }))
+          
+          questions.splice(0, questions.length, ...apiQuestions)
+          console.log('成功加载题目数据:', apiQuestions)
+        } else {
+          console.log('该分类暂无题目，响应:', response)
+          questions.splice(0, questions.length) // 清空数组
+        }
       } catch (error) {
         console.error('加载题目失败:', error)
+        showToast('加载题目失败')
+        questions.splice(0, questions.length) // 清空数组
       }
     }
 
@@ -431,6 +481,7 @@ export default {
       onLoadMore,
       viewQuestion,
       previewImage,
+      onImageError,
       toggleSelection,
       startPractice,
       addToExam,
