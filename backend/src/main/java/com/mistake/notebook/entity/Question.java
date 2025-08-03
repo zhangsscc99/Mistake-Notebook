@@ -33,13 +33,19 @@ public class Question {
     /**
      * 题目图片URL
      */
-    @Column(name = "image_url")
+    @Column(name = "image_url", columnDefinition = "TEXT")
     private String imageUrl;
 
     /**
-     * 题目分类
+     * 题目分类ID (外键) - 暂时允许为空，避免外键约束问题
      */
-    @Column(nullable = false, length = 50)
+    @Column(name = "category_id", nullable = true)
+    private Long categoryId; // 暂时不设置默认值
+    
+    /**
+     * 题目分类名称
+     */
+    @Column(name = "category", length = 50)
     private String category;
 
     /**

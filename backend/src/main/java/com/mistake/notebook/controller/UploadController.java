@@ -249,19 +249,52 @@ public class UploadController {
             String imageUrl = (String) request.get("imageUrl");
             
             log.info("接收到批量保存题目请求，题目数量：{}", selectedQuestions.size());
+            log.info("分类：{}，难度：{}，图片URL：{}", category, difficulty, imageUrl);
             
             List<QuestionDTO> savedQuestions = new ArrayList<>();
             
             for (Map<String, Object> questionData : selectedQuestions) {
                 CreateQuestionRequest createRequest = new CreateQuestionRequest();
-                createRequest.setContent((String) questionData.get("text"));
-                createRequest.setImageUrl(imageUrl);
-                createRequest.setCategory(category);
-                createRequest.setDifficulty(convertDifficultyToEnglish(difficulty));
-                createRequest.setOcrConfidence(((Number) questionData.get("confidence")).doubleValue());
                 
-                QuestionDTO savedQuestion = questionService.createQuestion(createRequest);
-                savedQuestions.add(savedQuestion);
+                // 设置题目内容
+                String content = (String) questionData.get("text");
+                if (content == null || content.trim().isEmpty()) {
+                    log.warn("题目内容为空，跳过该题目");
+                    continue;
+                }
+                createRequest.setContent(content);
+                
+                // 设置图片URL（处理过长的URL）
+                String processedImageUrl = processImageUrl(imageUrl);
+                createRequest.setImageUrl(processedImageUrl);
+                
+                // 设置分类
+                createRequest.setCategory(convertCategoryToEnglish(category));
+                
+                // 设置难度（使用全局难度设置）
+                createRequest.setDifficulty(convertDifficultyToEnglish(difficulty));
+                
+                // 设置OCR置信度
+                Object confidenceObj = questionData.get("confidence");
+                if (confidenceObj instanceof Number) {
+                    createRequest.setOcrConfidence(((Number) confidenceObj).doubleValue());
+                } else {
+                    createRequest.setOcrConfidence(0.85); // 默认置信度
+                }
+                
+                // 设置AI置信度（暂时使用OCR置信度）
+                createRequest.setAiConfidence(createRequest.getOcrConfidence());
+                
+                log.info("准备保存题目: {}", content.substring(0, Math.min(50, content.length())));
+                
+                try {
+                    QuestionDTO savedQuestion = questionService.createQuestion(createRequest);
+                    savedQuestions.add(savedQuestion);
+                    log.info("成功保存题目 ID: {}", savedQuestion.getId());
+                } catch (Exception e) {
+                    log.error("保存单个题目失败: {}", content.substring(0, Math.min(30, content.length())), e);
+                    throw e; // 重新抛出异常，让外层处理
+                }
             }
             
             Map<String, Object> result = new HashMap<>();
@@ -272,9 +305,13 @@ public class UploadController {
             return ResponseEntity.ok(ApiResponse.success("题目保存成功", result));
             
         } catch (Exception e) {
-            log.error("批量保存题目失败", e);
+            log.error("批量保存题目失败，错误详情：", e);
+            String errorMessage = "保存失败：" + e.getMessage();
+            if (e.getCause() != null) {
+                errorMessage += " (原因: " + e.getCause().getMessage() + ")";
+            }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("保存失败：" + e.getMessage()));
+                    .body(ApiResponse.error(errorMessage));
         }
     }
 
@@ -358,5 +395,31 @@ public class UploadController {
             log.error("保存文件失败", e);
             return null;
         }
+    }
+
+    /**
+     * 处理过长的图片URL
+     */
+    private String processImageUrl(String imageUrl) {
+        if (imageUrl == null) {
+            return null;
+        }
+        
+        // 记录原始URL长度
+        log.info("原始图片URL长度: {}", imageUrl.length());
+        
+        // 如果URL过长（超过1000字符），截断或使用占位符
+        if (imageUrl.length() > 1000) {
+            log.warn("图片URL过长 ({} 字符)，使用占位符", imageUrl.length());
+            // 可以选择截断前面部分，保留文件名
+            if (imageUrl.contains("/")) {
+                String fileName = imageUrl.substring(imageUrl.lastIndexOf("/"));
+                return "URL_TOO_LONG" + fileName;
+            } else {
+                return "URL_TOO_LONG_" + System.currentTimeMillis();
+            }
+        }
+        
+        return imageUrl;
     }
 } 

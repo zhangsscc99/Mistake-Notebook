@@ -54,6 +54,9 @@ public class QuestionDTO {
         question.setImageUrl(this.imageUrl);
         question.setCategory(this.category);
         
+        // 暂时不设置分类ID，避免外键约束问题
+        // question.setCategoryId(mapCategoryToId(this.category));
+        
         // 解析难度等级
         if (this.difficulty != null) {
             try {
@@ -71,5 +74,15 @@ public class QuestionDTO {
         question.setIsDeleted(false);
         
         return question;
+    }
+
+    /**
+     * 将分类名称映射为分类ID
+     * TODO: 这里应该查询数据库中实际的categories表来获取正确的ID
+     * 暂时先使用null或者移除categoryId字段
+     */
+    private Long mapCategoryToId(String categoryName) {
+        // 暂时返回null，让数据库使用默认值或者不设置外键
+        return null;
     }
 } 
