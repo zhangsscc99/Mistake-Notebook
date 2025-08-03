@@ -19,6 +19,15 @@ public class AIClassificationService {
 
     @Value("${aliyun.dashscope.api-key}")
     private String apiKey;
+    
+    @Value("${aliyun.dashscope.base-url}")
+    private String baseUrl;
+    
+    @Value("${aliyun.dashscope.model}")
+    private String model;
+    
+    @Value("${aliyun.dashscope.application-id}")
+    private String applicationId;
 
     private final Random random = new Random();
 
