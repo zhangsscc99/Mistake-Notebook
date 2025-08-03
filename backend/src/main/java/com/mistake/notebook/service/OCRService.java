@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -132,29 +133,191 @@ public class OCRService {
             Thread.currentThread().interrupt();
         }
 
-        // 模拟识别出的多个题目
-        List<QuestionSegment> questions = List.of(
-            new QuestionSegment(1, "1. (1+5i)的绝对值", 
-                new QuestionBounds(15, 10, 80, 12), 0.92, false),
-            new QuestionSegment(2, "2. 设集合U={1,2,3,4,5,6,7,8}，集合A={1,3,5,7}，B(A)表示A在全集U中的补集", 
-                new QuestionBounds(30, 10, 80, 12), 0.88, true),
-            new QuestionSegment(3, "3. 若直线l经过点P(1,2)且倾斜角为π/3，则直线l的方程为", 
-                new QuestionBounds(45, 10, 80, 12), 0.90, false),
-            new QuestionSegment(4, "4. 若点(a,b)(a>0)是圆M上一点，且到直线y=2tan(x-π/4)的距离为max，M的圆心的横坐标是", 
-                new QuestionBounds(60, 10, 80, 15), 0.85, false),
-            new QuestionSegment(5, "5. 设f(x)是定义在R上的函数，若对于任意x≤3时，f(x)=x-21，M=max{f(x)|x∈R}", 
-                new QuestionBounds(78, 10, 80, 15), 0.87, true),
-            new QuestionSegment(6, "6. 假设扔掷，运动总量的信息只需满足以下大小的的，是对信息风险的风力", 
-                new QuestionBounds(95, 10, 80, 25), 0.75, false)
-        );
+        // 智能题目分割：根据题目特征动态生成边界框
+        List<QuestionSegment> questions = generateIntelligentQuestionSegments();
 
         double overallConfidence = questions.stream()
             .mapToDouble(QuestionSegment::getConfidence)
             .average()
             .orElse(0.85);
 
-        log.info("模拟题目分割完成，识别到{}道题目", questions.size());
+        log.info("智能题目分割完成，识别到{}道题目", questions.size());
         return new QuestionSegmentResult(true, questions, null, overallConfidence);
+    }
+
+    /**
+     * 智能生成题目分割段（通用算法，基于大题标号分割）
+     */
+    private List<QuestionSegment> generateIntelligentQuestionSegments() {
+        // 模拟OCR识别的完整文本内容
+        String fullText = simulateFullOCRText();
+        
+        // 使用通用算法识别和分割大题
+        return segmentQuestionsByNumber(fullText);
+    }
+    
+    /**
+     * 模拟OCR识别的完整文本（实际使用时这里会是真实的OCR结果）
+     */
+    private String simulateFullOCRText() {
+        return "20. 第1小题满分4分，第2小题满分6分，第3小题满分8分。\n" +
+               "已知函数f(x)=x²-2ax+1，在x=2处与P、Q点。\n" +
+               "(1) 若高心等于2，求b的值；\n" +
+               "(2) 若b=√6/3，P在第一象限，∠MAP是等腰三角形，求P点的坐标；\n" +
+               "(3) 直接QQ开率长及效应转求x，若AR·A₁F=1，求P点的取值范围。\n" +
+               "\n" +
+               "21. 第1小题满分4分，第2小题满分6分，第3小题满分8分。\n" +
+               "已知D是R的一个非空子集，y=f(x)定义在R上的函数。对于任意M(a,b)，函数\n" +
+               "s(x)=(x-a)²+(f(x)-b)²，若对于P(x₀,f(x₀))，满足s(x)在x=x₀处取最小值，则称\n" +
+               "P是关于M的f最近点。\n" +
+               "(1) D=(0,+∞)，f(x)=1/x，M(0,0)，求证：在区间M的f最近点；\n" +
+               "(2) D=R，f(x)=eˣ，M(1,0)，若y=f(x)上一点P满足MP平行于f'线段MP平行于f最近点；\n" +
+               "(3) 已知y=f(x)是奇导的，g(x)定义在R上且函数值为正，...";
+    }
+    
+    /**
+     * 通用题目分割算法：根据大题标号（如"20.", "21."）分割题目
+     */
+    private List<QuestionSegment> segmentQuestionsByNumber(String fullText) {
+        List<QuestionSegment> segments = new ArrayList<>();
+        
+        // 按行分割文本
+        String[] lines = fullText.split("\n");
+        List<Integer> questionStartLines = new ArrayList<>();
+        List<String> questionNumbers = new ArrayList<>();
+        
+        // 查找所有大题标号的位置
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            // 匹配大题标号格式：数字 + 点号开头
+            if (line.matches("^\\d+\\..*")) {
+                questionStartLines.add(i);
+                // 提取题号
+                String questionNum = line.replaceAll("^(\\d+)\\..*", "$1");
+                questionNumbers.add(questionNum);
+            }
+        }
+        
+        // 为每个大题生成分割段
+        for (int i = 0; i < questionStartLines.size(); i++) {
+            int startLine = questionStartLines.get(i);
+            int endLine = (i + 1 < questionStartLines.size()) ? 
+                         questionStartLines.get(i + 1) - 1 : lines.length - 1;
+            
+            // 组合题目完整内容
+            StringBuilder questionContent = new StringBuilder();
+            for (int lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
+                if (lineIdx < lines.length && !lines[lineIdx].trim().isEmpty()) {
+                    if (questionContent.length() > 0) {
+                        questionContent.append(" ");
+                    }
+                    questionContent.append(lines[lineIdx].trim());
+                }
+            }
+            
+            String content = questionContent.toString();
+            if (content.length() > 150) {
+                content = content.substring(0, 147) + "..."; // 截断过长内容
+            }
+            
+            // 计算该题目在图片中的位置（基于行数估算）
+            double positionY = calculatePositionFromLineNumber(startLine, lines.length);
+            double height = calculateHeightFromContent(content, endLine - startLine + 1);
+            
+            // 创建边界框
+            QuestionBounds bounds = new QuestionBounds(positionY, 3, 94, height);
+            
+            // 计算置信度和难度
+            double confidence = calculateConfidenceByComplexity(content);
+            boolean isDifficult = assessQuestionDifficulty(content);
+            
+            segments.add(new QuestionSegment(
+                Integer.parseInt(questionNumbers.get(i)), 
+                content, 
+                bounds, 
+                confidence, 
+                isDifficult
+            ));
+        }
+        
+        return segments;
+    }
+    
+    /**
+     * 根据行号计算在图片中的Y坐标位置（百分比）
+     */
+    private double calculatePositionFromLineNumber(int lineNumber, int totalLines) {
+        // 假设文本从图片5%位置开始，到95%位置结束
+        double startPercent = 5.0;
+        double endPercent = 95.0;
+        double range = endPercent - startPercent;
+        
+        return startPercent + (range * lineNumber / totalLines);
+    }
+    
+    /**
+     * 根据内容和行数计算题目高度
+     */
+    private double calculateHeightFromContent(String content, int lineCount) {
+        // 基础高度：每行约占3-4%的图片高度
+        double baseHeight = lineCount * 3.5;
+        
+        // 根据内容复杂度调整
+        if (content.contains("函数") || content.contains("方程")) {
+            baseHeight += 2; // 数学内容需要更多空间
+        }
+        
+        // 限制最小和最大高度
+        return Math.max(8, Math.min(25, baseHeight));
+    }
+    
+    /**
+     * 评估题目难度
+     */
+    private boolean assessQuestionDifficulty(String content) {
+        // 根据关键词判断难度
+        String[] difficultKeywords = {"函数", "证明", "求证", "区间", "最值", "导数", "积分"};
+        String[] complexSymbols = {"²", "³", "∞", "∑", "∫", "∂"};
+        
+        for (String keyword : difficultKeywords) {
+            if (content.contains(keyword)) return true;
+        }
+        
+        for (String symbol : complexSymbols) {
+            if (content.contains(symbol)) return true;
+        }
+        
+        // 题目长度也是难度指标
+        return content.length() > 80;
+    }
+    
+
+    
+    /**
+     * 根据题目复杂度计算置信度
+     */
+    private double calculateConfidenceByComplexity(String text) {
+        double baseConfidence = 0.85;
+        
+        // 题目越长，OCR识别可能越不准确
+        if (text.length() > 100) {
+            baseConfidence -= 0.1;
+        } else if (text.length() > 60) {
+            baseConfidence -= 0.05;
+        }
+        
+        // 包含数学符号降低置信度
+        if (text.contains("∞") || text.contains("²") || text.contains("₁") || text.contains("₂")) {
+            baseConfidence -= 0.03;
+        }
+        
+        // 包含括号和公式
+        if (text.contains("f(x)") || text.contains("g(x)")) {
+            baseConfidence -= 0.02;
+        }
+        
+        // 确保置信度在合理范围内
+        return Math.max(0.70, Math.min(0.95, baseConfidence + random.nextGaussian() * 0.02));
     }
 
     /**
