@@ -276,11 +276,85 @@ public class AIClassificationService {
         
         switch (category) {
             case "数学":
-                if (text.contains("方程")) tags.add("方程");
-                if (text.contains("函数")) tags.add("函数");
-                if (text.contains("几何")) tags.add("几何");
-                if (text.contains("不等式")) tags.add("不等式");
-                if (text.contains("概率")) tags.add("概率");
+                // 按优先级顺序检查，具体的知识点优先于通用概念
+                boolean isSpecificTopic = false;
+                
+                // 圆锥曲线相关 - 最高优先级
+                if (text.contains("抛物线") || text.contains("椭圆") || text.contains("双曲线") || 
+                    text.contains("焦点") || text.contains("顶点坐标") || text.contains("圆锥") ||
+                    text.contains("准线") || text.contains("离心率") || text.contains("长轴") || 
+                    text.contains("短轴") || text.contains("渐近线") || 
+                    text.matches(".*x\\^?2.*y\\^?2.*") || // x²/a² + y²/b² 形式
+                    text.matches(".*y\\^?2.*x.*") || // y² = 2px 形式
+                    text.contains("圆心") || text.contains("半径") || text.contains("弦长")) {
+                    tags.add("圆锥曲线");
+                    isSpecificTopic = true;
+                }
+                
+                // 三角函数相关
+                if (!isSpecificTopic && (text.contains("sin") || text.contains("cos") || text.contains("tan") || 
+                    text.contains("正弦") || text.contains("余弦") || text.contains("正切"))) {
+                    tags.add("三角函数");
+                    isSpecificTopic = true;
+                }
+                
+                // 数列相关
+                if (!isSpecificTopic && (text.contains("数列") || text.contains("等差") || text.contains("等比") || 
+                    text.matches(".*a[_n].*") || text.matches(".*an.*"))) {
+                    tags.add("数列");
+                    isSpecificTopic = true;
+                }
+                
+                // 导数相关
+                if (!isSpecificTopic && (text.contains("导数") || text.contains("导函数") || text.contains("切线") || 
+                    text.contains("极值") || text.contains("最值"))) {
+                    tags.add("导数");
+                    isSpecificTopic = true;
+                }
+                
+                // 概率相关
+                if (!isSpecificTopic && (text.contains("概率") || text.contains("随机") || text.contains("分布") || 
+                    text.contains("期望") || text.contains("方差"))) {
+                    tags.add("概率");
+                    isSpecificTopic = true;
+                }
+                
+                // 立体几何相关
+                if (!isSpecificTopic && (text.contains("立体") || text.contains("几何体") || text.contains("体积") || 
+                    text.contains("表面积") || text.contains("空间"))) {
+                    tags.add("立体几何");
+                    isSpecificTopic = true;
+                }
+                
+                // 平面几何相关
+                if (!isSpecificTopic && (text.contains("三角形") || text.contains("四边形") || text.contains("圆形") || 
+                    text.contains("角度") || text.contains("面积"))) {
+                    tags.add("平面几何");
+                    isSpecificTopic = true;
+                }
+                
+                // 方程和不等式
+                if (!isSpecificTopic && text.contains("方程")) {
+                    tags.add("方程");
+                    isSpecificTopic = true;
+                }
+                if (!isSpecificTopic && text.contains("不等式")) {
+                    tags.add("不等式");
+                    isSpecificTopic = true;
+                }
+                
+                // 函数相关 - 优先级较低，只有在没有更具体分类时才使用
+                if (!isSpecificTopic && (text.contains("函数") || text.contains("f(x)") || text.contains("y="))) {
+                    tags.add("函数");
+                    isSpecificTopic = true;
+                }
+                
+                // 如果没有匹配到任何具体标签，根据关键词添加通用标签
+                if (tags.isEmpty()) {
+                    if (text.contains("计算") || text.contains("求解")) tags.add("计算题");
+                    else if (text.contains("证明")) tags.add("证明题");
+                    else tags.add("综合题");
+                }
                 break;
             case "英语":
                 if (text.toLowerCase().contains("reading")) tags.add("阅读理解");

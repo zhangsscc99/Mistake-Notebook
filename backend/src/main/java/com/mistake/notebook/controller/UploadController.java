@@ -282,8 +282,34 @@ public class UploadController {
                     createRequest.setOcrConfidence(0.85); // 默认置信度
                 }
                 
-                // 设置AI置信度（暂时使用OCR置信度）
-                createRequest.setAiConfidence(createRequest.getOcrConfidence());
+                // 调用AI分类服务进行智能分析
+                log.info("开始AI分类分析题目: {}", content.substring(0, Math.min(50, content.length())));
+                try {
+                    AIClassificationService.ClassificationResult aiResult = aiClassificationService.classifyQuestion(content);
+                    
+                    if (aiResult.isSuccess()) {
+                        // 使用AI分析的结果覆盖分类和难度
+                        createRequest.setCategory(convertCategoryToEnglish(aiResult.getCategory()));
+                        createRequest.setDifficulty(aiResult.getDifficulty().name());
+                        createRequest.setTags(aiResult.getTags()); // 直接使用标签列表
+                        createRequest.setAiConfidence(aiResult.getConfidence());
+                        
+                        log.info("AI分类完成 - 分类: {}, 难度: {}, 标签: {}, 置信度: {}", 
+                                aiResult.getCategory(), 
+                                aiResult.getDifficulty().name(), 
+                                aiResult.getTags(), 
+                                aiResult.getConfidence());
+                    } else {
+                        // AI分类失败，使用默认值
+                        log.warn("AI分类失败，使用默认设置");
+                        createRequest.setAiConfidence(0.5);
+                        createRequest.setTags(null); // 空标签
+                    }
+                } catch (Exception aiException) {
+                    log.error("AI分类服务异常，使用默认设置", aiException);
+                    createRequest.setAiConfidence(0.5);
+                    createRequest.setTags(null); // 空标签
+                }
                 
                 log.info("准备保存题目: {}", content.substring(0, Math.min(50, content.length())));
                 

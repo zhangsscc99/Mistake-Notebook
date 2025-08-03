@@ -47,11 +47,76 @@
       <van-dropdown-menu>
         <van-dropdown-item v-model="sortBy" :options="sortOptions" />
         <van-dropdown-item v-model="filterBy" :options="filterOptions" />
+        <van-dropdown-item v-model="knowledgePointFilter" :options="knowledgePointOptions" />
       </van-dropdown-menu>
     </div>
 
-    <!-- 题目列表 -->
-    <div class="questions-section">
+    <!-- 知识点分组展示 -->
+    <div v-if="groupByKnowledgePoint && knowledgePointGroups.length > 0" class="knowledge-points-section">
+      <div v-for="group in knowledgePointGroups" :key="group.name" class="knowledge-point-group">
+        <div class="group-header" @click="toggleGroup(group.name)">
+          <van-icon :name="group.expanded ? 'arrow-down' : 'arrow'" />
+          <span class="group-title">{{ group.name }}</span>
+          <span class="group-count">{{ group.questions.length }}题</span>
+        </div>
+        
+        <div v-show="group.expanded" class="group-questions">
+          <div 
+            v-for="question in group.questions" 
+            :key="question.id"
+            class="question-card"
+            @click="viewQuestion(question)"
+          >
+            <!-- 题目内容 -->
+            <div class="question-content">
+              <!-- 题目图片 - 只在有有效图片URL时显示 -->
+              <div v-if="question.imageUrl && question.imageUrl.trim() && !question.imageUrl.includes('placeholder')" class="question-image-container">
+                <img 
+                  :src="question.imageUrl" 
+                  alt="题目图片"
+                  class="question-image"
+                  @click.stop="previewImage(question.imageUrl)"
+                  @error="onImageError"
+                />
+              </div>
+              
+              <!-- 识别的文字 -->
+              <div class="question-text">
+                <p>{{ question.recognizedText }}</p>
+              </div>
+              
+              <!-- 标签 -->
+              <div class="question-tags" v-if="question.tags && question.tags.length">
+                <van-tag 
+                  v-for="tag in question.tags" 
+                  :key="tag"
+                  size="mini"
+                  class="custom-tag"
+                >
+                  {{ tag }}
+                </van-tag>
+              </div>
+            </div>
+
+            <!-- 题目元信息 -->
+            <div class="question-meta">
+              <div class="meta-left">
+                <span class="add-time">{{ formatTime(question.createdAt) }}</span>
+              </div>
+              <div class="meta-right">
+                <van-checkbox 
+                  v-model="question.selected"
+                  @click.stop="toggleSelection(question)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 题目列表 - 只在非分组模式下显示 -->
+    <div v-if="!groupByKnowledgePoint || knowledgePointGroups.length === 0" class="questions-section">
       <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
         <van-list
           v-model:loading="loading"
@@ -152,6 +217,9 @@ export default {
     const finished = ref(false)
     const sortBy = ref('latest')
     const filterBy = ref('all')
+    const knowledgePointFilter = ref('all')
+    const groupByKnowledgePoint = ref(true)
+    const expandedGroups = reactive(new Set())
 
 
     const categoryInfo = reactive({
@@ -180,6 +248,22 @@ export default {
       { text: '困难', value: 'hard' }
     ]
 
+    // 知识点筛选选项（动态生成）
+    const knowledgePointOptions = computed(() => {
+      const knowledgePoints = new Set()
+      questions.forEach(question => {
+        if (question.tags && question.tags.length > 0) {
+          question.tags.forEach(tag => knowledgePoints.add(tag))
+        }
+      })
+      
+      const options = [{ text: '全部知识点', value: 'all' }]
+      Array.from(knowledgePoints).forEach(point => {
+        options.push({ text: point, value: point })
+      })
+      return options
+    })
+
     // 计算属性
     const filteredQuestions = computed(() => {
       let filtered = [...questions]
@@ -187,6 +271,13 @@ export default {
       // 筛选
       if (filterBy.value !== 'all') {
         filtered = filtered.filter(q => q.difficulty === filterBy.value)
+      }
+
+      // 知识点筛选
+      if (knowledgePointFilter.value !== 'all') {
+        filtered = filtered.filter(q => 
+          q.tags && q.tags.includes(knowledgePointFilter.value)
+        )
       }
       
       // 排序
@@ -207,6 +298,62 @@ export default {
       }
       
       return filtered
+    })
+
+    // 知识点分组
+    const knowledgePointGroups = computed(() => {
+      if (!groupByKnowledgePoint.value) return []
+      
+      const groups = new Map()
+      const filtered = filteredQuestions.value
+      
+      filtered.forEach(question => {
+        let knowledgePoints = []
+        
+        // 从标签中提取知识点
+        if (question.tags && question.tags.length > 0) {
+          knowledgePoints = question.tags
+        } else {
+          // 如果没有标签，尝试从题目内容中智能提取知识点
+          knowledgePoints = extractKnowledgePointsFromContent(question.recognizedText)
+        }
+        
+        // 如果仍然没有知识点，归类到"其他"
+        if (knowledgePoints.length === 0) {
+          knowledgePoints = ['其他']
+        }
+        
+        // 为每个知识点创建分组
+        knowledgePoints.forEach(point => {
+          if (!groups.has(point)) {
+            groups.set(point, {
+              name: point,
+              questions: [],
+              expanded: expandedGroups.has(point)
+            })
+          }
+          groups.get(point).questions.push(question)
+        })
+      })
+      
+      // 转换为数组并排序
+      const result = Array.from(groups.values())
+      result.sort((a, b) => b.questions.length - a.questions.length) // 按题目数量排序
+      
+      // 确保所有分组都有正确的展开状态
+      result.forEach(group => {
+        group.expanded = expandedGroups.has(group.name)
+      })
+      
+      // 默认展开前3个分组（如果还没有任何展开的分组）
+      if (expandedGroups.size === 0) {
+        result.slice(0, 3).forEach(group => {
+          expandedGroups.add(group.name)
+          group.expanded = true
+        })
+      }
+      
+      return result
     })
 
     const selectedQuestions = computed(() => {
@@ -297,6 +444,51 @@ export default {
       console.log('图片加载失败:', event.target.src)
       // 隐藏失败的图片容器
       event.target.parentElement.style.display = 'none'
+    }
+
+    // 从题目内容中智能提取知识点
+    const extractKnowledgePointsFromContent = (content) => {
+      if (!content) return []
+      
+      const knowledgePointKeywords = {
+        '函数': ['函数', 'f(x)', 'y='],
+        '圆锥曲线': ['抛物线', '椭圆', '双曲线', '圆', '焦点', '顶点'],
+        '三角函数': ['sin', 'cos', 'tan', '正弦', '余弦', '正切'],
+        '数列': ['数列', '等差', '等比', 'a_n', 'an'],
+        '导数': ['导数', '导函数', '切线', '极值', '最值'],
+        '概率': ['概率', '随机', '分布', '期望', '方差'],
+        '立体几何': ['立体', '几何体', '体积', '表面积', '空间'],
+        '平面几何': ['三角形', '四边形', '圆形', '角度', '面积']
+      }
+      
+      const extractedPoints = []
+      Object.entries(knowledgePointKeywords).forEach(([point, keywords]) => {
+        if (keywords.some(keyword => content.includes(keyword))) {
+          extractedPoints.push(point)
+        }
+      })
+      
+      return extractedPoints
+    }
+
+    // 切换分组展开/收缩
+    const toggleGroup = (groupName) => {
+      console.log('toggleGroup called:', groupName)
+      
+      if (expandedGroups.has(groupName)) {
+        expandedGroups.delete(groupName)
+      } else {
+        expandedGroups.add(groupName)
+      }
+      
+      console.log('expandedGroups after toggle:', Array.from(expandedGroups))
+      
+      // 强制更新响应式数据
+      knowledgePointGroups.value.forEach(group => {
+        if (group.name === groupName) {
+          group.expanded = expandedGroups.has(groupName)
+        }
+      })
     }
 
     // 切换选择
@@ -453,8 +645,12 @@ export default {
       finished,
       sortBy,
       filterBy,
+      knowledgePointFilter,
+      groupByKnowledgePoint,
       sortOptions,
       filterOptions,
+      knowledgePointOptions,
+      knowledgePointGroups,
       getDifficultyText,
       formatTime,
       onRefresh,
@@ -463,6 +659,7 @@ export default {
       previewImage,
       onImageError,
       toggleSelection,
+      toggleGroup,
       startPractice,
       addToExam,
       batchAddToExam,
@@ -721,5 +918,124 @@ export default {
 .batch-buttons {
   display: flex;
   gap: 8px;
+}
+
+/* 知识点分组样式 */
+.knowledge-points-section {
+  padding: 0 20px 20px;
+}
+
+.knowledge-point-group {
+  margin-bottom: 24px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.3s var(--ease-smooth);
+  box-shadow: 
+    var(--shadow-glow),
+    var(--shadow-inner),
+    var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.group-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5);
+}
+
+.group-header:hover {
+  border-color: var(--border-glow);
+  box-shadow: 
+    0 0 30px rgba(232, 168, 85, 0.15),
+    var(--shadow-inner),
+    var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.group-header .van-icon {
+  margin-right: 12px;
+  color: var(--primary-color);
+  transition: transform 0.3s var(--ease-smooth);
+}
+
+.group-header .van-icon[name="arrow-down"] {
+  transform: rotate(90deg);
+}
+
+.group-title {
+  flex: 1;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--text-primary), var(--text-accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.group-count {
+  font-size: 14px;
+  color: var(--text-secondary);
+  background: rgba(232, 168, 85, 0.1);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(232, 168, 85, 0.2);
+  font-weight: 500;
+}
+
+.group-questions {
+  padding-left: 20px;
+  position: relative;
+}
+
+.group-questions::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, 
+    rgba(232, 168, 85, 0.3) 0%, 
+    rgba(232, 168, 85, 0.1) 50%,
+    transparent 100%
+  );
+  border-radius: 1px;
+}
+
+.group-questions .question-card {
+  margin-bottom: 12px;
+  margin-left: 12px;
+  position: relative;
+}
+
+.group-questions .question-card::after {
+  content: '';
+  position: absolute;
+  left: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: var(--primary-color);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(232, 168, 85, 0.6);
 }
 </style>
