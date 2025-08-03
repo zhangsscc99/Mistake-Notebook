@@ -54,8 +54,8 @@ public class QuestionDTO {
         question.setImageUrl(this.imageUrl);
         question.setCategory(this.category);
         
-        // 暂时不设置分类ID，避免外键约束问题
-        // question.setCategoryId(mapCategoryToId(this.category));
+        // 设置默认分类ID，避免NOT NULL约束错误
+        question.setCategoryId(mapCategoryToId(this.category));
         
         // 解析难度等级
         if (this.difficulty != null) {
@@ -78,11 +78,45 @@ public class QuestionDTO {
 
     /**
      * 将分类名称映射为分类ID
-     * TODO: 这里应该查询数据库中实际的categories表来获取正确的ID
-     * 暂时先使用null或者移除categoryId字段
+     * 暂时使用简单的映射逻辑，避免数据库NOT NULL约束错误
+     * TODO: 后续应该注入CategoryRepository来动态查询分类ID
      */
     private Long mapCategoryToId(String categoryName) {
-        // 暂时返回null，让数据库使用默认值或者不设置外键
-        return null;
+        // 暂时使用固定映射，避免外键约束问题
+        // 注意：这假设数据库中分类的插入顺序和ID生成是可预测的
+        if (categoryName == null) {
+            return 1L; // 默认第一个分类（通常是数学）
+        }
+        
+        // 根据分类名称映射到预期的ID（基于初始化顺序）
+        switch (categoryName.toLowerCase()) {
+            case "math":
+            case "mathematics": 
+            case "数学":
+                return 1L; // 数学通常是第一个插入的
+            case "physics":
+            case "物理":
+                return 2L;
+            case "chemistry":
+            case "化学":
+                return 3L;
+            case "english":
+            case "英语":
+                return 4L;
+            case "chinese":
+            case "语文":
+                return 5L;
+            case "biology":
+            case "生物":
+                return 6L;
+            case "history":
+            case "历史":
+                return 7L;
+            case "geography":
+            case "地理":
+                return 8L;
+            default:
+                return 1L; // 默认数学分类
+        }
     }
 } 

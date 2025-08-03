@@ -37,10 +37,10 @@ public class Question {
     private String imageUrl;
 
     /**
-     * 题目分类ID (外键) - 暂时允许为空，避免外键约束问题
+     * 题目分类ID (外键) - 设置默认值避免NOT NULL约束问题
      */
-    @Column(name = "category_id", nullable = true)
-    private Long categoryId; // 暂时不设置默认值
+    @Column(name = "category_id", nullable = false, columnDefinition = "BIGINT DEFAULT 1")
+    private Long categoryId = 1L; // 默认数学分类
     
     /**
      * 题目分类名称

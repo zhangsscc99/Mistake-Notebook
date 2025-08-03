@@ -7,4 +7,4 @@ COLLATE utf8mb4_unicode_ci;
 USE mistake_notebook;
 
 -- 由于使用了 Spring Data JPA，表结构会自动创建
--- 这里只需要确保数据库存在即可 
+-- 默认数据初始化已通过 DataInitializer.java 实现，无需SQL脚本 
