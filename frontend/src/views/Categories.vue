@@ -163,14 +163,13 @@ export default {
       }
     }
 
-    // 加载更多
+    // 加载更多 - 当前版本不需要分页，直接标记为完成
     const onLoadMore = async () => {
       if (finished.value) return
       
       loading.value = true
       try {
-        // 模拟加载更多数据
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        // 当前版本一次性加载所有分类，无需分页
         finished.value = true
       } finally {
         loading.value = false
@@ -194,72 +193,64 @@ export default {
       return `${Math.floor(diff / 86400000)}天前`
     }
 
-    // 加载分类数据
+        // 加载分类数据
     const loadCategories = async () => {
       try {
-        // 模拟API调用
-        const mockCategories = [
-          {
-            id: 1,
-            name: '数学 - 二次函数',
-            description: '关于二次函数的图像、性质等问题',
-            icon: 'chart-trending-o',
-            color: '#E8A855',
-            count: 15,
-            tags: ['函数', '图像', '最值', '对称轴'],
-            lastUpdated: Date.now() - 3600000
-          },
-          {
-            id: 2,
-            name: '物理 - 力学',
-            description: '牛顿定律、受力分析相关题目',
-            icon: 'fire-o',
-            color: '#ff5722',
-            count: 8,
-            tags: ['牛顿定律', '受力分析', '加速度'],
-            lastUpdated: Date.now() - 7200000
-          },
-          {
-            id: 3,
-            name: '化学 - 有机化学',
-            description: '有机物的结构、反应机制等',
-            icon: 'experiment',
-            color: '#4caf50',
-            count: 12,
-            tags: ['有机反应', '分子结构', '合成'],
-            lastUpdated: Date.now() - 86400000
-          },
-          {
-            id: 4,
-            name: '英语 - 语法',
-            description: '时态、语态、从句等语法问题',
-            icon: 'chat-o',
-            color: '#9c27b0',
-            count: 6,
-            tags: ['时态', '从句', '语态'],
-            lastUpdated: Date.now() - 172800000
-          }
-        ]
+        console.log('开始调用分类API...')
+        const response = await categoryAPI.getCategories()
+        console.log('API响应:', response)
         
-        categories.splice(0, categories.length, ...mockCategories)
+        if (response.success && response.data) {
+          // 处理API返回的数据，转换为前端需要的格式
+          const apiCategories = response.data.map(cat => ({
+            id: cat.id,
+            name: cat.name,
+            description: cat.description || '暂无描述',
+            icon: cat.icon || 'apps-o',
+            color: cat.color || '#E8A855',
+            count: cat.questionCount || 0,
+            tags: [],
+            lastUpdated: Date.now() // 暂时使用当前时间
+          }))
+          
+          categories.splice(0, categories.length, ...apiCategories)
+          console.log('成功加载分类数据:', apiCategories)
+        } else {
+          console.error('API返回格式错误:', response)
+        }
       } catch (error) {
         console.error('加载分类失败:', error)
+        // 不使用模拟数据，保持categories为空数组
+        categories.splice(0, categories.length)
       }
     }
 
-    // 加载统计数据
+        // 加载统计数据
     const loadStats = async () => {
       try {
-        // 模拟API调用
-        const mockStats = {
-          totalQuestions: 41,
-          totalCategories: 4,
-          todayAdded: 3
-        }
+        console.log('开始调用统计API...')
+        const response = await categoryAPI.getCategoryStats()
+        console.log('统计API响应:', response)
         
-        Object.assign(stats, mockStats)
+        if (response.success && response.data) {
+          const apiStats = {
+            totalQuestions: response.data.totalQuestions || 0,
+            totalCategories: response.data.totalCategories || 0,
+            todayAdded: response.data.todayAdded || 0
+          }
+          Object.assign(stats, apiStats)
+          console.log('成功加载统计数据:', apiStats)
+        } else {
+          console.error('统计API返回格式错误:', response)
+        }
       } catch (error) {
         console.error('加载统计失败:', error)
+        // 不使用模拟数据，保持统计数据为0
+        Object.assign(stats, {
+          totalQuestions: 0,
+          totalCategories: 0,
+          todayAdded: 0
+        })
       }
     }
 
@@ -270,12 +261,10 @@ export default {
     })
 
     return {
-      activeTab,
       searchText,
       refreshing,
       loading,
       finished,
-      floatOffset,
       filteredCategories,
       totalQuestions,
       totalCategories,
