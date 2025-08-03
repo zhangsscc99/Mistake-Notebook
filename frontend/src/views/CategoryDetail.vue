@@ -98,15 +98,9 @@
             <!-- 题目元信息 -->
             <div class="question-meta">
               <div class="meta-left">
-                <span class="difficulty" :class="'difficulty-' + question.difficulty">
-                  {{ getDifficultyText(question.difficulty) }}
-                </span>
-                <span class="confidence">
-                  置信度: {{ Math.round(question.confidence * 100) }}%
-                </span>
+                <span class="add-time">{{ formatTime(question.createdAt) }}</span>
               </div>
               <div class="meta-right">
-                <span class="add-time">{{ formatTime(question.createdAt) }}</span>
                 <van-checkbox 
                   v-model="question.selected"
                   @click.stop="toggleSelection(question)"
@@ -136,14 +130,7 @@
       </div>
     </div>
 
-    <!-- 浮动操作按钮 -->
-    <van-floating-bubble 
-      axis="xy" 
-      v-model:offset="floatOffset"
-      @click="$router.push('/camera')"
-    >
-      <van-icon name="plus" size="24" />
-    </van-floating-bubble>
+
   </div>
 </template>
 
@@ -165,7 +152,7 @@ export default {
     const finished = ref(false)
     const sortBy = ref('latest')
     const filterBy = ref('all')
-    const floatOffset = reactive({ x: 16, y: 100 })
+
 
     const categoryInfo = reactive({
       id: '',
@@ -288,12 +275,6 @@ export default {
                 <strong>标签：</strong> ${question.tags.join(', ')}
               </div>
             ` : ''}
-            <div style="margin-bottom: 8px;">
-              <strong>难度：</strong> ${getDifficultyText(question.difficulty)}
-            </div>
-            <div style="margin-bottom: 8px;">
-              <strong>置信度：</strong> ${Math.round(question.confidence * 100)}%
-            </div>
             <div>
               <strong>添加时间：</strong> ${formatTime(question.createdAt)}
             </div>
@@ -474,7 +455,6 @@ export default {
       filterBy,
       sortOptions,
       filterOptions,
-      floatOffset,
       getDifficultyText,
       formatTime,
       onRefresh,
@@ -497,7 +477,7 @@ export default {
 .category-detail-page {
   min-height: 100vh;
   background: var(--bg-primary);
-  padding-bottom: 60px;
+  padding-bottom: 20px;
   position: relative;
 }
 
@@ -631,26 +611,22 @@ export default {
   overflow: hidden;
 }
 
-.question-card::after {
+.question-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, 
-    var(--primary-color) 0%, 
-    var(--primary-light) 50%,
-    var(--accent-color) 100%
-  );
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-  opacity: 0.7;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5);
 }
 
 .question-card:hover {
   border-color: var(--border-glow);
   box-shadow: 
-    0 0 30px rgba(232, 168, 85, 0.12),
+    0 0 40px rgba(232, 168, 85, 0.15),
     var(--shadow-inner),
     var(--shadow-hover);
   transform: translateY(-4px);
@@ -695,34 +671,10 @@ export default {
 }
 
 .meta-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  flex: 1;
 }
 
-.difficulty {
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: white;
-}
 
-.difficulty-easy {
-  background: #4caf50;
-}
-
-.difficulty-medium {
-  background: #ff9800;
-}
-
-.difficulty-hard {
-  background: #f44336;
-}
-
-.confidence {
-  font-size: 12px;
-  color: #999;
-}
 
 .meta-right {
   display: flex;
@@ -733,6 +685,7 @@ export default {
 .add-time {
   font-size: 12px;
   color: var(--text-secondary);
+  font-weight: 500;
 }
 
 /* 自定义标签样式 */
