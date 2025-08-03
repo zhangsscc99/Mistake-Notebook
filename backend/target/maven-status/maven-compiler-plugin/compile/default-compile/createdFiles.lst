@@ -13,6 +13,7 @@ com\mistake\notebook\entity\Question.class
 com\mistake\notebook\config\DataInitializer.class
 com\mistake\notebook\MistakeNotebookApplication.class
 com\mistake\notebook\repository\QuestionRepository.class
+com\mistake\notebook\controller\CategoryController.class
 com\mistake\notebook\service\AIClassificationService.class
 com\mistake\notebook\service\OCRService$QuestionBounds.class
 com\mistake\notebook\config\CorsConfig.class

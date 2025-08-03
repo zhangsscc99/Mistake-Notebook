@@ -200,6 +200,22 @@ public class QuestionService {
     }
 
     /**
+     * 根据分类ID获取题目列表
+     */
+    public List<QuestionDTO> getQuestionsByCategory(Long categoryId) {
+        log.info("根据分类ID {} 查询题目列表", categoryId);
+        
+        List<Question> questions = questionRepository.findByCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(categoryId);
+        
+        List<QuestionDTO> questionDTOs = questions.stream()
+                .map(QuestionDTO::fromEntity)
+                .collect(Collectors.toList());
+        
+        log.info("分类ID {} 下共找到 {} 道题目", categoryId, questionDTOs.size());
+        return questionDTOs;
+    }
+
+    /**
      * 获取分类统计
      */
     public Map<String, Long> getCategoryStatistics() {

@@ -1,7 +1,7 @@
 // 分类管理API服务
 import axios from 'axios'
 
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:3060/api'
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080/api'
 
 // 创建axios实例
 const apiClient = axios.create({

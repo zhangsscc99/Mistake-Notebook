@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -80,4 +81,24 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
      * 根据ID列表查询题目（未删除）
      */
     List<Question> findByIdInAndIsDeletedFalseOrderByCreatedAtDesc(List<Long> ids);
+
+    /**
+     * 统计某个分类下的题目数量（根据分类ID）
+     */
+    long countByCategoryIdAndIsDeleted(Long categoryId, Boolean isDeleted);
+
+    /**
+     * 统计总题目数量（未删除）
+     */
+    long countByIsDeleted(Boolean isDeleted);
+
+    /**
+     * 统计某个时间之后创建的题目数量
+     */
+    long countByCreatedAtAfterAndIsDeleted(LocalDateTime createdAt, Boolean isDeleted);
+
+    /**
+     * 根据分类ID查询题目列表
+     */
+    List<Question> findByCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(Long categoryId);
 } 

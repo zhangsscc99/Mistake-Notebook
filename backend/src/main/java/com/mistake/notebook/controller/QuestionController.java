@@ -22,7 +22,7 @@ import java.util.Map;
 @RequestMapping("/questions")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
+@CrossOrigin(origins = {"http://localhost:3060", "http://127.0.0.1:3060", "http://localhost:3000", "http://127.0.0.1:3000"})
 public class QuestionController {
 
     private final QuestionService questionService;
@@ -189,6 +189,22 @@ public class QuestionController {
             log.error("获取难度统计失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("获取统计数据失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 根据分类ID获取题目列表
+     */
+    @GetMapping("/by-category/{categoryId}")
+    public ResponseEntity<ApiResponse<List<QuestionDTO>>> getQuestionsByCategory(@PathVariable Long categoryId) {
+        try {
+            List<QuestionDTO> questions = questionService.getQuestionsByCategory(categoryId);
+            log.info("根据分类ID {} 获取到 {} 道题目", categoryId, questions.size());
+            return ResponseEntity.ok(ApiResponse.success("获取题目列表成功", questions));
+        } catch (Exception e) {
+            log.error("根据分类获取题目失败，分类ID: {}", categoryId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("获取题目失败：" + e.getMessage()));
         }
     }
 } 
