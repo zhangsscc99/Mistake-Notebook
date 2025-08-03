@@ -193,7 +193,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Toast, Dialog } from 'vant'
-import { categoryAPI } from '../api/category'
+import categoryAPI from '../api/category'
 
 export default {
   name: 'PaperBuilder',

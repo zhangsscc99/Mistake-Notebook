@@ -112,7 +112,7 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { categoryAPI } from '../api/category'
+import categoryAPI from '../api/category'
 
 export default {
   name: 'Categories',
@@ -200,9 +200,9 @@ export default {
         const response = await categoryAPI.getCategories()
         console.log('API响应:', response)
         
-        if (response.success && response.data) {
+        if (response.success && response.data && response.data.data) {
           // 处理API返回的数据，转换为前端需要的格式
-          const apiCategories = response.data.map(cat => ({
+          const apiCategories = response.data.data.map(cat => ({
             id: cat.id,
             name: cat.name,
             description: cat.description || '暂无描述',
@@ -232,11 +232,11 @@ export default {
         const response = await categoryAPI.getCategoryStats()
         console.log('统计API响应:', response)
         
-        if (response.success && response.data) {
+        if (response.success && response.data && response.data.data) {
           const apiStats = {
-            totalQuestions: response.data.totalQuestions || 0,
-            totalCategories: response.data.totalCategories || 0,
-            todayAdded: response.data.todayAdded || 0
+            totalQuestions: response.data.data.totalQuestions || 0,
+            totalCategories: response.data.data.totalCategories || 0,
+            todayAdded: response.data.data.todayAdded || 0
           }
           Object.assign(stats, apiStats)
           console.log('成功加载统计数据:', apiStats)
