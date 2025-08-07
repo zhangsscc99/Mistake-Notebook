@@ -54,8 +54,9 @@ public class OCRService {
 
     private final Random random = new Random();
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(60, TimeUnit.SECONDS)
+            .readTimeout(180, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
             .build();
 
     /**
@@ -824,13 +825,13 @@ public class OCRService {
         try {
             log.info("开始调用阿里云OCR API进行文字识别");
             
-            // 配置认证信息
+            // 配置认证信息，延长超时时间
             Config config = new Config()
                     .setAccessKeyId(accessKeyId)
                     .setAccessKeySecret(accessKeySecret)
                     .setEndpoint("ocr-api.cn-hangzhou.aliyuncs.com")
-                    .setConnectTimeout(60000)
-                    .setReadTimeout(120000);
+                    .setConnectTimeout(120000)  // 连接超时2分钟
+                    .setReadTimeout(300000);    // 读取超时5分钟
 
             // 创建客户端
             Client client = new Client(config);

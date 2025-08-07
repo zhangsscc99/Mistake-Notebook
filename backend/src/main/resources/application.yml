@@ -2,6 +2,11 @@ server:
   port: 8080
   servlet:
     context-path: /api
+  tomcat:
+    connection-timeout: 300000  # 连接超时5分钟
+    max-connections: 10000
+    threads:
+      max: 200
 
 spring:
   profiles:
@@ -23,6 +28,11 @@ spring:
       enabled: true
       max-file-size: 10MB
       max-request-size: 10MB
+      
+  # MVC配置
+  mvc:
+    async:
+      request-timeout: 300000  # 异步请求超时5分钟
       
   # JSON 配置
   jackson:

@@ -6,7 +6,7 @@ const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080/
 // 创建axios实例
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 图像识别可能需要较长时间
+  timeout: 300000, // 图像识别可能需要较长时间，延长到5分钟
   // 移除默认的Content-Type，让axios自动设置FormData的Content-Type
 })
 
