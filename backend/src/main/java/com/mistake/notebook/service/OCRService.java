@@ -6,9 +6,25 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.aliyun.ocr_api20210707.Client;
+import com.aliyun.ocr_api20210707.models.RecognizeAllTextRequest;
+import com.aliyun.ocr_api20210707.models.RecognizeAllTextResponse;
+import com.aliyun.teaopenapi.models.Config;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+
+import okhttp3.*;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 /**
  * OCR图像识别服务
@@ -27,7 +43,20 @@ public class OCRService {
     @Value("${aliyun.ocr.endpoint}")
     private String endpoint;
 
+    @Value("${aliyun.dashscope.api-key}")
+    private String dashscopeApiKey;
+
+    @Value("${aliyun.dashscope.base-url}")
+    private String dashscopeBaseUrl;
+
+    @Value("${aliyun.dashscope.model}")
+    private String dashscopeModel;
+
     private final Random random = new Random();
+    private final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .build();
 
     /**
      * 识别图片中的文字
@@ -52,9 +81,8 @@ public class OCRService {
 
             log.info("开始OCR识别，文件名：{}，大小：{} bytes", file.getOriginalFilename(), file.getSize());
 
-            // 这里预留了真实的阿里云OCR API调用
-            // 目前返回模拟数据用于开发测试
-            return performMockOCR();
+            // 调用真实的阿里云OCR API
+            return performRealOCR(file);
 
             /*
             // 真实的阿里云OCR API调用代码（需要配置阿里云凭证）
@@ -112,9 +140,8 @@ public class OCRService {
 
             log.info("开始题目分割OCR识别，文件名：{}，大小：{} bytes", file.getOriginalFilename(), file.getSize());
 
-            // 这里预留了真实的题目分割API调用
-            // 目前返回模拟数据用于开发测试
-            return performMockQuestionSegmentation();
+            // 调用真实的题目分割API
+            return performRealQuestionSegmentation(file);
 
         } catch (Exception e) {
             log.error("题目分割OCR识别失败", e);
@@ -123,116 +150,97 @@ public class OCRService {
     }
 
     /**
-     * 模拟题目分割识别（用于开发测试）
+     * 真实的题目分割识别
      */
-    private QuestionSegmentResult performMockQuestionSegmentation() {
-        // 模拟处理时间
+    private QuestionSegmentResult performRealQuestionSegmentation(MultipartFile file) {
         try {
-            Thread.sleep(1500 + random.nextInt(2000)); // 1.5-3.5秒
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+            // 首先进行OCR文字识别
+            OCRResult ocrResult = performRealOCR(file);
+            if (!ocrResult.isSuccess() || ocrResult.getText().trim().isEmpty()) {
+                return new QuestionSegmentResult(false, null, "OCR识别失败：" + ocrResult.getError());
+            }
 
-        // 智能题目分割：根据题目特征动态生成边界框
-        List<QuestionSegment> questions = generateIntelligentQuestionSegments();
+            // 基于真实OCR结果进行智能题目分割
+            List<QuestionSegment> questions = segmentQuestionsIntelligently(ocrResult.getText());
 
         double overallConfidence = questions.stream()
             .mapToDouble(QuestionSegment::getConfidence)
             .average()
-            .orElse(0.85);
+                .orElse(ocrResult.getConfidence());
 
-        log.info("智能题目分割完成，识别到{}道题目", questions.size());
+            log.info("题目分割完成，识别到{}道题目，总体置信度：{}", questions.size(), overallConfidence);
         return new QuestionSegmentResult(true, questions, null, overallConfidence);
+            
+        } catch (Exception e) {
+            log.error("题目分割处理失败", e);
+            return new QuestionSegmentResult(false, null, "题目分割失败：" + e.getMessage());
+        }
     }
 
-    /**
-     * 智能生成题目分割段（通用算法，基于大题标号分割）
-     */
-    private List<QuestionSegment> generateIntelligentQuestionSegments() {
-        // 模拟OCR识别的完整文本内容
-        String fullText = simulateFullOCRText();
-        
-        // 使用通用算法识别和分割大题
-        return segmentQuestionsByNumber(fullText);
-    }
+
     
     /**
-     * 模拟OCR识别的完整文本（实际使用时这里会是真实的OCR结果）
+     * 智能题目分割算法：基于多种特征识别和分割题目
      */
-    private String simulateFullOCRText() {
-        return "20. 第1小题满分4分，第2小题满分6分，第3小题满分8分。\n" +
-               "已知函数f(x)=x²-2ax+1，在x=2处与P、Q点。\n" +
-               "(1) 若高心等于2，求b的值；\n" +
-               "(2) 若b=√6/3，P在第一象限，∠MAP是等腰三角形，求P点的坐标；\n" +
-               "(3) 直接QQ开率长及效应转求x，若AR·A₁F=1，求P点的取值范围。\n" +
-               "\n" +
-               "21. 第1小题满分4分，第2小题满分6分，第3小题满分8分。\n" +
-               "已知D是R的一个非空子集，y=f(x)定义在R上的函数。对于任意M(a,b)，函数\n" +
-               "s(x)=(x-a)²+(f(x)-b)²，若对于P(x₀,f(x₀))，满足s(x)在x=x₀处取最小值，则称\n" +
-               "P是关于M的f最近点。\n" +
-               "(1) D=(0,+∞)，f(x)=1/x，M(0,0)，求证：在区间M的f最近点；\n" +
-               "(2) D=R，f(x)=eˣ，M(1,0)，若y=f(x)上一点P满足MP平行于f'线段MP平行于f最近点；\n" +
-               "(3) 已知y=f(x)是奇导的，g(x)定义在R上且函数值为正，...";
-    }
-    
-    /**
-     * 通用题目分割算法：根据大题标号（如"20.", "21."）分割题目
-     */
-    private List<QuestionSegment> segmentQuestionsByNumber(String fullText) {
+    private List<QuestionSegment> segmentQuestionsIntelligently(String fullText) {
         List<QuestionSegment> segments = new ArrayList<>();
         
-        // 按行分割文本
-        String[] lines = fullText.split("\n");
-        List<Integer> questionStartLines = new ArrayList<>();
-        List<String> questionNumbers = new ArrayList<>();
+        log.info("开始分割题目，完整文本长度：{}", fullText.length());
+        log.debug("完整文本内容：{}", fullText);
         
-        // 查找所有大题标号的位置
-        for (int i = 0; i < lines.length; i++) {
-            String line = lines[i].trim();
-            // 匹配大题标号格式：数字 + 点号开头
-            if (line.matches("^\\d+\\..*")) {
-                questionStartLines.add(i);
-                // 提取题号
-                String questionNum = line.replaceAll("^(\\d+)\\..*", "$1");
-                questionNumbers.add(questionNum);
-            }
-        }
+                // 优先使用AI服务进行智能题目分割
+        List<QuestionInfo> questionInfos = segmentQuestionsWithAI(fullText);
         
-        // 为每个大题生成分割段
-        for (int i = 0; i < questionStartLines.size(); i++) {
-            int startLine = questionStartLines.get(i);
-            int endLine = (i + 1 < questionStartLines.size()) ? 
-                         questionStartLines.get(i + 1) - 1 : lines.length - 1;
+        // 如果AI分割失败，回退到传统方法
+        if (questionInfos.isEmpty()) {
+            log.warn("AI题目分割失败，使用传统方法");
+            questionInfos = findQuestionNumbersInText(fullText);
             
-            // 组合题目完整内容
-            StringBuilder questionContent = new StringBuilder();
-            for (int lineIdx = startLine; lineIdx <= endLine; lineIdx++) {
-                if (lineIdx < lines.length && !lines[lineIdx].trim().isEmpty()) {
-                    if (questionContent.length() > 0) {
-                        questionContent.append(" ");
+            // 如果还没有找到，再按行分割处理
+            if (questionInfos.isEmpty()) {
+                String[] lines = fullText.split("\n");
+                log.debug("文本共{}行", lines.length);
+                
+                for (int i = 0; i < lines.length; i++) {
+                    String line = lines[i].trim();
+                    log.debug("第{}行: '{}'", i, line);
+                    QuestionInfo questionInfo = detectQuestionStart(line, i);
+                    if (questionInfo != null) {
+                        log.info("检测到题目开始：第{}行，题号{}，类型{}", i, questionInfo.questionNumber, questionInfo.type);
+                        questionInfos.add(questionInfo);
                     }
-                    questionContent.append(lines[lineIdx].trim());
                 }
             }
             
-            String content = questionContent.toString();
-            if (content.length() > 150) {
-                content = content.substring(0, 147) + "..."; // 截断过长内容
+            // 如果还没有找到明确的题目标号，尝试基于内容分割
+            if (questionInfos.isEmpty()) {
+                String[] lines = fullText.split("\n");
+                questionInfos = fallbackContentBasedSegmentation(lines);
             }
+        }
+        
+        // 重新分割文本为行数组，用于生成分割段
+        String[] lines = fullText.split("\n");
+        
+        // 为每个题目生成分割段
+        for (int i = 0; i < questionInfos.size(); i++) {
+            QuestionInfo current = questionInfos.get(i);
+            int startLine = current.startLine;
+            int endLine = (i + 1 < questionInfos.size()) ? 
+                         questionInfos.get(i + 1).startLine - 1 : lines.length - 1;
             
-            // 计算该题目在图片中的位置（基于行数估算）
-            double positionY = calculatePositionFromLineNumber(startLine, lines.length);
-            double height = calculateHeightFromContent(content, endLine - startLine + 1);
+            // 组合题目完整内容
+            String content = extractQuestionContent(lines, startLine, endLine);
             
-            // 创建边界框
-            QuestionBounds bounds = new QuestionBounds(positionY, 3, 94, height);
+            // 智能计算题目边界
+            QuestionBounds bounds = calculateIntelligentBounds(current, lines, startLine, endLine);
             
             // 计算置信度和难度
             double confidence = calculateConfidenceByComplexity(content);
             boolean isDifficult = assessQuestionDifficulty(content);
             
             segments.add(new QuestionSegment(
-                Integer.parseInt(questionNumbers.get(i)), 
+                current.questionNumber, 
                 content, 
                 bounds, 
                 confidence, 
@@ -244,32 +252,493 @@ public class OCRService {
     }
     
     /**
-     * 根据行号计算在图片中的Y坐标位置（百分比）
+     * 使用AI服务进行智能题目分割
      */
-    private double calculatePositionFromLineNumber(int lineNumber, int totalLines) {
-        // 假设文本从图片5%位置开始，到95%位置结束
-        double startPercent = 5.0;
-        double endPercent = 95.0;
-        double range = endPercent - startPercent;
+    private List<QuestionInfo> segmentQuestionsWithAI(String fullText) {
+        List<QuestionInfo> questionInfos = new ArrayList<>();
         
-        return startPercent + (range * lineNumber / totalLines);
+        try {
+            // 检查AI配置
+            if (dashscopeApiKey == null || dashscopeApiKey.equals("not-configured")) {
+                log.warn("通义千问API未配置，跳过AI分割");
+                return questionInfos;
+            }
+            
+            log.info("开始使用AI服务分割题目");
+            
+            // 构建AI提示词
+            String prompt = buildQuestionSegmentationPrompt(fullText);
+            
+            // 调用通义千问API
+            String aiResponse = callDashScopeAPI(prompt);
+            
+            if (aiResponse != null && !aiResponse.trim().isEmpty()) {
+                // 解析AI响应
+                questionInfos = parseAISegmentationResponse(aiResponse, fullText);
+                log.info("AI分割完成，识别到{}道题目", questionInfos.size());
+            } else {
+                log.warn("AI响应为空");
+            }
+            
+        } catch (Exception e) {
+            log.error("AI题目分割异常", e);
+        }
+        
+        return questionInfos;
     }
     
     /**
-     * 根据内容和行数计算题目高度
+     * 构建题目分割提示词
      */
-    private double calculateHeightFromContent(String content, int lineCount) {
-        // 基础高度：每行约占3-4%的图片高度
-        double baseHeight = lineCount * 3.5;
+    private String buildQuestionSegmentationPrompt(String ocrText) {
+        return String.format("""
+            请分析以下OCR识别的文本，识别并分割出其中的题目。
+            
+            要求：
+            1. 识别文本中所有的题目（通常以数字+点号开始，如"20."、"21."）
+            2. 每道题目可能包含多个小题（如"(1)"、"(2)"、"(3)"）
+            3. 返回JSON格式，包含每道题目的题号和在文本中的大致位置
+            4. 如果无法准确确定位置，请根据题目在文本中的顺序估算
+            
+            返回格式：
+            {
+              "questions": [
+                {
+                  "questionNumber": 20,
+                  "startPosition": 0,
+                  "content": "题目内容摘要"
+                },
+                {
+                  "questionNumber": 21,
+                  "startPosition": 300,
+                  "content": "题目内容摘要"
+                }
+              ]
+            }
+            
+            OCR文本：
+            %s
+            """, ocrText);
+    }
+    
+    /**
+     * 调用通义千问API
+     */
+    private String callDashScopeAPI(String prompt) {
+        try {
+            // 构建请求体
+            JsonObject requestBody = new JsonObject();
+            requestBody.addProperty("model", dashscopeModel);
+            
+            JsonArray messages = new JsonArray();
+            JsonObject message = new JsonObject();
+            message.addProperty("role", "user");
+            message.addProperty("content", prompt);
+            messages.add(message);
+            requestBody.add("messages", messages);
+            
+            JsonObject parameters = new JsonObject();
+            parameters.addProperty("temperature", 0.1); // 较低的温度以获得更准确的结果
+            parameters.addProperty("max_tokens", 2000);
+            requestBody.add("parameters", parameters);
+            
+            // 构建HTTP请求
+            RequestBody body = RequestBody.create(
+                requestBody.toString(), 
+                MediaType.get("application/json; charset=utf-8")
+            );
+            
+            Request request = new Request.Builder()
+                    .url(dashscopeBaseUrl + "chat/completions")
+                    .post(body)
+                    .addHeader("Authorization", "Bearer " + dashscopeApiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+            
+            log.debug("发送AI请求到通义千问...");
+            long startTime = System.currentTimeMillis();
+            
+            try (Response response = httpClient.newCall(request).execute()) {
+                long endTime = System.currentTimeMillis();
+                log.info("收到AI响应，耗时: {} 毫秒", (endTime - startTime));
+                
+                if (!response.isSuccessful()) {
+                    log.error("AI API调用失败，状态码：{}", response.code());
+                    return null;
+                }
+                
+                String responseBody = response.body().string();
+                log.debug("AI响应内容：{}", responseBody);
+                
+                // 解析响应获取内容
+                JsonObject responseJson = new Gson().fromJson(responseBody, JsonObject.class);
+                if (responseJson.has("choices")) {
+                    JsonArray choices = responseJson.getAsJsonArray("choices");
+                    if (choices.size() > 0) {
+                        JsonObject firstChoice = choices.get(0).getAsJsonObject();
+                        if (firstChoice.has("message")) {
+                            JsonObject messageObj = firstChoice.getAsJsonObject("message");
+                            if (messageObj.has("content")) {
+                                return messageObj.get("content").getAsString();
+                            }
+                        }
+                    }
+                }
+                
+                log.warn("无法从AI响应中提取内容");
+                return null;
+            }
+            
+        } catch (IOException e) {
+            log.error("调用通义千问API异常", e);
+            return null;
+        }
+    }
+    
+    /**
+     * 解析AI分割响应
+     */
+    private List<QuestionInfo> parseAISegmentationResponse(String aiResponse, String fullText) {
+        List<QuestionInfo> questionInfos = new ArrayList<>();
         
-        // 根据内容复杂度调整
-        if (content.contains("函数") || content.contains("方程")) {
-            baseHeight += 2; // 数学内容需要更多空间
+        try {
+            // 提取JSON部分（AI可能返回额外的说明文字）
+            String jsonPart = aiResponse;
+            int jsonStart = aiResponse.indexOf("{");
+            int jsonEnd = aiResponse.lastIndexOf("}") + 1;
+            
+            if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                jsonPart = aiResponse.substring(jsonStart, jsonEnd);
+            }
+            
+            log.debug("解析AI响应JSON：{}", jsonPart);
+            
+            JsonObject responseJson = new Gson().fromJson(jsonPart, JsonObject.class);
+            if (responseJson.has("questions")) {
+                JsonArray questions = responseJson.getAsJsonArray("questions");
+                
+                for (JsonElement questionElement : questions) {
+                    JsonObject questionObj = questionElement.getAsJsonObject();
+                    
+                    if (questionObj.has("questionNumber")) {
+                        int questionNumber = questionObj.get("questionNumber").getAsInt();
+                        int startPosition = questionObj.has("startPosition") ? 
+                            questionObj.get("startPosition").getAsInt() : 0;
+                        
+                        // 根据位置估算行号
+                        String beforeText = fullText.substring(0, Math.min(startPosition, fullText.length()));
+                        int lineIndex = beforeText.split("\n").length - 1;
+                        
+                        questionInfos.add(new QuestionInfo(questionNumber, lineIndex, "ai_segmentation"));
+                        log.info("AI识别到题目{}，位置{}，估算行号{}", questionNumber, startPosition, lineIndex);
+                    }
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("解析AI分割响应失败", e);
         }
         
-        // 限制最小和最大高度
-        return Math.max(8, Math.min(25, baseHeight));
+        return questionInfos;
     }
+    
+    /**
+     * 直接在文本中查找题目标号
+     */
+    private List<QuestionInfo> findQuestionNumbersInText(String fullText) {
+        List<QuestionInfo> questionInfos = new ArrayList<>();
+        
+        // 查找形如 "20." "21." 等题目标号
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("(\\d+)\\. 第\\d+小题");
+        java.util.regex.Matcher matcher = pattern.matcher(fullText);
+        
+        int position = 0;
+        while (matcher.find()) {
+            int questionNum = Integer.parseInt(matcher.group(1));
+            int startPos = matcher.start();
+            
+            // 计算这是第几行（粗略估算）
+            String beforeText = fullText.substring(0, startPos);
+            int lineIndex = beforeText.split("\n").length - 1;
+            
+            log.info("在文本位置{}找到题目{}，估算行号{}", startPos, questionNum, lineIndex);
+            questionInfos.add(new QuestionInfo(questionNum, lineIndex, "text_search"));
+        }
+        
+        // 如果没找到，尝试更宽松的匹配
+        if (questionInfos.isEmpty()) {
+            pattern = java.util.regex.Pattern.compile("(\\d{1,2})\\.");
+            matcher = pattern.matcher(fullText);
+            
+            while (matcher.find()) {
+                int questionNum = Integer.parseInt(matcher.group(1));
+                // 只匹配合理的题目号（1-100）
+                if (questionNum >= 1 && questionNum <= 100) {
+                    int startPos = matcher.start();
+                    String beforeText = fullText.substring(0, startPos);
+                    int lineIndex = beforeText.split("\n").length - 1;
+                    
+                    // 检查是否是题目开始（后面有一些文字）
+                    int endPos = Math.min(startPos + 20, fullText.length());
+                    String context = fullText.substring(startPos, endPos);
+                    
+                    if (context.length() > 5) { // 确保后面有内容
+                        log.info("宽松匹配：在位置{}找到可能的题目{}，上下文：{}", startPos, questionNum, context);
+                        questionInfos.add(new QuestionInfo(questionNum, lineIndex, "loose_search"));
+                    }
+                }
+            }
+        }
+        
+        log.info("文本搜索找到{}道题目", questionInfos.size());
+        return questionInfos;
+    }
+    
+    /**
+     * 检测题目开始位置的多种模式
+     */
+    private QuestionInfo detectQuestionStart(String line, int lineIndex) {
+        log.debug("检测题目开始，行{}：'{}'", lineIndex, line);
+        
+        // 模式1: 数字 + 点号开头 (如 "20.", "21.")
+        if (line.matches("^\\d+\\..*")) {
+            String questionNum = line.replaceAll("^(\\d+)\\..*", "$1");
+            log.debug("匹配到数字+点号模式，题号：{}", questionNum);
+            return new QuestionInfo(Integer.parseInt(questionNum), lineIndex, "numbered");
+        }
+        
+        // 模式1.5: 行中间包含题目标号 (如 "某些文字 20. 题目内容")
+        if (line.matches(".*\\s+(\\d+)\\.\\s*第\\d+小题.*")) {
+            String questionNum = line.replaceAll(".*\\s+(\\d+)\\.\\s*第\\d+小题.*", "$1");
+            log.debug("匹配到行中题目标号模式，题号：{}", questionNum);
+            return new QuestionInfo(Integer.parseInt(questionNum), lineIndex, "numbered");
+        }
+        
+        // 模式2: 括号数字 (如 "(1)", "(2)")
+        if (line.matches("^\\(\\d+\\).*")) {
+            String questionNum = line.replaceAll("^\\((\\d+)\\).*", "$1");
+            return new QuestionInfo(Integer.parseInt(questionNum), lineIndex, "parentheses");
+        }
+        
+        // 模式3: 题目关键词开头 (如 "第1题", "题目1")
+        if (line.matches("^(第\\d+题|题目\\d+|第\\d+小题).*")) {
+            String questionNum = line.replaceAll("^(?:第|题目)(\\d+)(?:题|小题).*", "$1");
+            try {
+                return new QuestionInfo(Integer.parseInt(questionNum), lineIndex, "keyword");
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        
+        // 模式4: 选择题标识 (如 "A.", "B.", "C.", "D." 前面的题目)
+        if (line.matches(".*[ABCD]\\..*") && line.length() < 100) {
+            // 这可能是选择题的选项，需要向前查找题目主体
+            return null; // 暂时不处理，避免误识别
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 基于内容的备用分割方法
+     */
+    private List<QuestionInfo> fallbackContentBasedSegmentation(String[] lines) {
+        List<QuestionInfo> questionInfos = new ArrayList<>();
+        int questionCounter = 1;
+        
+        // 寻找内容较长的行作为题目开始
+        for (int i = 0; i < lines.length; i++) {
+            String line = lines[i].trim();
+            
+            // 跳过空行和过短的行
+            if (line.length() < 10) continue;
+            
+            // 检查是否可能是新题目的开始
+            if (isPotentialQuestionStart(line, i, lines)) {
+                questionInfos.add(new QuestionInfo(questionCounter++, i, "content_based"));
+            }
+        }
+        
+        return questionInfos;
+    }
+    
+    /**
+     * 判断是否是潜在的题目开始
+     */
+    private boolean isPotentialQuestionStart(String line, int lineIndex, String[] lines) {
+        // 检查行长度：题目通常比较长
+        if (line.length() < 20) return false;
+        
+        // 检查前一行：题目前通常有空行或分隔
+        if (lineIndex > 0) {
+            String prevLine = lines[lineIndex - 1].trim();
+            if (!prevLine.isEmpty() && prevLine.length() > 30) {
+                return false; // 前一行也是长内容，可能是同一题目的延续
+            }
+        }
+        
+        // 检查后续行：题目后面通常有子题或选项
+        boolean hasFollowingContent = false;
+        for (int i = lineIndex + 1; i < Math.min(lineIndex + 5, lines.length); i++) {
+            String nextLine = lines[i].trim();
+            if (nextLine.matches("^\\([1-3]\\).*") || nextLine.matches("^[ABCD]\\..*")) {
+                hasFollowingContent = true;
+                break;
+            }
+        }
+        
+        return hasFollowingContent || line.contains("分") || line.contains("题");
+    }
+    
+    /**
+     * 提取题目内容
+     */
+    private String extractQuestionContent(String[] lines, int startLine, int endLine) {
+        StringBuilder content = new StringBuilder();
+        
+        for (int i = startLine; i <= endLine && i < lines.length; i++) {
+            String line = lines[i].trim();
+            if (!line.isEmpty()) {
+                if (content.length() > 0) {
+                    content.append(" ");
+                }
+                content.append(line);
+            }
+        }
+        
+        String result = content.toString();
+        if (result.length() > 200) {
+            result = result.substring(0, 197) + "...";
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 智能计算题目边界
+     */
+    private QuestionBounds calculateIntelligentBounds(QuestionInfo questionInfo, 
+                                                     String[] lines, int startLine, int endLine) {
+        // 基础位置计算
+        double baseTop = calculateAdaptivePosition(startLine, lines.length);
+        double baseHeight = calculateAdaptiveHeight(questionInfo, lines, startLine, endLine);
+        
+        // 根据题目类型调整边界
+        double adjustedTop = baseTop;
+        double adjustedHeight = baseHeight;
+        double adjustedLeft = 5.0; // 默认左边距
+        double adjustedWidth = 90.0; // 默认宽度
+        
+        // 根据题目类型进行微调
+        switch (questionInfo.type) {
+            case "numbered":
+                // 大题通常占用更多空间
+                adjustedHeight = Math.max(baseHeight, 15.0);
+                break;
+            case "parentheses":
+                // 子题通常较小
+                adjustedHeight = Math.max(baseHeight, 8.0);
+                adjustedLeft = 8.0; // 稍微缩进
+                adjustedWidth = 87.0;
+                break;
+            case "keyword":
+                // 关键词题目通常中等大小
+                adjustedHeight = Math.max(baseHeight, 12.0);
+                break;
+            case "content_based":
+                // 基于内容的分割，使用保守的大小
+                adjustedHeight = Math.max(baseHeight, 10.0);
+                break;
+        }
+        
+        // 确保边界在合理范围内
+        adjustedTop = Math.max(2.0, Math.min(adjustedTop, 85.0));
+        adjustedHeight = Math.max(6.0, Math.min(adjustedHeight, 30.0));
+        
+        // 避免边界重叠（简单处理）
+        if (adjustedTop + adjustedHeight > 98.0) {
+            adjustedHeight = 98.0 - adjustedTop;
+        }
+        
+        return new QuestionBounds(adjustedTop, adjustedLeft, adjustedWidth, adjustedHeight);
+    }
+    
+    /**
+     * 自适应位置计算
+     */
+    private double calculateAdaptivePosition(int lineNumber, int totalLines) {
+        // 非线性分布：开头和结尾留更多空间
+        double ratio = (double) lineNumber / totalLines;
+        double startMargin = 8.0; // 顶部留8%空间
+        double endMargin = 8.0;   // 底部留8%空间
+        double availableSpace = 100.0 - startMargin - endMargin;
+        
+        // 使用平滑曲线分布
+        double smoothRatio = smoothStep(ratio);
+        return startMargin + (availableSpace * smoothRatio);
+    }
+    
+    /**
+     * 自适应高度计算
+     */
+    private double calculateAdaptiveHeight(QuestionInfo questionInfo, String[] lines, 
+                                         int startLine, int endLine) {
+        int lineCount = endLine - startLine + 1;
+        
+        // 基础高度：根据行数计算
+        double baseHeight = lineCount * 4.0; // 每行约4%
+        
+        // 根据内容长度调整
+        int totalContentLength = 0;
+        for (int i = startLine; i <= endLine && i < lines.length; i++) {
+            totalContentLength += lines[i].trim().length();
+        }
+        
+        // 内容越长，需要的空间越大
+        if (totalContentLength > 200) {
+            baseHeight += 3.0;
+        } else if (totalContentLength > 100) {
+            baseHeight += 1.5;
+        }
+        
+        // 根据题目类型调整
+        switch (questionInfo.type) {
+            case "numbered":
+                baseHeight = Math.max(baseHeight, 12.0); // 大题最小12%
+                break;
+            case "parentheses":
+                baseHeight = Math.max(baseHeight, 6.0);  // 子题最小6%
+                break;
+            default:
+                baseHeight = Math.max(baseHeight, 8.0);  // 其他最小8%
+        }
+        
+        return Math.min(baseHeight, 25.0); // 最大不超过25%
+    }
+    
+    /**
+     * 平滑步骤函数，用于更自然的位置分布
+     */
+    private double smoothStep(double x) {
+        return x * x * (3.0 - 2.0 * x);
+    }
+    
+    /**
+     * 题目信息类
+     */
+    private static class QuestionInfo {
+        int questionNumber;
+        int startLine;
+        String type;
+        
+        QuestionInfo(int questionNumber, int startLine, String type) {
+            this.questionNumber = questionNumber;
+            this.startLine = startLine;
+            this.type = type;
+        }
+    }
+    
+
     
     /**
      * 评估题目难度
@@ -321,36 +790,157 @@ public class OCRService {
     }
 
     /**
-     * 模拟OCR识别（用于开发测试）
+     * 真实的OCR识别（调用阿里云OCR API）
      */
-    private OCRResult performMockOCR() {
-        // 模拟处理时间
+    private OCRResult performRealOCR(MultipartFile file) {
         try {
-            Thread.sleep(1000 + random.nextInt(2000)); // 1-3秒
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            // 检查OCR配置
+            if (accessKeyId == null || accessKeyId.equals("not-configured") || 
+                accessKeySecret == null || accessKeySecret.equals("not-configured")) {
+                
+                log.warn("OCR服务未正确配置，请设置阿里云访问凭证");
+                String errorMessage = "OCR服务未配置。请按以下步骤配置：\n" +
+                    "1. 在阿里云控制台创建AccessKey\n" +
+                    "2. 开通OCR服务\n" +
+                    "3. 在application.yml中设置access-key-id和access-key-secret\n" +
+                    "4. 取消注释pom.xml中的阿里云依赖";
+                
+                return new OCRResult(false, "", 0.0, errorMessage);
+            }
+            
+            // 实现真实的阿里云OCR API调用
+            return performAliyunOCR(file);
+            
+        } catch (Exception e) {
+            log.error("OCR识别过程异常", e);
+            return new OCRResult(false, "", 0.0, "OCR识别异常：" + e.getMessage());
         }
-
-        // 模拟识别结果
-        String[] mockResults = {
-                "求解方程：2x + 3 = 7，求x的值。",
-                "计算函数f(x) = x² + 2x - 3在x=2处的值。",
-                "解不等式：3x - 5 > 2x + 1",
-                "英语阅读理解：What is the main idea of the passage? A) The importance of education B) The benefits of technology C) The impact of climate change D) The role of government",
-                "化学反应：2H₂ + O₂ → 2H₂O，计算当有4mol H₂参与反应时，生成水的质量。",
-                "古诗文理解：请分析杜甫《春望》中\"感时花溅泪，恨别鸟惊心\"一句的表达效果。",
-                "物理实验：在\"测定金属丝电阻率\"的实验中，需要测量哪些物理量？",
-                "数学证明：证明：若a > 0, b > 0，则 (a + b)/2 ≥ √(ab)",
-                "地理问题：分析我国东南沿海地区发展外向型经济的有利条件。",
-                "历史材料题：根据材料分析明朝海禁政策对我国经济发展的影响。"
-        };
-
-        String recognizedText = mockResults[random.nextInt(mockResults.length)];
-        double confidence = 0.85 + random.nextDouble() * 0.1; // 0.85-0.95之间
-
-        log.info("模拟OCR识别完成，文字：{}", recognizedText.substring(0, Math.min(30, recognizedText.length())));
-        return new OCRResult(true, recognizedText, confidence, null);
     }
+    
+    /**
+     * 执行阿里云OCR识别
+     */
+    private OCRResult performAliyunOCR(MultipartFile file) {
+        try {
+            log.info("开始调用阿里云OCR API进行文字识别");
+            
+            // 配置认证信息
+            Config config = new Config()
+                    .setAccessKeyId(accessKeyId)
+                    .setAccessKeySecret(accessKeySecret)
+                    .setEndpoint("ocr-api.cn-hangzhou.aliyuncs.com")
+                    .setConnectTimeout(60000)
+                    .setReadTimeout(120000);
+
+            // 创建客户端
+            Client client = new Client(config);
+
+            // 创建请求对象
+            RecognizeAllTextRequest request = new RecognizeAllTextRequest()
+                    .setType("Advanced")
+                    .setBody(new ByteArrayInputStream(file.getBytes()));
+                
+            log.info("发送OCR请求到阿里云...");
+            
+            // 记录开始时间
+            long startTime = System.currentTimeMillis();
+            
+            // 调用OCR API
+            RecognizeAllTextResponse response = client.recognizeAllText(request);
+            
+            long endTime = System.currentTimeMillis();
+            log.info("收到OCR响应，耗时: {} 毫秒", (endTime - startTime));
+
+            // 处理响应
+            String extractedText = extractTextFromResponse(response);
+            
+            if (extractedText == null || extractedText.trim().isEmpty()) {
+                log.warn("无法从OCR结果中提取文本");
+                return new OCRResult(false, "", 0.0, "无法从图片中提取文字，请尝试使用更清晰的图片");
+            }
+            
+            double confidence = 0.85; // 默认置信度
+            log.info("OCR识别成功，识别文字长度：{}，置信度：{}", extractedText.length(), confidence);
+            return new OCRResult(true, extractedText.trim(), confidence, null);
+            
+        } catch (Exception e) {
+            log.error("阿里云OCR调用异常", e);
+            return new OCRResult(false, "", 0.0, "OCR调用异常：" + e.getMessage());
+        }
+    }
+    
+    /**
+     * 从OCR响应中提取文本
+     */
+    private String extractTextFromResponse(RecognizeAllTextResponse response) {
+        try {
+            // 转换为JSON并解析
+            String jsonResponse = new Gson().toJson(response);
+            log.debug("OCR 完整响应: {}", jsonResponse);
+            
+            Map<String, Object> jsonMap = new Gson().fromJson(jsonResponse, Map.class);
+            
+            // 导航到数据部分
+            if (jsonMap.containsKey("body") && jsonMap.get("body") instanceof Map) {
+                Map<String, Object> body = (Map<String, Object>) jsonMap.get("body");
+                
+                if (body.containsKey("data") && body.get("data") instanceof Map) {
+                    Map<String, Object> data = (Map<String, Object>) body.get("data");
+                    
+                    // 尝试获取主要内容
+                    if (data.containsKey("content") && data.get("content") != null) {
+                        return String.valueOf(data.get("content"));
+                    }
+                    
+                    // 如果主要内容为空，尝试从子图像获取
+                    if (data.containsKey("subImages") && data.get("subImages") instanceof List) {
+                        List<Map<String, Object>> subImages = (List<Map<String, Object>>) data.get("subImages");
+                        StringBuilder allText = new StringBuilder();
+                        
+                        for (Map<String, Object> subImage : subImages) {
+                            // 获取子图像内容
+                            if (subImage.containsKey("content") && subImage.get("content") != null) {
+                                String content = String.valueOf(subImage.get("content"));
+                                if (content != null && !content.isEmpty()) {
+                                    allText.append(content).append("\n");
+                                }
+                            }
+                            
+                            // 获取块信息
+                            if (subImage.containsKey("blockInfo") && subImage.get("blockInfo") instanceof Map) {
+                                Map<String, Object> blockInfo = (Map<String, Object>) subImage.get("blockInfo");
+                                if (blockInfo.containsKey("blockDetails") && 
+                                    blockInfo.get("blockDetails") instanceof List) {
+                                    
+                                    List<Map<String, Object>> blockDetails = 
+                                        (List<Map<String, Object>>) blockInfo.get("blockDetails");
+                                    
+                                    for (Map<String, Object> block : blockDetails) {
+                                        if (block.containsKey("blockContent")) {
+                                            String blockContent = String.valueOf(block.get("blockContent"));
+                                            if (blockContent != null && !blockContent.isEmpty()) {
+                                                allText.append(blockContent).append("\n");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        return allText.toString().trim();
+                    }
+                }
+            }
+            
+            return null;
+            
+        } catch (Exception e) {
+            log.error("处理OCR响应时出错", e);
+            return null;
+        }
+    }
+    
+    
 
     /**
      * 验证是否为图片文件

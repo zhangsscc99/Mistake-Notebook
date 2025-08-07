@@ -100,25 +100,42 @@
             <version>7.2.5</version>
         </dependency>
 
-        <!-- 注释掉阿里云依赖，避免构建失败。实际部署时可以添加阿里云仓库配置 -->
-        <!-- 
+        <!-- 阿里云OCR依赖 - 使用正确的新版SDK -->
         <dependency>
             <groupId>com.aliyun</groupId>
-            <artifactId>aliyun-java-sdk-core</artifactId>
-            <version>4.6.4</version>
+            <artifactId>ocr_api20210707</artifactId>
+            <version>2.0.2</version>
         </dependency>
         <dependency>
             <groupId>com.aliyun</groupId>
-            <artifactId>ocr20191230</artifactId>
-            <version>1.0.11</version>
+            <artifactId>tea-openapi</artifactId>
+            <version>0.2.8</version>
         </dependency>
         <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>dashscope-sdk-java</artifactId>
-            <version>2.8.1</version>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
         </dependency>
-        -->
+        
+        <!-- HTTP客户端 - 用于调用通义千问API -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.12.0</version>
+        </dependency>
     </dependencies>
+
+    <!-- 阿里云Maven仓库 -->
+    <repositories>
+        <repository>
+            <id>aliyun-maven</id>
+            <url>https://maven.aliyun.com/repository/public</url>
+        </repository>
+        <repository>
+            <id>central</id>
+            <url>https://repo1.maven.org/maven2</url>
+        </repository>
+    </repositories>
 
     <build>
         <plugins>

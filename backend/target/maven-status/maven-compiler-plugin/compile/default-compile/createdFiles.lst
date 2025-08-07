@@ -5,6 +5,7 @@ com\mistake\notebook\service\AIClassificationService$ClassificationResult.class
 com\mistake\notebook\dto\CreateQuestionRequest.class
 com\mistake\notebook\service\OCRService$QuestionSegment.class
 com\mistake\notebook\controller\UploadController.class
+com\mistake\notebook\service\OCRService$QuestionInfo.class
 com\mistake\notebook\service\PDFService.class
 com\mistake\notebook\service\QuestionService.class
 com\mistake\notebook\entity\Category.class

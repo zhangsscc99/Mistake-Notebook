@@ -39,8 +39,8 @@ cors:
 
 # 阿里云配置
 aliyun:
-  access-key-id: ${ALIYUN_ACCESS_KEY_ID:your-access-key-id}
-  access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:your-access-key-secret}
+  access-key-id: ${ALIYUN_ACCESS_KEY_ID:not-configured}
+  access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:not-configured}
   region-id: cn-hangzhou
   
   # OCR 配置
@@ -49,10 +49,10 @@ aliyun:
     
   # 通义千问配置
   dashscope:
-    api-key: ${DASHSCOPE_API_KEY:your-dashscope-api-key}
+    api-key: ${DASHSCOPE_API_KEY:not-configured}
     base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/}
     model: ${DASHSCOPE_MODEL:qwen-turbo-latest}
-    application-id: ${DASHSCOPE_APPLICATION_ID:your-application-id}
+    application-id: ${DASHSCOPE_APPLICATION_ID:not-configured}
 
 # 文件存储配置
 file:
@@ -64,6 +64,7 @@ file:
 logging:
   level:
     com.mistake.notebook: DEBUG
+    com.mistake.notebook.service.OCRService: DEBUG
     org.springframework.web: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
