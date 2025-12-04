@@ -53,26 +53,30 @@ aliyun:
   access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET:not-configured}
   region-id: cn-hangzhou
   
-  # OCR 配置
-  ocr:
-    endpoint: ${ALIYUN_OCR_ENDPOINT:https://ocr-api.cn-hangzhou.aliyuncs.com}
-    # 是否使用视觉推理模式（true=优先使用视觉推理，false=仅使用传统OCR）
-    use-vision-reasoning: ${ALIYUN_OCR_USE_VISION_REASONING:true}
-    
-  # 通义千问配置
+  # 通义千问配置（视觉推理）
   dashscope:
     api-key: ${DASHSCOPE_API_KEY:not-configured}
     base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/}
     model: ${DASHSCOPE_MODEL:qwen-turbo-latest}
     application-id: ${DASHSCOPE_APPLICATION_ID:not-configured}
     
-    # 视觉推理模型配置
     vision:
       model: ${DASHSCOPE_VISION_MODEL:qwen3-vl-plus}
       enable-thinking: ${DASHSCOPE_ENABLE_THINKING:true}
       thinking-budget: ${DASHSCOPE_THINKING_BUDGET:81920}
       max-tokens: ${DASHSCOPE_MAX_TOKENS:4000}
       temperature: ${DASHSCOPE_TEMPERATURE:0.1}
+
+# AI 通用配置（OpenAI 兼容接口）
+ai:
+  aliyun:
+    api-key: ${AI_ALIYUN_API_KEY:not-configured}
+    base-url: ${AI_ALIYUN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/}
+    model: ${AI_ALIYUN_MODEL:qwen-plus}
+    application-id: ${AI_ALIYUN_APPLICATION_ID:}
+    system-content: ${AI_ALIYUN_SYSTEM_CONTENT:你是一个擅长教育领域的智能助手，回答简洁、准确。}
+    payment-model: ${AI_ALIYUN_PAYMENT_MODEL:qwen-plus}
+    payment-system-content: ${AI_ALIYUN_PAYMENT_SYSTEM_CONTENT:你是一个有用的AI助手}
 
 # 文件存储配置
 file:
@@ -84,7 +88,7 @@ file:
 logging:
   level:
     com.mistake.notebook: DEBUG
-    com.mistake.notebook.service.OCRService: DEBUG
+    com.mistake.notebook.service.VisionReasoningService: DEBUG
     org.springframework.web: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

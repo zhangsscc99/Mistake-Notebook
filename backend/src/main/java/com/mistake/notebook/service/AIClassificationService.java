@@ -1,13 +1,16 @@
 package com.mistake.notebook.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mistake.notebook.config.AIConfig;
+import com.mistake.notebook.config.SimpleOpenAIClient;
 import com.mistake.notebook.entity.Question;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import okhttp3.Response;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.regex.Pattern;
 
 /**
  * AI分类服务
@@ -17,60 +20,135 @@ import java.util.regex.Pattern;
 @Slf4j
 public class AIClassificationService {
 
-    @Value("${aliyun.dashscope.api-key}")
-    private String apiKey;
-    
-    @Value("${aliyun.dashscope.base-url}")
-    private String baseUrl;
-    
-    @Value("${aliyun.dashscope.model}")
-    private String model;
-    
-    @Value("${aliyun.dashscope.application-id}")
-    private String applicationId;
+    private static final String CLASSIFICATION_PROMPT = """
+            你是教育场景的题目分类助手。阅读用户提供的题目文字，严格输出 JSON：
+            {
+              "category": "数学|语文|英语|物理|化学|生物|历史|地理|政治|计算机/编程|综合",
+              "tags": ["知识点1","知识点2"],
+              "difficulty": "EASY|MEDIUM|HARD",
+              "confidence": 0.0-1.0,
+              "reasoning": "简短说明分类原因"
+            }
+            只返回 JSON，不要额外描述。
+            """;
 
+    private final SimpleOpenAIClient openAIClient;
+    private final AIConfig aiConfig;
+    private final ObjectMapper objectMapper;
     private final Random random = new Random();
 
     /**
      * 对题目进行智能分类
      */
     public ClassificationResult classifyQuestion(String questionText) {
-        try {
-            if (questionText == null || questionText.trim().isEmpty()) {
-                return new ClassificationResult(false, "未分类", null, null, 0.0, "题目内容为空");
-            }
-
-            log.info("开始AI分类，题目内容：{}", questionText.substring(0, Math.min(50, questionText.length())));
-
-            // 这里预留了真实的阿里云通义千问API调用
-            // 目前使用基于关键词的智能分类算法
-            return performSmartClassification(questionText);
-
-            /*
-            // 真实的通义千问API调用代码
-            Generation gen = new Generation();
-            MessageManager msgManager = new MessageManager(10);
-            
-            String prompt = buildClassificationPrompt(questionText);
-            Message userMsg = Message.builder().role(Role.USER.getValue()).content(prompt).build();
-            msgManager.add(userMsg);
-            
-            GenerationParam param = GenerationParam.builder()
-                .model("qwen-turbo")
-                .messages(msgManager.get())
-                .resultFormat(GenerationParam.ResultFormat.MESSAGE)
-                .build();
-                
-            GenerationResult result = gen.call(param);
-            String response = result.getOutput().getChoices().get(0).getMessage().getContent();
-            
-            return parseClassificationResponse(response);
-            */
-
-        } catch (Exception e) {
-            log.error("AI分类失败", e);
-            return new ClassificationResult(false, "未分类", null, null, 0.0, "分类过程中发生错误：" + e.getMessage());
+        if (questionText == null || questionText.trim().isEmpty()) {
+            return new ClassificationResult(false, "未分类", null, null, 0.0, "题目内容为空");
         }
+
+        log.info("开始调用大模型分类...");
+        ClassificationResult llmResult = classifyWithLLM(questionText);
+        if (llmResult != null) {
+            return llmResult;
+        }
+
+        log.warn("大模型分类失败，使用本地关键词算法兜底");
+        return performSmartClassification(questionText);
+    }
+
+    private ClassificationResult classifyWithLLM(String questionText) {
+        try {
+            Map<String, Object> requestData = new HashMap<>();
+            requestData.put("model", aiConfig.getModel());
+            requestData.put("temperature", 0.2);
+            requestData.put("max_tokens", 600);
+            requestData.put("stream", false);
+            requestData.put("response_format", Map.of("type", "json_object"));
+
+            List<Map<String, String>> messages = new ArrayList<>();
+            messages.add(Map.of("role", "system", "content", CLASSIFICATION_PROMPT));
+            messages.add(Map.of("role", "user", "content", "题目如下：\n" + questionText));
+            requestData.put("messages", messages);
+
+            try (Response response = openAIClient.createChatCompletion(requestData)) {
+                if (!response.isSuccessful()) {
+                    log.error("分类LLM调用失败，状态码 {}", response.code());
+                    return null;
+                }
+
+                String responseBody = Objects.requireNonNull(response.body()).string();
+                JsonNode root = objectMapper.readTree(responseBody);
+                JsonNode choices = root.path("choices");
+                if (!choices.isArray() || choices.isEmpty()) {
+                    log.warn("分类LLM返回无choices");
+                    return null;
+                }
+
+                JsonNode messageNode = choices.get(0).path("message");
+                String content = messageNode.path("content").asText();
+                if (content == null || content.trim().isEmpty()) {
+                    log.warn("分类LLM返回空内容");
+                    return null;
+                }
+
+                JsonNode resultJson = objectMapper.readTree(content);
+                String category = normalizeCategory(resultJson.path("category").asText("综合"));
+                Question.DifficultyLevel difficulty = parseDifficulty(resultJson.path("difficulty").asText("MEDIUM"));
+                double confidence = clampConfidence(resultJson.path("confidence").asDouble(0.9));
+
+                List<String> tags = new ArrayList<>();
+                JsonNode tagsNode = resultJson.path("tags");
+                if (tagsNode.isArray()) {
+                    tagsNode.forEach(node -> tags.add(node.asText()));
+                }
+
+                log.info("LLM分类成功，类别：{}，难度：{}，置信度：{}", category, difficulty, confidence);
+                return new ClassificationResult(true, category, tags, difficulty, confidence, null);
+            }
+        } catch (Exception e) {
+            log.error("调用LLM分类失败", e);
+            return null;
+        }
+    }
+
+    private String normalizeCategory(String rawCategory) {
+        if (rawCategory == null || rawCategory.isBlank()) {
+            return "综合";
+        }
+        String target = rawCategory.toLowerCase(Locale.ROOT);
+        if (target.contains("数") || target.contains("math")) return "数学";
+        if (target.contains("语文") || target.contains("chinese")) return "语文";
+        if (target.contains("英") || target.contains("english")) return "英语";
+        if (target.contains("物") || target.contains("physics")) return "物理";
+        if (target.contains("化") || target.contains("chem")) return "化学";
+        if (target.contains("生") || target.contains("bio")) return "生物";
+        if (target.contains("地")) return "地理";
+        if (target.contains("政") || target.contains("polit")) return "政治";
+        if (target.contains("历")) return "历史";
+        if (target.contains("计算") || target.contains("编程") || target.contains("computer") || target.contains("program")) {
+            return "计算机/编程";
+        }
+        return rawCategory;
+    }
+
+    private Question.DifficultyLevel parseDifficulty(String value) {
+        if (value == null) {
+            return Question.DifficultyLevel.MEDIUM;
+        }
+        switch (value.trim().toUpperCase(Locale.ROOT)) {
+            case "EASY":
+                return Question.DifficultyLevel.EASY;
+            case "HARD":
+                return Question.DifficultyLevel.HARD;
+            default:
+                return Question.DifficultyLevel.MEDIUM;
+        }
+    }
+
+    private double clampConfidence(double value) {
+        if (Double.isNaN(value)) {
+            return 0.9;
+        }
+        return Math.min(0.99, Math.max(0.5, value));
     }
 
     /**
