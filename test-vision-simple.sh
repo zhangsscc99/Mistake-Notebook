@@ -1,0 +1,39 @@
+#!/bin/bash
+
+echo "🧪 简单视觉推理测试"
+echo "=================="
+
+# 创建一个简单的测试请求
+echo "测试基本连接..."
+curl -s http://localhost:8080/api/upload/ocr -X POST
+
+echo ""
+echo "测试环境变量..."
+echo "DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:0:20}..."
+
+echo ""
+echo "测试应用健康状态..."
+curl -s http://localhost:8080/actuator/health 2>/dev/null || echo "健康检查端点不可用"
+
+echo ""
+echo "创建最小测试图片..."
+# 创建一个1x1像素的测试图片
+echo -e '\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00H\x00H\x00\x00\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444\x1f\'9=82<.342\xff\xc0\x00\x11\x08\x00\x01\x00\x01\x01\x01\x11\x00\x02\x11\x01\x03\x11\x01\xff\xc4\x00\x14\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x08\xff\xc4\x00\x14\x10\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xda\x00\x0c\x03\x01\x00\x02\x11\x03\x11\x00\x3f\x00\xaa\xff\xd9' > tiny-test.jpg
+
+echo "测试图片大小: $(wc -c < tiny-test.jpg) bytes"
+
+echo ""
+echo "发送测试请求..."
+response=$(curl -s -X POST http://localhost:8080/api/upload/ocr \
+  -F "file=@tiny-test.jpg" \
+  -H "Accept: application/json" \
+  --connect-timeout 5 \
+  --max-time 10)
+
+echo "响应: $response"
+
+# 清理
+rm -f tiny-test.jpg
+
+echo ""
+echo "测试完成"

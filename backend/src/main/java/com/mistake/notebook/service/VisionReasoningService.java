@@ -142,9 +142,13 @@ public class VisionReasoningService {
     private VisionResult callVisionAPI(MultipartFile file, String prompt, boolean useThinking) {
         try {
             // 检查API配置
+            log.debug("检查API配置 - apiKey: {}, baseUrl: {}, model: {}", 
+                    apiKey != null ? apiKey.substring(0, Math.min(10, apiKey.length())) + "..." : "null", 
+                    baseUrl, visionModel);
+            
             if (apiKey == null || apiKey.equals("not-configured")) {
-                log.warn("百炼视觉推理API未配置，无法进行识别");
-                return new VisionResult(false, "", "", 0.0, "API未配置");
+                log.warn("百炼视觉推理API未配置，apiKey: {}", apiKey);
+                return new VisionResult(false, "", "", 0.0, "API未配置，请设置DASHSCOPE_API_KEY环境变量");
             }
 
             // 将图片转换为base64
@@ -197,8 +201,12 @@ public class VisionReasoningService {
                     MediaType.get("application/json; charset=utf-8")
             );
 
+            String apiUrl = baseUrl.endsWith("/")
+                    ? baseUrl + "chat/completions"
+                    : baseUrl + "/chat/completions";
+
             Request request = new Request.Builder()
-                    .url(baseUrl + "/chat/completions")
+                    .url(apiUrl)
                     .post(body)
                     .addHeader("Authorization", "Bearer " + apiKey)
                     .addHeader("Content-Type", "application/json")

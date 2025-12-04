@@ -1,4 +1,3 @@
-/Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/service/OCRService.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/service/PDFService.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/controller/TestPaperController.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/config/DataInitializer.java
@@ -7,6 +6,7 @@
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/MistakeNotebookApplication.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/service/QuestionService.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/controller/CategoryController.java
+/Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/config/EnvironmentConfig.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/config/CorsConfig.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/service/VisionReasoningService.java
 /Users/Zhuanz1/Desktop/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/controller/UploadController.java

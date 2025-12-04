@@ -4,7 +4,7 @@ import com.mistake.notebook.dto.ApiResponse;
 import com.mistake.notebook.dto.CreateQuestionRequest;
 import com.mistake.notebook.dto.QuestionDTO;
 import com.mistake.notebook.service.AIClassificationService;
-import com.mistake.notebook.service.OCRService;
+import com.mistake.notebook.service.VisionReasoningService;
 import com.mistake.notebook.service.QuestionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,7 @@ import java.util.UUID;
 @CrossOrigin(origins = {"http://localhost:3060", "http://127.0.0.1:3060"})
 public class UploadController {
 
-    private final OCRService ocrService;
+    private final VisionReasoningService visionReasoningService;
     private final AIClassificationService aiClassificationService;
     private final QuestionService questionService;
 
@@ -60,16 +60,16 @@ public class UploadController {
                         .body(ApiResponse.error("文件保存失败"));
             }
 
-            // 2. OCR识别
-            OCRService.OCRResult ocrResult = ocrService.recognizeText(file);
-            if (!ocrResult.isSuccess()) {
+            // 2. 视觉推理识别
+            VisionReasoningService.VisionResult visionResult = visionReasoningService.recognizeText(file);
+            if (!visionResult.isSuccess()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(ApiResponse.error("图片识别失败：" + ocrResult.getError()));
+                        .body(ApiResponse.error("图片识别失败：" + visionResult.getError()));
             }
 
             // 3. AI分类
             AIClassificationService.ClassificationResult classificationResult = 
-                    aiClassificationService.classifyQuestion(ocrResult.getText());
+                    aiClassificationService.classifyQuestion(visionResult.getContent());
             
             if (!classificationResult.isSuccess()) {
                 log.warn("AI分类失败，使用默认分类");
@@ -77,7 +77,7 @@ public class UploadController {
 
             // 4. 创建题目
             CreateQuestionRequest request = new CreateQuestionRequest();
-            request.setContent(ocrResult.getText());
+            request.setContent(visionResult.getContent());
             request.setImageUrl(imageUrl);
             request.setCategory(classificationResult.isSuccess() ? 
                     classificationResult.getCategory() : "语文");
@@ -86,7 +86,7 @@ public class UploadController {
                     classificationResult.getDifficulty().name().toLowerCase() : "medium");
             request.setTags(classificationResult.isSuccess() ? 
                     classificationResult.getTags() : null);
-            request.setOcrConfidence(ocrResult.getConfidence());
+            request.setOcrConfidence(visionResult.getConfidence());
             request.setAiConfidence(classificationResult.isSuccess() ? 
                     classificationResult.getConfidence() : null);
 
@@ -131,25 +131,26 @@ public class UploadController {
      * 仅进行OCR识别（不保存题目）
      */
     @PostMapping("/ocr")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> performOCR(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> performVisionRecognition(
             @RequestParam("file") MultipartFile file) {
         try {
-            OCRService.OCRResult ocrResult = ocrService.recognizeText(file);
+            VisionReasoningService.VisionResult visionResult = visionReasoningService.recognizeText(file);
             
             Map<String, Object> result = new HashMap<>();
-            result.put("success", ocrResult.isSuccess());
-            result.put("text", ocrResult.getText());
-            result.put("confidence", ocrResult.getConfidence());
+            result.put("success", visionResult.isSuccess());
+            result.put("text", visionResult.getContent());
+            result.put("confidence", visionResult.getConfidence());
+            result.put("reasoning", visionResult.getReasoningContent());
             
-            if (!ocrResult.isSuccess()) {
-                result.put("error", ocrResult.getError());
+            if (!visionResult.isSuccess()) {
+                result.put("error", visionResult.getError());
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.<Map<String, Object>>error("识别失败"));
             }
 
             return ResponseEntity.ok(ApiResponse.success("识别成功", result));
         } catch (Exception e) {
-            log.error("OCR识别失败", e);
+            log.error("视觉推理识别失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("识别失败：" + e.getMessage()));
         }
@@ -210,8 +211,8 @@ public class UploadController {
                         .body(ApiResponse.error("文件保存失败"));
             }
 
-            // 2. 题目分割识别
-            OCRService.QuestionSegmentResult segmentResult = ocrService.recognizeAndSegmentQuestions(file);
+            // 2. 视觉推理题目分割
+            VisionReasoningService.VisionQuestionResult segmentResult = visionReasoningService.recognizeAndSegmentQuestions(file);
             if (!segmentResult.isSuccess()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("题目分割识别失败：" + segmentResult.getError()));
@@ -224,8 +225,9 @@ public class UploadController {
             result.put("questionsCount", segmentResult.getQuestions().size());
             result.put("overallConfidence", segmentResult.getOverallConfidence());
             result.put("questions", segmentResult.getQuestions());
+            result.put("reasoning", segmentResult.getReasoningContent());
 
-            log.info("题目分割识别成功，识别到{}道题目", segmentResult.getQuestions().size());
+            log.info("视觉推理题目分割成功，识别到{}道题目", segmentResult.getQuestions().size());
             return ResponseEntity.ok(ApiResponse.success("题目分割识别成功", result));
 
         } catch (Exception e) {
