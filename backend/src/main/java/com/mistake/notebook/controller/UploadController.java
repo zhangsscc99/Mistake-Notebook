@@ -218,13 +218,15 @@ public class UploadController {
                         .body(ApiResponse.error("题目分割识别失败：" + segmentResult.getError()));
             }
 
+            List<Map<String, Object>> convertedQuestions = convertVisionQuestions(segmentResult.getQuestions());
+
             // 3. 构建返回结果
             Map<String, Object> result = new HashMap<>();
             result.put("success", true);
             result.put("imageUrl", imageUrl);
-            result.put("questionsCount", segmentResult.getQuestions().size());
+            result.put("questionsCount", convertedQuestions.size());
             result.put("overallConfidence", segmentResult.getOverallConfidence());
-            result.put("questions", segmentResult.getQuestions());
+            result.put("questions", convertedQuestions);
             result.put("reasoning", segmentResult.getReasoningContent());
 
             log.info("视觉推理题目分割成功，识别到{}道题目", segmentResult.getQuestions().size());
@@ -449,5 +451,40 @@ public class UploadController {
         }
         
         return imageUrl;
+    }
+
+    /**
+     * 将视觉推理的题目信息转换为前端期望的结构
+     */
+    private List<Map<String, Object>> convertVisionQuestions(List<VisionReasoningService.VisionQuestion> visionQuestions) {
+        List<Map<String, Object>> segments = new ArrayList<>();
+        if (visionQuestions == null || visionQuestions.isEmpty()) {
+            return segments;
+        }
+
+        int total = visionQuestions.size();
+        double defaultHeight = 1.0 / total;
+
+        for (int index = 0; index < total; index++) {
+            VisionReasoningService.VisionQuestion question = visionQuestions.get(index);
+            Map<String, Object> segment = new HashMap<>();
+            segment.put("id", question.getId());
+            segment.put("text", question.getContent());
+            segment.put("type", question.getType());
+            segment.put("subject", question.getSubject());
+            segment.put("confidence", question.getConfidence());
+            segment.put("isDifficult", question.getType() != null && question.getType().contains("解答"));
+
+            Map<String, Double> bounds = new HashMap<>();
+            bounds.put("top", index * defaultHeight);
+            bounds.put("left", 0.0);
+            bounds.put("width", 1.0);
+            bounds.put("height", defaultHeight);
+            segment.put("bounds", bounds);
+
+            segments.add(segment);
+        }
+
+        return segments;
     }
 } 
