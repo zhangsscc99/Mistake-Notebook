@@ -57,6 +57,13 @@ public class AIClassificationService {
 
     private ClassificationResult classifyWithLLM(String questionText) {
         try {
+            log.info("LLM分类请求配置 -> model: {}, baseUrl: {}, apiKeyPrefix: {}",
+                    aiConfig.getModel(),
+                    aiConfig.getBaseUrl(),
+                    aiConfig.getApiKey() != null && aiConfig.getApiKey().length() > 8
+                            ? aiConfig.getApiKey().substring(0, 8) + "****"
+                            : "null");
+
             Map<String, Object> requestData = new HashMap<>();
             requestData.put("model", aiConfig.getModel());
             requestData.put("temperature", 0.2);
@@ -70,12 +77,14 @@ public class AIClassificationService {
             requestData.put("messages", messages);
 
             try (Response response = openAIClient.createChatCompletion(requestData)) {
+                String responseBody = response.body() != null ? response.body().string() : "";
+
                 if (!response.isSuccessful()) {
-                    log.error("分类LLM调用失败，状态码 {}", response.code());
+                    log.error("分类LLM调用失败，状态码 {}，响应体：{}", response.code(), responseBody);
                     return null;
                 }
 
-                String responseBody = Objects.requireNonNull(response.body()).string();
+                log.debug("分类LLM响应：{}", responseBody);
                 JsonNode root = objectMapper.readTree(responseBody);
                 JsonNode choices = root.path("choices");
                 if (!choices.isArray() || choices.isEmpty()) {

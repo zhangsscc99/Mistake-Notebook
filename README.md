@@ -164,3 +164,9 @@ MIT License
 3. 访问 `http://localhost:3000` 开始使用
 
 **注意：** 当前版本使用模拟的OCR和AI服务，在生产环境中需要配置真实的阿里云API密钥。 
+
+cd frontend
+npm run dev
+cd /Users/Zhuanz1/Desktop/Mistake-Notebook/backend
+set -a && source .env && set +a
+mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
