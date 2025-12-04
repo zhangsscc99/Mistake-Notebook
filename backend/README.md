@@ -93,9 +93,63 @@ mvn spring-boot:run
 
 ### 文件上传
 - `POST /api/upload` - 上传图片并自动识别分类
-- `POST /api/upload/ocr` - 仅OCR识别
+- `POST /api/upload/ocr` - 图像识别（支持视觉推理和传统OCR）
 - `POST /api/upload/classify` - 仅AI分类
+
+### 图像识别功能
+项目支持两种图像识别模式：
+1. **视觉推理模式**（推荐）：使用阿里云百炼平台的视觉推理模型，具有更强的理解和分析能力
+2. **传统OCR模式**：使用阿里云OCR服务进行文字识别
+
+系统会优先使用视觉推理模式，失败时自动回退到传统OCR模式，确保识别的稳定性。
 
 ### 试卷生成
 - `POST /api/test-paper/generate` - 生成试卷PDF
-- `POST /api/test-paper/generate-answers` - 生成答案PDF 
+- `POST /api/test-paper/generate-answers` - 生成答案PDF
+
+## 环境变量配置
+
+### 必需的环境变量
+
+#### 数据库配置
+```bash
+DB_USERNAME=root
+DB_PASSWORD=your-password
+```
+
+#### 阿里云服务配置
+```bash
+# 阿里云基础配置（传统OCR需要）
+ALIYUN_ACCESS_KEY_ID=your-access-key-id
+ALIYUN_ACCESS_KEY_SECRET=your-access-key-secret
+
+# 百炼平台配置（视觉推理需要）
+DASHSCOPE_API_KEY=your-dashscope-api-key
+```
+
+### 可选的环境变量
+
+#### 图像识别配置
+```bash
+# 是否使用视觉推理模式（默认true）
+ALIYUN_OCR_USE_VISION_REASONING=true
+
+# 视觉推理模型配置
+DASHSCOPE_VISION_MODEL=qwen3-vl-plus
+DASHSCOPE_ENABLE_THINKING=true
+DASHSCOPE_THINKING_BUDGET=81920
+DASHSCOPE_MAX_TOKENS=4000
+DASHSCOPE_TEMPERATURE=0.1
+```
+
+### 配置说明
+
+1. **视觉推理模式**（推荐）：
+   - 仅需配置 `DASHSCOPE_API_KEY`
+   - 具有更强的图像理解和题目分析能力
+   - 支持复杂数学公式和图表识别
+
+2. **传统OCR模式**：
+   - 需配置 `ALIYUN_ACCESS_KEY_ID` 和 `ALIYUN_ACCESS_KEY_SECRET`
+   - 作为视觉推理的备用方案
+   - 可通过设置 `ALIYUN_OCR_USE_VISION_REASONING=false` 强制使用 

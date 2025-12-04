@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * OCR图像识别服务
+ * 支持传统OCR和视觉推理两种模式
  */
 @Service
 @RequiredArgsConstructor
@@ -52,6 +53,13 @@ public class OCRService {
     @Value("${aliyun.dashscope.model}")
     private String dashscopeModel;
 
+    // 是否使用视觉推理模式（默认true，优先使用视觉推理）
+    @Value("${aliyun.ocr.use-vision-reasoning:true}")
+    private boolean useVisionReasoning;
+
+    // 注入视觉推理服务
+    private final VisionReasoningService visionReasoningService;
+
     private final Random random = new Random();
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
@@ -61,6 +69,7 @@ public class OCRService {
 
     /**
      * 识别图片中的文字
+     * 优先使用视觉推理，失败时回退到传统OCR
      */
     public OCRResult recognizeText(MultipartFile file) {
         try {
@@ -80,9 +89,26 @@ public class OCRService {
                 return new OCRResult(false, "", 0.0, "不支持的文件类型");
             }
 
-            log.info("开始OCR识别，文件名：{}，大小：{} bytes", file.getOriginalFilename(), file.getSize());
+            log.info("开始图像识别，文件名：{}，大小：{} bytes，使用视觉推理：{}", 
+                    file.getOriginalFilename(), file.getSize(), useVisionReasoning);
 
-            // 调用真实的阿里云OCR API
+            // 优先使用视觉推理
+            if (useVisionReasoning) {
+                try {
+                    VisionReasoningService.VisionResult visionResult = visionReasoningService.recognizeText(file);
+                    if (visionResult.isSuccess()) {
+                        log.info("视觉推理识别成功，文字长度：{}", visionResult.getContent().length());
+                        return new OCRResult(true, visionResult.getContent(), visionResult.getConfidence(), null);
+                    } else {
+                        log.warn("视觉推理识别失败，回退到传统OCR：{}", visionResult.getError());
+                    }
+                } catch (Exception e) {
+                    log.warn("视觉推理服务异常，回退到传统OCR", e);
+                }
+            }
+
+            // 回退到传统OCR
+            log.info("使用传统OCR进行识别");
             return performRealOCR(file);
 
             /*
@@ -121,6 +147,7 @@ public class OCRService {
 
     /**
      * 识别图片中的多个题目并分割
+     * 优先使用视觉推理，失败时回退到传统方法
      */
     public QuestionSegmentResult recognizeAndSegmentQuestions(MultipartFile file) {
         try {
@@ -139,9 +166,30 @@ public class OCRService {
                 return new QuestionSegmentResult(false, null, "不支持的文件类型");
             }
 
-            log.info("开始题目分割OCR识别，文件名：{}，大小：{} bytes", file.getOriginalFilename(), file.getSize());
+            log.info("开始题目分割识别，文件名：{}，大小：{} bytes，使用视觉推理：{}", 
+                    file.getOriginalFilename(), file.getSize(), useVisionReasoning);
 
-            // 调用真实的题目分割API
+            // 优先使用视觉推理
+            if (useVisionReasoning) {
+                try {
+                    VisionReasoningService.VisionQuestionResult visionResult = 
+                            visionReasoningService.recognizeAndSegmentQuestions(file);
+                    
+                    if (visionResult.isSuccess() && visionResult.getQuestions() != null && !visionResult.getQuestions().isEmpty()) {
+                        // 转换视觉推理结果为OCR结果格式
+                        List<QuestionSegment> segments = convertVisionQuestionsToSegments(visionResult.getQuestions());
+                        log.info("视觉推理题目分割成功，识别到{}道题目", segments.size());
+                        return new QuestionSegmentResult(true, segments, null, visionResult.getOverallConfidence());
+                    } else {
+                        log.warn("视觉推理题目分割失败，回退到传统方法：{}", visionResult.getError());
+                    }
+                } catch (Exception e) {
+                    log.warn("视觉推理题目分割异常，回退到传统方法", e);
+                }
+            }
+
+            // 回退到传统题目分割方法
+            log.info("使用传统方法进行题目分割");
             return performRealQuestionSegmentation(file);
 
         } catch (Exception e) {
@@ -944,6 +992,36 @@ public class OCRService {
     
 
     /**
+     * 将视觉推理的题目结果转换为OCR分割格式
+     */
+    private List<QuestionSegment> convertVisionQuestionsToSegments(List<VisionReasoningService.VisionQuestion> visionQuestions) {
+        List<QuestionSegment> segments = new ArrayList<>();
+        
+        for (VisionReasoningService.VisionQuestion vq : visionQuestions) {
+            // 创建默认边界（由于视觉推理不提供精确位置，使用估算值）
+            double top = (double) (vq.getId() - 1) / visionQuestions.size();
+            double height = 1.0 / visionQuestions.size();
+            QuestionBounds bounds = new QuestionBounds(top, 0.0, 1.0, height);
+            
+            // 根据题目类型判断是否为疑难题目
+            boolean isDifficult = vq.getType().contains("解答题") || vq.getType().contains("证明题") || 
+                                 vq.getSubject().equals("数学") && vq.getContent().length() > 100;
+            
+            QuestionSegment segment = new QuestionSegment(
+                    vq.getId(),
+                    vq.getContent(),
+                    bounds,
+                    vq.getConfidence(),
+                    isDifficult
+            );
+            
+            segments.add(segment);
+        }
+        
+        return segments;
+    }
+
+    /**
      * 验证是否为图片文件
      */
     private boolean isImageFile(String contentType) {
@@ -952,7 +1030,8 @@ public class OCRService {
                 contentType.contains("jpg") || 
                 contentType.contains("png") || 
                 contentType.contains("gif") || 
-                contentType.contains("bmp"));
+                contentType.contains("bmp") ||
+                contentType.contains("webp"));
     }
 
     /**
