@@ -115,6 +115,14 @@ public class QuestionDTO {
             case "geography":
             case "地理":
                 return 8L;
+            case "computer":
+            case "计算机":
+            case "编程":
+            case "计算机/编程":
+                return 9L;
+            case "politics":
+            case "政治":
+                return 10L;
             default:
                 return 1L; // 默认数学分类
         }

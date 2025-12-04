@@ -34,16 +34,8 @@ public class DataInitializer implements CommandLineRunner {
      * 初始化默认分类数据
      */
     private void initializeCategories() {
-        // 检查是否已经有活跃的分类数据
-        long categoryCount = categoryRepository.countActive();
-        if (categoryCount > 0) {
-            log.info("分类数据已存在，跳过初始化。当前活跃分类数量: {}", categoryCount);
-            return;
-        }
+        log.info("开始检查并初始化默认分类数据...");
 
-        log.info("开始初始化默认分类数据...");
-        
-        // 创建默认分类列表（让数据库自动生成ID）
         List<Category> defaultCategories = Arrays.asList(
             createCategory("数学", "数学相关题目", "#E8A855"),
             createCategory("物理", "物理相关题目", "#4A90E2"),
@@ -52,24 +44,21 @@ public class DataInitializer implements CommandLineRunner {
             createCategory("语文", "语文相关题目", "#BD10E0"),
             createCategory("生物", "生物相关题目", "#50E3C2"),
             createCategory("历史", "历史相关题目", "#D0021B"),
-            createCategory("地理", "地理相关题目", "#8B572A")
+            createCategory("地理", "地理相关题目", "#8B572A"),
+            createCategory("计算机/编程", "计算机与编程相关题目", "#2A9D8F"),
+            createCategory("政治", "政治相关题目", "#C471ED")
         );
 
-        // 批量保存分类
-        try {
-            List<Category> savedCategories = categoryRepository.saveAll(defaultCategories);
-            log.info("成功初始化 {} 个默认分类", savedCategories.size());
-            
-            // 打印初始化的分类信息
-            savedCategories.forEach(category -> 
-                log.debug("初始化分类: ID={}, 名称={}, 描述={}", 
-                    category.getId(), category.getName(), category.getDescription())
-            );
-            
-        } catch (Exception e) {
-            log.error("初始化默认分类失败", e);
-            throw new RuntimeException("数据初始化失败", e);
-        }
+        defaultCategories.forEach(defaultCategory -> {
+            categoryRepository.findByName(defaultCategory.getName())
+                    .ifPresentOrElse(
+                            existing -> log.debug("分类已存在: {}", existing.getName()),
+                            () -> {
+                                Category saved = categoryRepository.save(defaultCategory);
+                                log.info("创建默认分类: {} (ID={})", saved.getName(), saved.getId());
+                            }
+                    );
+        });
     }
 
     /**

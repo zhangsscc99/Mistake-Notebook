@@ -387,6 +387,12 @@ public class UploadController {
                 return "历史";
             case "地理":
                 return "地理";
+            case "政治":
+                return "政治";
+            case "计算机":
+            case "编程":
+            case "计算机/编程":
+                return "计算机/编程";
             default:
                 return chineseCategory;
         }

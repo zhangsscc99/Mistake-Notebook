@@ -111,6 +111,10 @@ public class CategoryController {
                 return "🏛️";
             case "地理":
                 return "🌍";
+            case "计算机/编程":
+                return "💻";
+            case "政治":
+                return "🗳️";
             default:
                 return "📖";
         }
