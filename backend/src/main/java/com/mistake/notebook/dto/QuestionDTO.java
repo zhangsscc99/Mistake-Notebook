@@ -24,6 +24,8 @@ public class QuestionDTO {
     private List<String> tags;
     private Double ocrConfidence;
     private Double aiConfidence;
+    private String aiAnswer;
+    private String aiAnalysis;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -40,6 +42,8 @@ public class QuestionDTO {
         dto.setTags(question.getTags());
         dto.setOcrConfidence(question.getOcrConfidence());
         dto.setAiConfidence(question.getAiConfidence());
+        dto.setAiAnswer(question.getAiAnswer());
+        dto.setAiAnalysis(question.getAiAnalysis());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setUpdatedAt(question.getUpdatedAt());
         return dto;
@@ -71,6 +75,8 @@ public class QuestionDTO {
         question.setTags(this.tags);
         question.setOcrConfidence(this.ocrConfidence);
         question.setAiConfidence(this.aiConfidence);
+        question.setAiAnswer(this.aiAnswer);
+        question.setAiAnalysis(this.aiAnalysis);
         question.setIsDeleted(false);
         
         return question;

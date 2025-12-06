@@ -9,6 +9,7 @@
       placeholder
     >
       <template #right>
+        <span class="nav-action" @click="toggleEditMode">{{ editMode ? '完成' : '编辑' }}</span>
         <van-icon name="share-o" @click="shareCategory" />
       </template>
     </van-nav-bar>
@@ -65,7 +66,7 @@
             v-for="question in group.questions" 
             :key="question.id"
             class="question-card"
-            @click="viewQuestion(question)"
+            @click="editMode ? toggleSelection(question) : viewQuestion(question)"
           >
             <!-- 题目内容 -->
             <div class="question-content">
@@ -103,7 +104,7 @@
               <div class="meta-left">
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
               </div>
-              <div class="meta-right">
+              <div class="meta-right" v-if="editMode">
                 <van-checkbox 
                   v-model="question.selected"
                   @click.stop="toggleSelection(question)"
@@ -127,7 +128,7 @@
             v-for="question in filteredQuestions" 
             :key="question.id"
             class="question-card"
-            @click="viewQuestion(question)"
+            @click="editMode ? toggleSelection(question) : viewQuestion(question)"
           >
             <!-- 题目内容 -->
             <div class="question-content">
@@ -165,7 +166,7 @@
               <div class="meta-left">
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
               </div>
-              <div class="meta-right">
+              <div class="meta-right" v-if="editMode">
                 <van-checkbox 
                   v-model="question.selected"
                   @click.stop="toggleSelection(question)"
@@ -185,7 +186,7 @@
     </div>
 
     <!-- 批量操作栏 -->
-    <div v-if="selectedQuestions.length > 0" class="batch-actions">
+    <div v-if="editMode && selectedQuestions.length > 0" class="batch-actions">
       <div class="batch-info">
         已选择 {{ selectedQuestions.length }} 道题
       </div>
@@ -220,6 +221,7 @@ export default {
     const knowledgePointFilter = ref('all')
     const groupByKnowledgePoint = ref(true)
     const expandedGroups = reactive(new Set())
+    const editMode = ref(false)
 
 
     const categoryInfo = reactive({
@@ -417,6 +419,14 @@ export default {
               <strong>题目内容：</strong><br/>
               ${question.recognizedText}
             </div>
+            <div style="margin-bottom: 12px;">
+              <strong>参考答案：</strong><br/>
+              ${question.aiAnswer || '待补充'}
+            </div>
+            <div style="margin-bottom: 12px;">
+              <strong>解析：</strong><br/>
+              ${question.aiAnalysis || 'AI暂未给出解析'}
+            </div>
             ${question.tags.length > 0 ? `
               <div style="margin-bottom: 12px;">
                 <strong>标签：</strong> ${question.tags.join(', ')}
@@ -494,6 +504,15 @@ export default {
     // 切换选择
     const toggleSelection = (question) => {
       question.selected = !question.selected
+    }
+
+    const toggleEditMode = () => {
+      editMode.value = !editMode.value
+      if (!editMode.value) {
+        questions.forEach(q => {
+          q.selected = false
+        })
+      }
     }
 
     // 开始练习
@@ -598,6 +617,8 @@ export default {
             id: question.id,
             recognizedText: question.content || question.recognizedText || '暂无内容',
             imageUrl: question.imageUrl || '',
+            aiAnswer: question.aiAnswer || '待补充',
+            aiAnalysis: question.aiAnalysis || 'AI暂未给出解析',
             tags: (() => {
               if (!question.tags) return [];
               if (typeof question.tags === 'string') {
@@ -651,6 +672,7 @@ export default {
       filterOptions,
       knowledgePointOptions,
       knowledgePointGroups,
+      editMode,
       getDifficultyText,
       formatTime,
       onRefresh,
@@ -659,6 +681,7 @@ export default {
       previewImage,
       onImageError,
       toggleSelection,
+      toggleEditMode,
       toggleGroup,
       startPractice,
       addToExam,
@@ -676,6 +699,12 @@ export default {
   background: var(--bg-primary);
   padding-bottom: 20px;
   position: relative;
+}
+
+.nav-action {
+  margin-right: 12px;
+  color: var(--primary-color);
+  font-size: 14px;
 }
 
 /* 🌟 页面背景光效 */

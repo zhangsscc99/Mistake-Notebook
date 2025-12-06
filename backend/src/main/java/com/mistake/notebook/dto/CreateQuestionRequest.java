@@ -27,4 +27,8 @@ public class CreateQuestionRequest {
     private Double ocrConfidence;
 
     private Double aiConfidence;
+
+    private String aiAnswer;
+
+    private String aiAnalysis;
 } 

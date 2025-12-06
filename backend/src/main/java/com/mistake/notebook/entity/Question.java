@@ -76,6 +76,18 @@ public class Question {
     private Double aiConfidence;
 
     /**
+     * AI生成的标准答案
+     */
+    @Column(name = "ai_answer", columnDefinition = "TEXT")
+    private String aiAnswer;
+
+    /**
+     * AI生成的解析
+     */
+    @Column(name = "ai_analysis", columnDefinition = "TEXT")
+    private String aiAnalysis;
+
+    /**
      * 是否已删除
      */
     @Column(name = "is_deleted")

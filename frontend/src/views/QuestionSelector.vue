@@ -242,7 +242,9 @@ export default {
           bounds: { top: 15, left: 10, width: 80, height: 12 },
           text: '1. (1+5i)的绝对值',
           difficulty: '简单',
-          confidence: 0.92
+          confidence: 0.92,
+          aiAnswer: '示例答案1',
+          aiAnalysis: '示例解析1'
         },
         {
           id: 2,
@@ -250,7 +252,9 @@ export default {
           bounds: { top: 30, left: 10, width: 80, height: 12 },
           text: '2. 设集合U={1,2,3,4,5,6,7,8}，集合A={1,3,5,7}，B(A)表示A在全集U中的补集',
           difficulty: '中等',
-          confidence: 0.88
+          confidence: 0.88,
+          aiAnswer: '示例答案2',
+          aiAnalysis: '示例解析2'
         },
         {
           id: 3,
@@ -258,7 +262,9 @@ export default {
           bounds: { top: 45, left: 10, width: 80, height: 12 },
           text: '3. 若直线l经过点P(1,2)且倾斜角为π/3，则直线l的方程为',
           difficulty: '中等',
-          confidence: 0.90
+          confidence: 0.90,
+          aiAnswer: '示例答案3',
+          aiAnalysis: '示例解析3'
         },
         {
           id: 4,
@@ -266,7 +272,9 @@ export default {
           bounds: { top: 60, left: 10, width: 80, height: 15 },
           text: '4. 若点(a,b)(a>0)是圆M上一点，且到直线y=2tan(x-π/4)的距离为max，M的圆心的横坐标是',
           difficulty: '困难',
-          confidence: 0.85
+          confidence: 0.85,
+          aiAnswer: '示例答案4',
+          aiAnalysis: '示例解析4'
         },
         {
           id: 5,
@@ -274,7 +282,9 @@ export default {
           bounds: { top: 78, left: 10, width: 80, height: 15 },
           text: '5. 设f(x)是定义在R上的函数，若对于任意x≤3时，f(x)=x-21，M=max{f(x)|x∈R}',
           difficulty: '困难',
-          confidence: 0.87
+          confidence: 0.87,
+          aiAnswer: '示例答案5',
+          aiAnalysis: '示例解析5'
         },
         {
           id: 6,
@@ -282,7 +292,9 @@ export default {
           bounds: { top: 95, left: 10, width: 80, height: 25 },
           text: '6. 假设扔掷，运动总量的信息只需满足以下大小的的，是对信息风险的风力',
           difficulty: '中等',
-          confidence: 0.75
+          confidence: 0.75,
+          aiAnswer: '示例答案6',
+          aiAnalysis: '示例解析6'
         }
       ]
 

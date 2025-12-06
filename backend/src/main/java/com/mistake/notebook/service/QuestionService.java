@@ -43,6 +43,8 @@ public class QuestionService {
         dto.setTags(request.getTags());
         dto.setOcrConfidence(request.getOcrConfidence());
         dto.setAiConfidence(request.getAiConfidence());
+        dto.setAiAnswer(request.getAiAnswer());
+        dto.setAiAnalysis(request.getAiAnalysis());
         
         Question question = dto.toEntity();
         Question savedQuestion = questionRepository.save(question);
@@ -176,6 +178,8 @@ public class QuestionService {
                     question.setTags(request.getTags());
                     question.setOcrConfidence(request.getOcrConfidence());
                     question.setAiConfidence(request.getAiConfidence());
+                    question.setAiAnswer(request.getAiAnswer());
+                    question.setAiAnalysis(request.getAiAnalysis());
                     
                     Question savedQuestion = questionRepository.save(question);
                     log.info("题目更新成功，ID：{}", savedQuestion.getId());

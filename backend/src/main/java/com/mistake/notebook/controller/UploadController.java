@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import com.mistake.notebook.service.AIAnswerService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,6 +39,7 @@ public class UploadController {
 
     private final VisionReasoningService visionReasoningService;
     private final AIClassificationService aiClassificationService;
+    private final AIAnswerService aiAnswerService;
     private final QuestionService questionService;
 
     @Value("${file.upload.path}")
@@ -75,6 +77,12 @@ public class UploadController {
                 log.warn("AI分类失败，使用默认分类");
             }
 
+            // 3.5 AI生成答案解析
+            AIAnswerService.AnswerResult answerResult = aiAnswerService.generateAnswer(visionResult.getContent());
+            if (!answerResult.isSuccess()) {
+                log.warn("AI答案解析生成失败：{}", answerResult.getAnalysis());
+            }
+
             // 4. 创建题目
             CreateQuestionRequest request = new CreateQuestionRequest();
             request.setContent(visionResult.getContent());
@@ -89,6 +97,8 @@ public class UploadController {
             request.setOcrConfidence(visionResult.getConfidence());
             request.setAiConfidence(classificationResult.isSuccess() ? 
                     classificationResult.getConfidence() : null);
+            request.setAiAnswer(answerResult.getAnswer());
+            request.setAiAnalysis(answerResult.getAnalysis());
 
             QuestionDTO question = questionService.createQuestion(request);
 

@@ -1,3 +1,4 @@
+com/mistake/notebook/service/AIAnswerService.class
 com/mistake/notebook/entity/Category.class
 com/mistake/notebook/controller/QuestionController.class
 com/mistake/notebook/service/PDFService.class
@@ -7,6 +8,7 @@ com/mistake/notebook/service/VisionReasoningService$VisionQuestionResult.class
 com/mistake/notebook/service/VisionReasoningService.class
 com/mistake/notebook/service/AIClassificationService$ClassificationResult.class
 com/mistake/notebook/controller/TestPaperController$TestPaperRequest.class
+com/mistake/notebook/service/AIAnswerService$AnswerResult.class
 com/mistake/notebook/config/CorsConfig.class
 com/mistake/notebook/repository/CategoryRepository.class
 com/mistake/notebook/dto/CreateQuestionRequest.class
