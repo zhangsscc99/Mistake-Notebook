@@ -298,10 +298,11 @@ public class VisionReasoningService {
                    - 题目序号（如果有）
                    - 完整的题目内容（包括题干和选项）
                    - 题目类型（选择题、填空题、解答题等）
-                   - 学科分类（数学、语文、英语、物理、化学等）
+                   - 学科分类（数学、语文、英语、物理、化学、计算机/编程等）
+                   - 题目在原图片中的相对位置（top/left/width/height，以0-1之间的小数表示百分比）
                 
                 3. 输出格式要求：
-                请严格按照以下JSON格式输出，不要添加其他内容：
+                请严格按照以下JSON格式输出，不要添加任何额外说明：
                 {
                   "questions": [
                     {
@@ -309,12 +310,21 @@ public class VisionReasoningService {
                       "content": "题目完整内容",
                       "type": "题目类型",
                       "subject": "学科分类",
-                      "confidence": 0.95
+                      "confidence": 0.95,
+                      "bounds": {
+                        "top": 0.12,
+                        "left": 0.05,
+                        "width": 0.90,
+                        "height": 0.18
+                      }
                     }
                   ]
                 }
                 
                 4. 注意事项：
+                   - top/left 表示题目框左上角相对于整张图片的位置（0表示顶部/最左，1表示底部/最右）
+                   - width/height 表示题目区域宽高相对于整张图片的比例
+                   - 如果无法确定位置，请根据题目相对顺序估算百分比，但不可省略bounds字段
                    - 保持数学公式、符号的准确性
                    - 选择题要包含所有选项
                    - 如果图片模糊或无法识别，请在confidence中体现
@@ -350,8 +360,18 @@ public class VisionReasoningService {
                     String subject = questionObj.has("subject") ? questionObj.get("subject").getAsString() : "未分类";
                     double confidence = questionObj.has("confidence") ? questionObj.get("confidence").getAsDouble() : 0.8;
                     
+                    VisionQuestionBounds bounds = null;
+                    if (questionObj.has("bounds") && questionObj.get("bounds").isJsonObject()) {
+                        JsonObject boundsObj = questionObj.getAsJsonObject("bounds");
+                        double top = boundsObj.has("top") ? boundsObj.get("top").getAsDouble() : (double) i / Math.max(1, questionsArray.size());
+                        double left = boundsObj.has("left") ? boundsObj.get("left").getAsDouble() : 0.0;
+                        double width = boundsObj.has("width") ? boundsObj.get("width").getAsDouble() : 1.0;
+                        double height = boundsObj.has("height") ? boundsObj.get("height").getAsDouble() : (1.0 / Math.max(1, questionsArray.size()));
+                        bounds = new VisionQuestionBounds(top, left, width, height);
+                    }
+                    
                     if (!content.trim().isEmpty()) {
-                        questions.add(new VisionQuestion(id, content.trim(), type, subject, confidence));
+                        questions.add(new VisionQuestion(id, content.trim(), type, subject, confidence, bounds));
                     }
                 }
             }
@@ -455,13 +475,15 @@ public class VisionReasoningService {
         private final String type;
         private final String subject;
         private final double confidence;
+        private final VisionQuestionBounds bounds;
 
-        public VisionQuestion(int id, String content, String type, String subject, double confidence) {
+        public VisionQuestion(int id, String content, String type, String subject, double confidence, VisionQuestionBounds bounds) {
             this.id = id;
             this.content = content;
             this.type = type;
             this.subject = subject;
             this.confidence = confidence;
+            this.bounds = bounds;
         }
 
         public int getId() { return id; }
@@ -469,5 +491,28 @@ public class VisionReasoningService {
         public String getType() { return type; }
         public String getSubject() { return subject; }
         public double getConfidence() { return confidence; }
+        public VisionQuestionBounds getBounds() { return bounds; }
+    }
+
+    /**
+     * 视觉题目的位置信息
+     */
+    public static class VisionQuestionBounds {
+        private final double top;
+        private final double left;
+        private final double width;
+        private final double height;
+
+        public VisionQuestionBounds(double top, double left, double width, double height) {
+            this.top = top;
+            this.left = left;
+            this.width = width;
+            this.height = height;
+        }
+
+        public double getTop() { return top; }
+        public double getLeft() { return left; }
+        public double getWidth() { return width; }
+        public double getHeight() { return height; }
     }
 }

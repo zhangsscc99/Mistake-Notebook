@@ -10,9 +10,13 @@ lerna-debug.log*
 node_modules
 .pnp
 .pnp.js
+backend/target
+/backend/target
+
 
 # Production build
 /dist
+
 
 # Environment variables
 .env.local

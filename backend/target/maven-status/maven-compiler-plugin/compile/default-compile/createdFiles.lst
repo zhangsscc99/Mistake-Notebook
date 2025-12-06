@@ -24,4 +24,5 @@ com/mistake/notebook/config/DataInitializer.class
 com/mistake/notebook/controller/TestPaperController.class
 com/mistake/notebook/config/AIConfig.class
 com/mistake/notebook/service/AIClassificationService.class
+com/mistake/notebook/service/VisionReasoningService$VisionQuestionBounds.class
 com/mistake/notebook/MistakeNotebookApplication.class

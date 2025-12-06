@@ -482,15 +482,37 @@ public class UploadController {
             segment.put("isDifficult", question.getType() != null && question.getType().contains("解答"));
 
             Map<String, Double> bounds = new HashMap<>();
-            bounds.put("top", index * defaultHeight);
-            bounds.put("left", 0.0);
-            bounds.put("width", 1.0);
-            bounds.put("height", defaultHeight);
+            VisionReasoningService.VisionQuestionBounds qBounds = question.getBounds();
+            if (qBounds != null) {
+                bounds.put("top", percentageToDisplay(qBounds.getTop()));
+                bounds.put("left", percentageToDisplay(qBounds.getLeft()));
+                bounds.put("width", percentageToDisplay(qBounds.getWidth()));
+                bounds.put("height", percentageToDisplay(qBounds.getHeight()));
+            } else {
+                // 没有位置信息时，采用网格分布，避免按钮堆叠
+                double row = index / 2;
+                double col = index % 2;
+                double spacingY = 0.18;
+                double spacingX = 0.48;
+
+                bounds.put("top", percentageToDisplay(row * spacingY));
+                bounds.put("left", percentageToDisplay(0.02 + col * spacingX));
+                bounds.put("width", percentageToDisplay(0.45));
+                bounds.put("height", percentageToDisplay(Math.max(0.12, Math.min(0.25, defaultHeight))));
+            }
             segment.put("bounds", bounds);
 
             segments.add(segment);
         }
 
         return segments;
+    }
+
+    private double percentageToDisplay(double value) {
+        if (Double.isNaN(value)) {
+            return 0.0;
+        }
+        double clamped = Math.min(1.0, Math.max(0.0, value));
+        return clamped * 100.0;
     }
 } 
