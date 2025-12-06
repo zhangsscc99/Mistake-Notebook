@@ -9,8 +9,17 @@
       placeholder
     >
       <template #right>
-        <span class="nav-action" @click="toggleEditMode">{{ editMode ? '完成' : '编辑' }}</span>
-        <van-icon name="share-o" @click="shareCategory" />
+        <div class="nav-actions">
+          <span 
+            v-if="editMode" 
+            class="nav-action" 
+            @click="toggleSelectAll"
+          >
+            {{ isAllSelected ? '取消全选' : '全选' }}
+          </span>
+          <span class="nav-action" @click="toggleEditMode">{{ editMode ? '完成' : '编辑' }}</span>
+          <van-icon name="share-o" @click="shareCategory" />
+        </div>
       </template>
     </van-nav-bar>
 
@@ -222,6 +231,7 @@ export default {
     const groupByKnowledgePoint = ref(true)
     const expandedGroups = reactive(new Set())
     const editMode = ref(false)
+    const isAllSelected = computed(() => questions.length > 0 && questions.every(q => q.selected))
 
 
     const categoryInfo = reactive({
@@ -509,12 +519,14 @@ export default {
     const toggleEditMode = () => {
       editMode.value = !editMode.value
       if (!editMode.value) {
-        questions.forEach(q => {
-          q.selected = false
-        })
+        questions.forEach(q => (q.selected = false))
       }
     }
 
+    const toggleSelectAll = () => {
+      const target = !isAllSelected.value
+      questions.forEach(q => (q.selected = target))
+    }
     // 开始练习
     const startPractice = () => {
       if (questions.length === 0) {
@@ -673,6 +685,7 @@ export default {
       knowledgePointOptions,
       knowledgePointGroups,
       editMode,
+      isAllSelected,
       getDifficultyText,
       formatTime,
       onRefresh,
@@ -682,6 +695,7 @@ export default {
       onImageError,
       toggleSelection,
       toggleEditMode,
+      toggleSelectAll,
       toggleGroup,
       startPractice,
       addToExam,
@@ -705,6 +719,12 @@ export default {
   margin-right: 12px;
   color: var(--primary-color);
   font-size: 14px;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* 🌟 页面背景光效 */

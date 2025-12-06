@@ -79,6 +79,10 @@ public class UploadController {
 
             // 3.5 AI生成答案解析
             AIAnswerService.AnswerResult answerResult = aiAnswerService.generateAnswer(visionResult.getContent());
+            log.info("AI答案生成结果: success={}, confidence={}, summary={}",
+                    answerResult.isSuccess(),
+                    answerResult.getConfidence(),
+                    answerResult.getAnswer() != null ? answerResult.getAnswer().substring(0, Math.min(30, answerResult.getAnswer().length())) : "null");
             if (!answerResult.isSuccess()) {
                 log.warn("AI答案解析生成失败：{}", answerResult.getAnalysis());
             }

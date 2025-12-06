@@ -75,6 +75,7 @@ public class AIAnswerService {
                 String analysis = contentJson.path("analysis").asText("");
                 double confidence = contentJson.path("confidence").asDouble(0.85);
 
+                log.info("AI答案生成成功：answer长度={}，confidence={}", answer.length(), confidence);
                 return new AnswerResult(answer, analysis, confidence, true);
             }
         } catch (Exception e) {
