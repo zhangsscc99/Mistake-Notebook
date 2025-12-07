@@ -734,63 +734,162 @@ export default {
   font-size: 14px;
 }
 
-/* 对话框容器左对齐 */
+/* 🌑 深色主题对话框 - 与应用风格统一 */
 :deep(.question-detail-dialog) {
   align-items: flex-start !important;
   justify-content: flex-start !important;
   padding: 4vh 0 0 4vw !important;
 }
 
-/* 对话框本身左对齐 */
+/* 🎨 对话框主体 - 深色毛玻璃效果 */
 :deep(.question-detail-dialog .van-dialog) {
   width: 90vw !important;
-  max-width: 560px !important;
+  max-width: 600px !important;
   margin-left: 0 !important;
   margin-right: auto !important;
   text-align: left !important;
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 
+    var(--shadow-glow),
+    var(--shadow-inner),
+    var(--shadow-card) !important;
+  overflow: hidden !important;
+  position: relative !important;
 }
 
-/* 对话框标题左对齐 */
+/* 🌟 对话框顶部渐变装饰条 */
+:deep(.question-detail-dialog .van-dialog)::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: linear-gradient(90deg, 
+    var(--primary-color) 0%, 
+    var(--primary-light) 50%,
+    var(--accent-color) 100%) !important;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+  box-shadow: 0 2px 12px rgba(232, 168, 85, 0.5) !important;
+}
+
+/* 🎨 对话框标题样式 */
 :deep(.question-detail-dialog .van-dialog__header) {
   text-align: left !important;
-  padding-left: 20px !important;
+  padding: 24px 24px 16px 24px !important;
+  background: transparent !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: var(--text-primary) !important;
+  letter-spacing: 0.5px !important;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-accent)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
 }
 
-/* 对话框内容区域左对齐 */
+/* 🎨 对话框内容区域 */
 :deep(.question-detail-dialog .van-dialog__message) {
-  max-height: 70vh !important;
+  max-height: 65vh !important;
   overflow-y: auto !important;
   text-align: left !important;
-  padding: 16px 20px !important;
+  padding: 0 24px 24px 24px !important;
+  color: var(--text-primary) !important;
 }
 
-/* 所有段落左对齐 */
+/* 🎨 自定义滚动条 - 深色主题 */
+:deep(.question-detail-dialog .van-dialog__message)::-webkit-scrollbar {
+  width: 6px !important;
+}
+
+:deep(.question-detail-dialog .van-dialog__message)::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 3px !important;
+}
+
+:deep(.question-detail-dialog .van-dialog__message)::-webkit-scrollbar-thumb {
+  background: rgba(232, 168, 85, 0.4) !important;
+  border-radius: 3px !important;
+}
+
+:deep(.question-detail-dialog .van-dialog__message)::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 168, 85, 0.6) !important;
+}
+
+/* 📝 所有内容左对齐 */
 :deep(.question-detail-dialog .van-dialog__message *) {
   text-align: left !important;
 }
 
-/* 内容分区样式 */
+/* 📦 内容分区样式 */
 :deep(.dialog-section) {
-  margin-bottom: 16px !important;
+  margin-bottom: 20px !important;
   text-align: left !important;
+}
+
+:deep(.dialog-section:last-child) {
+  margin-bottom: 0 !important;
 }
 
 :deep(.dialog-section__title) {
   font-weight: 600 !important;
-  font-size: 14px !important;
-  color: var(--text-secondary) !important;
-  margin-bottom: 6px !important;
+  font-size: 15px !important;
+  color: var(--text-accent) !important;
+  margin-bottom: 10px !important;
   text-align: left !important;
+  display: flex !important;
+  align-items: center !important;
+  letter-spacing: 0.3px !important;
+}
+
+:deep(.dialog-section__title)::before {
+  content: '' !important;
+  display: inline-block !important;
+  width: 4px !important;
+  height: 16px !important;
+  background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-light) 100%) !important;
+  border-radius: 2px !important;
+  margin-right: 8px !important;
+  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5) !important;
 }
 
 :deep(.dialog-section__body) {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border-radius: 12px !important;
-  padding: 12px !important;
-  line-height: 1.6 !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 16px !important;
+  line-height: 1.8 !important;
   color: var(--text-primary) !important;
   word-break: break-word !important;
   text-align: left !important;
+  box-shadow: var(--shadow-inner) !important;
+  transition: all 0.3s var(--ease-smooth) !important;
+}
+
+/* ✨ 按钮样式美化 */
+:deep(.question-detail-dialog .van-dialog__footer) {
+  padding: 16px 24px 24px 24px !important;
+  background: transparent !important;
+}
+
+:deep(.question-detail-dialog .van-dialog__confirm) {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  color: var(--bg-primary) !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  padding: 12px 32px !important;
+  font-weight: 600 !important;
+  box-shadow: 
+    0 4px 16px rgba(232, 168, 85, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.3s var(--ease-smooth) !important;
+}
+
+:deep(.question-detail-dialog .van-dialog__confirm):active {
+  transform: translateY(-1px) scale(0.98) !important;
 }
 
 .nav-actions {
