@@ -222,7 +222,7 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast, showDialog, showConfirmDialog, ImagePreview } from 'vant'
+import { showToast, showDialog, showConfirmDialog, ImagePreview, Dialog } from 'vant'
 import categoryAPI from '../api/category'
 
 export default {
@@ -602,17 +602,74 @@ export default {
     }
 
     // 保存为试卷
-    const savePaper = async () => {
+    const savePaper = () => {
+      console.log('===== savePaper 开始执行 =====')
+      console.log('selectedQuestions:', selectedQuestions.value)
+      console.log('selectedQuestions 数量:', selectedQuestions.value.length)
+      
+      if (selectedQuestions.value.length === 0) {
+        showToast('请先选择题目')
+        return
+      }
+      
+      // 创建输入框元素
+      let inputValue = ''
+      
+      console.log('准备调用 showConfirmDialog...')
+      
       try {
-        const { value } = await showDialog.prompt({
-          title: '保存试卷',
-          message: '请输入试卷名称',
-          placeholder: '例如：数学第一次月考',
-          confirmButtonText: '保存',
-          cancelButtonText: '取消'
-        })
+        const dialog = showConfirmDialog({
+        title: '保存试卷',
+        message: `
+          <div style="text-align: left; padding: 20px 0;">
+            <div style="margin-bottom: 8px; color: var(--text-secondary); font-size: 14px;">请输入试卷名称</div>
+            <input 
+              id="paper-title-input"
+              type="text" 
+              value="数学练习卷"
+              placeholder="例如：数学第一次月考"
+              style="
+                width: 100%;
+                padding: 12px;
+                border: 1px solid rgba(232, 168, 85, 0.3);
+                border-radius: 8px;
+                font-size: 14px;
+                background: rgba(255, 255, 255, 0.05);
+                color: var(--text-primary);
+                outline: none;
+                box-sizing: border-box;
+              "
+            />
+          </div>
+        `,
+        allowHtml: true,
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+        className: 'save-paper-dialog',
+        beforeClose: (action) => {
+          if (action === 'confirm') {
+            const input = document.getElementById('paper-title-input')
+            inputValue = input ? input.value : ''
+            console.log('beforeClose - 获取到的值:', inputValue)
+          }
+          return true
+        }
+      })
+      
+      // 等待 DOM 渲染完成后聚焦输入框
+      setTimeout(() => {
+        const input = document.getElementById('paper-title-input')
+        if (input) {
+          input.focus()
+          input.select()
+        }
+      }, 100)
+      
+      dialog.then(() => {
+        // 用户点击确定
+        console.log('用户输入的值:', inputValue)
         
-        if (!value || !value.trim()) {
+        if (!inputValue || !inputValue.trim()) {
           showToast('请输入试卷名称')
           return
         }
@@ -620,7 +677,7 @@ export default {
         // 保存试卷到本地存储
         const paper = {
           id: Date.now(),
-          title: value.trim(),
+          title: inputValue.trim(),
           questionCount: selectedQuestions.value.length,
           questions: selectedQuestions.value.map(q => ({
             id: q.id,
@@ -633,6 +690,8 @@ export default {
           createdAt: new Date().toLocaleDateString()
         }
         
+        console.log('准备保存试卷:', paper)
+        
         // 从本地存储读取已有试卷
         const papersJson = localStorage.getItem('savedPapers')
         const papers = papersJson ? JSON.parse(papersJson) : []
@@ -640,17 +699,26 @@ export default {
         
         // 保存回本地存储
         localStorage.setItem('savedPapers', JSON.stringify(papers))
+        console.log('试卷已保存到localStorage')
         
         showToast({ message: '试卷保存成功', type: 'success' })
         
         // 延迟跳转回组卷页面
         setTimeout(() => {
+          console.log('跳转到组卷页面')
           router.push('/paper-builder')
         }, 800)
         
+      }).catch((error) => {
+        // 用户点击取消
+        console.log('用户点击了取消按钮或发生错误:', error)
+      })
+      
+      console.log('showConfirmDialog 调用完成')
+      
       } catch (error) {
-        // 用户取消
-        console.log('用户取消保存')
+        console.error('showConfirmDialog 调用失败:', error)
+        showToast('弹窗显示失败：' + error.message)
       }
     }
 
@@ -1197,7 +1265,8 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  z-index: 100;
+  z-index: 1000;
+  pointer-events: auto;
 }
 
 .batch-info {
@@ -1209,6 +1278,12 @@ export default {
 .batch-buttons {
   display: flex;
   gap: 8px;
+}
+
+.batch-buttons .van-button {
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 1;
 }
 
 /* 知识点分组样式 */
@@ -1328,5 +1403,67 @@ export default {
   background: var(--primary-color);
   border-radius: 50%;
   box-shadow: 0 0 8px rgba(232, 168, 85, 0.6);
+}
+
+/* 🌑 保存试卷对话框 - 深色主题 */
+:deep(.save-paper-dialog .van-dialog) {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 
+    var(--shadow-glow),
+    var(--shadow-inner),
+    var(--shadow-card) !important;
+  width: 85vw !important;
+  max-width: 400px !important;
+}
+
+:deep(.save-paper-dialog .van-dialog)::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: linear-gradient(90deg, 
+    var(--primary-color) 0%, 
+    var(--primary-light) 50%,
+    var(--accent-color) 100%) !important;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+}
+
+:deep(.save-paper-dialog .van-dialog__header) {
+  color: var(--text-primary) !important;
+  background: transparent !important;
+  font-weight: 700 !important;
+  padding: 24px 24px 16px 24px !important;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-accent)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+:deep(.save-paper-dialog .van-dialog__message) {
+  color: var(--text-primary) !important;
+  text-align: left !important;
+  padding: 0 24px 24px 24px !important;
+}
+
+:deep(.save-paper-dialog .van-dialog__confirm) {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  color: var(--bg-primary) !important;
+  border: none !important;
+  font-weight: 600 !important;
+}
+
+:deep(.save-paper-dialog .van-dialog__cancel) {
+  color: var(--text-secondary) !important;
+}
+
+/* 输入框焦点样式 */
+:deep(.save-paper-dialog #paper-title-input:focus) {
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 0 0 2px rgba(232, 168, 85, 0.2) !important;
 }
 </style>

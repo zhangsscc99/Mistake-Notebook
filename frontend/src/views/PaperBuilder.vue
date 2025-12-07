@@ -70,7 +70,7 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Toast, Dialog } from 'vant'
+import { Toast, showDialog, showConfirmDialog } from 'vant'
 import categoryAPI from '../api/category'
 
 export default {
@@ -332,7 +332,7 @@ export default {
         </div>
       `).join('')
       
-      Dialog({
+      showDialog({
         title: paper.title,
         message: `
           <div style="text-align: left;">
@@ -380,8 +380,18 @@ export default {
     const loadAvailableCategories = async () => {
       try {
         const result = await categoryAPI.getCategories()
-        if (result.success) {
-          availableCategories.splice(0, availableCategories.length, ...result.data)
+        console.log('PaperBuilder - 分类API响应:', result)
+        if (result.success && result.data && result.data.data) {
+          const categories = result.data.data.map(cat => ({
+            id: cat.id,
+            name: cat.name,
+            description: cat.description || '暂无描述',
+            icon: cat.icon || 'apps-o',
+            color: cat.color || '#E8A855',
+            count: cat.questionCount || 0
+          }))
+          availableCategories.splice(0, availableCategories.length, ...categories)
+          console.log('PaperBuilder - 成功加载分类:', categories)
         }
       } catch (error) {
         console.error('加载分类失败:', error)
