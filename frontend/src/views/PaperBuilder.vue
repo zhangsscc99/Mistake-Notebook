@@ -34,10 +34,6 @@
           </div>
           <van-icon name="arrow" color="var(--text-secondary)" />
         </div>
-        <div class="paper-stats">
-          <span class="stat-badge">{{ paper.duration }}分钟</span>
-          <span class="stat-badge">{{ paper.totalScore }}分</span>
-        </div>
       </div>
     </div>
 
@@ -70,7 +66,7 @@
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Toast, showDialog, showConfirmDialog } from 'vant'
+import { showToast, showLoadingToast, showDialog, showConfirmDialog } from 'vant'
 import categoryAPI from '../api/category'
 
 export default {
@@ -235,31 +231,26 @@ export default {
           cat.selectedQuestions = []
         })
         
-        Toast.success('已清空所有题目')
+        showToast({ message: '已清空所有题目', type: 'success' })
       } catch (error) {
         // 用户取消
       }
     }
 
     // 编辑题目分数
-    const editQuestionScore = async (question) => {
-      try {
-        const { value } = await Dialog.prompt({
-          title: '设置分数',
-          message: '请输入题目分数',
-          inputPlaceholder: '请输入分数',
-          inputValue: question.score || 5
-        })
-        
-        const score = parseInt(value)
-        if (score && score > 0) {
-          question.score = score
-          Toast.success('分数设置成功')
-        } else {
-          Toast.fail('请输入有效的分数')
-        }
-      } catch (error) {
-        // 用户取消
+    const editQuestionScore = (question) => {
+      const score = prompt('请输入题目分数', question.score || 5)
+      
+      if (score === null) {
+        return // 用户取消
+      }
+      
+      const parsedScore = parseInt(score)
+      if (parsedScore && parsedScore > 0) {
+        question.score = parsedScore
+        showToast({ message: '分数设置成功', type: 'success' })
+      } else {
+        showToast({ message: '请输入有效的分数', type: 'fail' })
       }
     }
 
@@ -278,36 +269,36 @@ export default {
     // 预览试卷
     const previewPaper = () => {
       if (allSelectedQuestions.length === 0) {
-        Toast('请先选择题目')
+        showToast('请先选择题目')
         return
       }
       
-      Toast('预览功能开发中...')
+      showToast('预览功能开发中...')
     }
 
     // 导出试卷
     const exportPaper = async () => {
       if (allSelectedQuestions.length === 0) {
-        Toast('请先选择题目')
+        showToast('请先选择题目')
         return
       }
       
       if (!paperInfo.title.trim()) {
-        Toast('请输入试卷标题')
+        showToast('请输入试卷标题')
         return
       }
       
       try {
-        Toast.loading('正在生成PDF...')
+        showLoadingToast({ message: '正在生成PDF...', forbidClick: true, duration: 0 })
         
         // 模拟导出过程
         await new Promise(resolve => setTimeout(resolve, 2000))
         
-        Toast.success('PDF导出成功!')
+        showToast({ message: 'PDF导出成功!', type: 'success' })
         
       } catch (error) {
         console.error('导出失败:', error)
-        Toast.fail('导出失败，请重试')
+        showToast({ message: '导出失败，请重试', type: 'fail' })
       }
     }
 
@@ -332,13 +323,14 @@ export default {
         </div>
       `).join('')
       
+      // 先显示试卷详情
       showDialog({
         title: paper.title,
         message: `
           <div style="text-align: left;">
             <div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(232, 168, 85, 0.15);">
-              <div style="color: var(--text-secondary); font-size: 13px; margin-bottom: 4px;">
-                📊 ${paper.questionCount} 道题 · ⏱️ ${paper.duration} 分钟 · 💯 ${paper.totalScore} 分
+              <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 4px;">
+                📊 共 ${paper.questionCount} 道题
               </div>
               <div style="color: var(--text-secondary); font-size: 12px;">
                 创建时间：${paper.createdAt}
@@ -350,19 +342,43 @@ export default {
           </div>
         `,
         allowHtml: true,
-        confirmButtonText: '导出PDF',
-        cancelButtonText: '关闭',
-        className: 'paper-detail-dialog',
-        showCancelButton: true
+        confirmButtonText: '导出选项',
+        className: 'paper-detail-dialog'
       }).then(() => {
-        // 用户点击导出PDF
-        Toast.loading('正在生成PDF...')
-        setTimeout(() => {
-          Toast.success('PDF导出成功!')
-        }, 1500)
+        // 用户点击"导出选项"，显示导出方式选择
+        showExportOptions(paper)
       }).catch(() => {
-        // 用户点击关闭
+        // 用户关闭对话框
       })
+    }
+    
+    // 显示导出选项
+    const showExportOptions = (paper) => {
+      showConfirmDialog({
+        title: '选择导出方式',
+        message: '请选择导出PDF的方式',
+        confirmButtonText: '带解析版',
+        cancelButtonText: '不带解析',
+        className: 'export-options-dialog'
+      }).then(() => {
+        // 导出带解析的PDF
+        exportPaperPDF(paper, true)
+      }).catch(() => {
+        // 导出不带解析的PDF
+        exportPaperPDF(paper, false)
+      })
+    }
+    
+    // 导出试卷PDF
+    const exportPaperPDF = (paper, withAnalysis) => {
+      const mode = withAnalysis ? '带解析' : '不带解析'
+      showLoadingToast({ message: `正在生成${mode}PDF...`, forbidClick: true, duration: 0 })
+      
+      // 模拟导出过程
+      setTimeout(() => {
+        showToast({ message: `${mode}PDF导出成功!`, type: 'success' })
+        console.log('导出试卷:', paper.title, '模式:', mode)
+      }, 1500)
     }
 
     // 加载已保存的试卷
@@ -494,7 +510,9 @@ export default {
       previewPaper,
       exportPaper,
       createNewPaper,
-      viewPaper
+      viewPaper,
+      exportPaperPDF,
+      showExportOptions
     }
   }
 }
@@ -1085,5 +1103,59 @@ export default {
 
 :deep(.paper-detail-dialog .van-dialog__cancel) {
   color: var(--text-secondary) !important;
+}
+
+/* 🌑 导出选项对话框 - 深色主题 */
+:deep(.export-options-dialog .van-dialog) {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-xl) !important;
+  box-shadow: 
+    var(--shadow-glow),
+    var(--shadow-inner),
+    var(--shadow-card) !important;
+}
+
+:deep(.export-options-dialog .van-dialog)::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3px !important;
+  background: linear-gradient(90deg, 
+    var(--primary-color) 0%, 
+    var(--primary-light) 50%,
+    var(--accent-color) 100%) !important;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+}
+
+:deep(.export-options-dialog .van-dialog__header) {
+  color: var(--text-primary) !important;
+  background: transparent !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, var(--text-primary), var(--text-accent)) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+:deep(.export-options-dialog .van-dialog__message) {
+  color: var(--text-primary) !important;
+}
+
+:deep(.export-options-dialog .van-dialog__confirm) {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  color: var(--bg-primary) !important;
+  border: none !important;
+  font-weight: 600 !important;
+}
+
+:deep(.export-options-dialog .van-dialog__cancel) {
+  background: rgba(232, 168, 85, 0.15) !important;
+  color: var(--text-accent) !important;
+  border: 1px solid rgba(232, 168, 85, 0.3) !important;
+  font-weight: 600 !important;
 }
 </style>
