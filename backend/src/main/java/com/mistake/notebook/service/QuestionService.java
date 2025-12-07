@@ -204,6 +204,23 @@ public class QuestionService {
     }
 
     /**
+     * 批量删除题目
+     */
+    @Transactional
+    public void batchDeleteQuestions(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        questionRepository.findAllById(ids).forEach(question -> {
+            if (!question.getIsDeleted()) {
+                question.setIsDeleted(true);
+                questionRepository.save(question);
+                log.info("批量删除题目，ID：{}", question.getId());
+            }
+        });
+    }
+
+    /**
      * 根据分类ID获取题目列表
      */
     public List<QuestionDTO> getQuestionsByCategory(Long categoryId) {

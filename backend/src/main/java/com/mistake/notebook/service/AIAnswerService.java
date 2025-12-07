@@ -55,18 +55,24 @@ public class AIAnswerService {
 
                 if (!response.isSuccessful()) {
                     log.error("AI答案生成失败，状态码 {}，响应 {}", response.code(), responseBody);
-                    return AnswerResult.empty("AI答案生成失败：" + response.code());
+                    return AnswerResult.empty("AI接口HTTP状态码：" + response.code());
+                }
+
+                if (responseBody.isBlank()) {
+                    log.error("AI答案生成失败，响应体为空");
+                    return AnswerResult.empty("AI接口响应为空");
                 }
 
                 JsonNode root = objectMapper.readTree(responseBody);
                 JsonNode choices = root.path("choices");
                 if (!choices.isArray() || choices.isEmpty()) {
-                    log.warn("AI答案返回空choices");
-                    return AnswerResult.empty("AI回答为空");
+                    log.warn("AI答案返回空choices，原始响应：{}", responseBody);
+                    return AnswerResult.empty("AI回答choices为空");
                 }
 
                 String content = choices.get(0).path("message").path("content").asText("");
                 if (content.isBlank()) {
+                    log.warn("AI答案返回内容为空，原始choices：{}", choices.get(0));
                     return AnswerResult.empty("AI回答内容为空");
                 }
 
@@ -93,6 +99,7 @@ public class AIAnswerService {
         private boolean success;
 
         public static AnswerResult empty(String message) {
+            log.warn("AI答案生成失败：{}", message);
             return new AnswerResult("待补充", message, 0.0, false);
         }
     }

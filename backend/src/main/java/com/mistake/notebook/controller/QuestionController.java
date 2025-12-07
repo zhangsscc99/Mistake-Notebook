@@ -163,6 +163,25 @@ public class QuestionController {
     }
 
     /**
+     * 批量删除题目
+     */
+    @PostMapping("/batch-delete")
+    public ResponseEntity<ApiResponse<Void>> batchDelete(@RequestBody List<Long> ids) {
+        try {
+            if (ids == null || ids.isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.<Void>error("请选择要删除的题目"));
+            }
+            questionService.batchDeleteQuestions(ids);
+            return ResponseEntity.ok(ApiResponse.<Void>success("批量删除题目成功", null));
+        } catch (Exception e) {
+            log.error("批量删除题目失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("批量删除题目失败：" + e.getMessage()));
+        }
+    }
+
+    /**
      * 获取分类统计
      */
     @GetMapping("/statistics/category")

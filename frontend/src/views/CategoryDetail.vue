@@ -567,8 +567,12 @@ export default {
           message: `确定要删除选中的 ${selectedQuestions.value.length} 道题目吗？`,
         })
         
-        // 执行删除
         const selectedIds = selectedQuestions.value.map(q => q.id)
+        const response = await categoryAPI.batchDeleteQuestions(selectedIds)
+        if (!response.success) {
+          showToast(response.message || '删除失败')
+          return
+        }
         questions.splice(0, questions.length, ...questions.filter(q => !selectedIds.includes(q.id)))
         
         showToast({ message: '删除成功', type: 'success' })

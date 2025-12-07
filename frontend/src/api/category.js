@@ -162,6 +162,22 @@ const categoryAPI = {
   },
 
   /**
+   * 批量删除题目
+   */
+  async batchDeleteQuestions(ids) {
+    try {
+      await apiClient.post('/questions/batch-delete', ids)
+      return { success: true }
+    } catch (error) {
+      console.error('批量删除题目失败:', error)
+      return {
+        success: false,
+        message: error.response?.data?.message || '批量删除题目失败'
+      }
+    }
+  },
+
+  /**
    * 获取分类统计信息
    * @returns {Promise} 统计信息
    */

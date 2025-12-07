@@ -328,6 +328,25 @@ public class UploadController {
                     createRequest.setAiConfidence(0.5);
                     createRequest.setTags(null); // 空标签
                 }
+
+                // AI答案解析
+                try {
+                    AIAnswerService.AnswerResult answerResult = aiAnswerService.generateAnswer(content);
+                    log.info("AI答案生成结果: success={}, confidence={}, summary={}",
+                            answerResult.isSuccess(),
+                            answerResult.getConfidence(),
+                            answerResult.getAnswer() != null ? answerResult.getAnswer().substring(0, Math.min(30, answerResult.getAnswer().length())) : "null");
+
+                    createRequest.setAiAnswer(answerResult.getAnswer());
+                    createRequest.setAiAnalysis(answerResult.getAnalysis());
+                    if (!answerResult.isSuccess()) {
+                        log.warn("AI答案解析生成失败：{}", answerResult.getAnalysis());
+                    }
+                } catch (Exception answerException) {
+                    log.error("AI答案生成异常，使用默认答案", answerException);
+                    createRequest.setAiAnswer("待补充");
+                    createRequest.setAiAnalysis("AI暂未给出解析");
+                }
                 
                 log.info("准备保存题目: {}", content.substring(0, Math.min(50, content.length())));
                 
