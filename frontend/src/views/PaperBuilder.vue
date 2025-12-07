@@ -68,6 +68,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showLoadingToast, showDialog, showConfirmDialog } from 'vant'
 import categoryAPI from '../api/category'
+import { jsPDF } from 'jspdf'
 
 export default {
   name: 'PaperBuilder',
@@ -370,15 +371,158 @@ export default {
     }
     
     // 导出试卷PDF
-    const exportPaperPDF = (paper, withAnalysis) => {
+    const exportPaperPDF = async (paper, withAnalysis) => {
       const mode = withAnalysis ? '带解析' : '不带解析'
       showLoadingToast({ message: `正在生成${mode}PDF...`, forbidClick: true, duration: 0 })
       
-      // 模拟导出过程
-      setTimeout(() => {
-        showToast({ message: `${mode}PDF导出成功!`, type: 'success' })
+      try {
+        // 等待一下让loading显示出来
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
+        // 生成HTML内容
+        let htmlContent = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${paper.title}</title>
+    <style>
+        body {
+            font-family: "SimSun", "宋体", serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.8;
+            color: #333;
+        }
+        .paper-header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #E8A855;
+            padding-bottom: 20px;
+        }
+        .paper-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .paper-info {
+            font-size: 14px;
+            color: #666;
+        }
+        .question {
+            margin-bottom: ${withAnalysis ? '40px' : '30px'};
+            page-break-inside: avoid;
+        }
+        .question-number {
+            font-weight: bold;
+            color: #E8A855;
+            margin-bottom: 8px;
+        }
+        .question-content {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #E8A855;
+            border-radius: 4px;
+        }
+        .answer-section {
+            margin-top: 15px;
+            padding: 15px;
+            background: #fff8e1;
+            border-left: 4px solid #4caf50;
+            border-radius: 4px;
+        }
+        .section-title {
+            font-weight: bold;
+            color: #4caf50;
+            margin-bottom: 8px;
+        }
+        .analysis-section {
+            margin-top: 10px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            border-radius: 4px;
+        }
+        .analysis-title {
+            font-weight: bold;
+            color: #2196f3;
+            margin-bottom: 8px;
+        }
+        .footer {
+            margin-top: 60px;
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="paper-header">
+        <div class="paper-title">${paper.title}</div>
+        <div class="paper-info">共 ${paper.questionCount} 道题 · 创建时间：${paper.createdAt}</div>
+    </div>
+    
+    <div class="questions">
+`
+        
+        // 添加题目内容
+        paper.questions.forEach((q, index) => {
+          htmlContent += `
+        <div class="question">
+            <div class="question-number">第 ${index + 1} 题</div>
+            <div class="question-content">${q.content}</div>
+`
+          
+          // 如果是带解析版，添加答案和解析
+          if (withAnalysis) {
+            htmlContent += `
+            <div class="answer-section">
+                <div class="section-title">参考答案</div>
+                <div>${q.answer || 'A'}</div>
+            </div>
+            <div class="analysis-section">
+                <div class="analysis-title">解析</div>
+                <div>${q.analysis || '详细解析内容...'}</div>
+            </div>
+`
+          }
+          
+          htmlContent += `        </div>\n`
+        })
+        
+        htmlContent += `
+    </div>
+    
+    <div class="footer">
+        本试卷由智能组卷系统生成
+    </div>
+</body>
+</html>
+`
+        
+        // 创建Blob并下载
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${paper.title}_${mode}.html`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        
+        showToast({ message: `${mode}试卷已下载!`, type: 'success' })
         console.log('导出试卷:', paper.title, '模式:', mode)
-      }, 1500)
+        
+      } catch (error) {
+        console.error('导出失败:', error)
+        showToast({ message: '导出失败，请重试', type: 'fail' })
+      }
     }
 
     // 加载已保存的试卷

@@ -672,6 +672,8 @@ export default {
           questions: selectedQuestions.value.map(q => ({
             id: q.id,
             content: q.recognizedText,
+            answer: q.aiAnswer || '待补充',
+            analysis: q.aiAnalysis || 'AI暂未给出解析',
             categoryId: categoryId,
             categoryName: categoryInfo.name
           })),
