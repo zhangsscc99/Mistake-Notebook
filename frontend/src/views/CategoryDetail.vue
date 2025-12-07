@@ -420,35 +420,42 @@ export default {
 
     // 查看题目详情
     const viewQuestion = (question) => {
-      // 创建题目详情弹窗
+      const formatRichText = (text) => {
+        return (text || '暂无内容').replace(/\n/g, '<br/>')
+      }
+      const content = formatRichText(question.recognizedText || question.text || question.content)
+      const answer = formatRichText(question.aiAnswer || '待补充')
+      const analysis = formatRichText(question.aiAnalysis || 'AI暂未给出解析')
+
       showDialog({
         title: `题目 #${question.id}`,
         message: `
-          <div style="text-align: left; line-height: 1.6;">
-            <div style="margin-bottom: 12px;">
-              <strong>题目内容：</strong><br/>
-              ${question.recognizedText}
-            </div>
-            <div style="margin-bottom: 12px;">
-              <strong>参考答案：</strong><br/>
-              ${question.aiAnswer || '待补充'}
-            </div>
-            <div style="margin-bottom: 12px;">
-              <strong>解析：</strong><br/>
-              ${question.aiAnalysis || 'AI暂未给出解析'}
-            </div>
-            ${question.tags.length > 0 ? `
-              <div style="margin-bottom: 12px;">
-                <strong>标签：</strong> ${question.tags.join(', ')}
-              </div>
-            ` : ''}
-            <div>
-              <strong>添加时间：</strong> ${formatTime(question.createdAt)}
-            </div>
+          <div class="dialog-section">
+            <div class="dialog-section__title">题目内容</div>
+            <div class="dialog-section__body">${content}</div>
+          </div>
+          <div class="dialog-section">
+            <div class="dialog-section__title">参考答案</div>
+            <div class="dialog-section__body">${answer}</div>
+          </div>
+          <div class="dialog-section">
+            <div class="dialog-section__title">解析</div>
+            <div class="dialog-section__body">${analysis}</div>
+          </div>
+          ${question.tags.length > 0 ? `
+            <div class="dialog-section">
+              <div class="dialog-section__title">标签</div>
+              <div class="dialog-section__body">${question.tags.join(', ')}</div>
+            </div>` : ''}
+          <div class="dialog-section">
+            <div class="dialog-section__title">添加时间</div>
+            <div class="dialog-section__body">${formatTime(question.createdAt)}</div>
           </div>
         `,
         allowHtml: true,
-        confirmButtonText: '关闭'
+        confirmButtonText: '关闭',
+        className: 'question-detail-dialog',
+        width: '90%'
       }).catch(() => {
         // 用户关闭弹窗
       })
@@ -723,6 +730,37 @@ export default {
   margin-right: 12px;
   color: var(--primary-color);
   font-size: 14px;
+}
+
+:deep(.question-detail-dialog) {
+  width: 90% !important;
+  max-width: 560px;
+}
+
+:deep(.question-detail-dialog .van-dialog__message) {
+  max-height: 70vh;
+  overflow-y: auto;
+  text-align: left;
+}
+
+.dialog-section {
+  margin-bottom: 16px;
+}
+
+.dialog-section__title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.dialog-section__body {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 12px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  word-break: break-word;
 }
 
 .nav-actions {
