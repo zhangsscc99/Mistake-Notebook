@@ -111,13 +111,14 @@
 
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import categoryAPI from '../api/category'
 
 export default {
   name: 'Categories',
   setup() {
     const router = useRouter()
+    const route = useRoute()
 
     const searchText = ref('')
     const refreshing = ref(false)
@@ -178,7 +179,18 @@ export default {
 
     // 查看分类详情
     const viewCategory = (category) => {
-      router.push(`/category/${category.id}`)
+      // 检查是否是组卷模式
+      const mode = route.query.mode
+      if (mode === 'paper-builder') {
+        // 组卷模式：跳转到分类详情页并自动开启编辑模式
+        router.push({
+          path: `/category/${category.id}`,
+          query: { mode: 'paper-select' }
+        })
+      } else {
+        // 正常模式：查看分类详情
+        router.push(`/category/${category.id}`)
+      }
     }
 
     // 格式化时间

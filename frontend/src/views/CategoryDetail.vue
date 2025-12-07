@@ -200,8 +200,18 @@
         已选择 {{ selectedQuestions.length }} 道题
       </div>
       <div class="batch-buttons">
-        <van-button size="small" @click="batchAddToExam">批量组卷</van-button>
-        <van-button size="small" type="danger" @click="batchDelete">删除</van-button>
+        <van-button 
+          v-if="isPaperSelectMode" 
+          size="small" 
+          type="primary" 
+          @click="savePaper"
+        >
+          保存为试卷
+        </van-button>
+        <template v-else>
+          <van-button size="small" @click="batchAddToExam">批量组卷</van-button>
+          <van-button size="small" type="danger" @click="batchDelete">删除</van-button>
+        </template>
       </div>
     </div>
 
@@ -232,6 +242,7 @@ export default {
     const expandedGroups = reactive(new Set())
     const editMode = ref(false)
     const isAllSelected = computed(() => questions.length > 0 && questions.every(q => q.selected))
+    const isPaperSelectMode = computed(() => route.query.mode === 'paper-select')
 
 
     const categoryInfo = reactive({
@@ -590,6 +601,59 @@ export default {
       }
     }
 
+    // 保存为试卷
+    const savePaper = async () => {
+      try {
+        const { value } = await showDialog.prompt({
+          title: '保存试卷',
+          message: '请输入试卷名称',
+          placeholder: '例如：数学第一次月考',
+          confirmButtonText: '保存',
+          cancelButtonText: '取消'
+        })
+        
+        if (!value || !value.trim()) {
+          showToast('请输入试卷名称')
+          return
+        }
+        
+        // 保存试卷到本地存储
+        const paper = {
+          id: Date.now(),
+          title: value.trim(),
+          questionCount: selectedQuestions.value.length,
+          questions: selectedQuestions.value.map(q => ({
+            id: q.id,
+            content: q.recognizedText,
+            categoryId: categoryId,
+            categoryName: categoryInfo.name
+          })),
+          duration: 90, // 默认90分钟
+          totalScore: selectedQuestions.value.length * 5, // 每题5分
+          createdAt: new Date().toLocaleDateString()
+        }
+        
+        // 从本地存储读取已有试卷
+        const papersJson = localStorage.getItem('savedPapers')
+        const papers = papersJson ? JSON.parse(papersJson) : []
+        papers.unshift(paper) // 添加到最前面
+        
+        // 保存回本地存储
+        localStorage.setItem('savedPapers', JSON.stringify(papers))
+        
+        showToast({ message: '试卷保存成功', type: 'success' })
+        
+        // 延迟跳转回组卷页面
+        setTimeout(() => {
+          router.push('/paper-builder')
+        }, 800)
+        
+      } catch (error) {
+        // 用户取消
+        console.log('用户取消保存')
+      }
+    }
+
     // 分享分类
     const shareCategory = () => {
       showToast('分享功能待实现')
@@ -678,6 +742,11 @@ export default {
     onMounted(() => {
       loadCategoryInfo()
       loadQuestions()
+      
+      // 检查是否是组卷选题模式
+      if (route.query.mode === 'paper-select') {
+        editMode.value = true
+      }
     })
 
     return {
@@ -714,7 +783,9 @@ export default {
       addToExam,
       batchAddToExam,
       batchDelete,
-      shareCategory
+      shareCategory,
+      isPaperSelectMode,
+      savePaper
     }
   }
 }
