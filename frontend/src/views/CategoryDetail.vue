@@ -200,18 +200,8 @@
         已选择 {{ selectedQuestions.length }} 道题
       </div>
       <div class="batch-buttons">
-        <van-button 
-          v-if="isPaperSelectMode" 
-          size="small" 
-          type="primary" 
-          @click="savePaper"
-        >
-          保存为试卷
-        </van-button>
-        <template v-else>
-          <van-button size="small" @click="batchAddToExam">批量组卷</van-button>
-          <van-button size="small" type="danger" @click="batchDelete">删除</van-button>
-        </template>
+        <van-button size="small" type="primary" @click="savePaper">保存为试卷</van-button>
+        <van-button size="small" type="danger" @click="batchDelete">删除</van-button>
       </div>
     </div>
 
@@ -703,11 +693,23 @@ export default {
         
         showToast({ message: '试卷保存成功', type: 'success' })
         
-        // 延迟跳转回组卷页面
-        setTimeout(() => {
-          console.log('跳转到组卷页面')
-          router.push('/paper-builder')
-        }, 800)
+        // 根据模式决定是否跳转
+        if (isPaperSelectMode.value) {
+          // 从"组建新卷"进来的，跳转回组卷页面
+          setTimeout(() => {
+            console.log('跳转到组卷页面')
+            router.push('/paper-builder')
+          }, 800)
+        } else {
+          // 正常浏览分类的，提示可以到组卷页面查看
+          setTimeout(() => {
+            showToast('可到组卷页面查看试卷')
+            // 取消选中状态
+            questions.forEach(q => q.selected = false)
+            // 退出编辑模式
+            editMode.value = false
+          }, 800)
+        }
         
       }).catch((error) => {
         // 用户点击取消
