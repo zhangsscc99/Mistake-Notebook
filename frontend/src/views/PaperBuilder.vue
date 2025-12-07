@@ -478,7 +478,7 @@ export default {
             <div class="question-content">${q.content}</div>
 `
           
-          // 如果是带解析版，添加答案和解析
+          // 只有带解析版才显示答案和解析
           if (withAnalysis) {
             htmlContent += `
             <div class="answer-section">
@@ -486,8 +486,15 @@ export default {
                 <div>${q.answer || 'A'}</div>
             </div>
             <div class="analysis-section">
-                <div class="analysis-title">解析</div>
-                <div>${q.analysis || '详细解析内容...'}</div>
+                <div class="analysis-title">详细解析</div>
+                <div>${q.analysis || 'AI暂未给出解析'}</div>
+            </div>
+`
+          } else {
+            // 不带解析版：添加空白答题区域
+            htmlContent += `
+            <div style="margin-top: 15px; padding: 30px; background: #fafafa; border: 1px dashed #ddd; border-radius: 4px;">
+                <div style="color: #999; font-size: 12px;">答题区域（请在此处作答）</div>
             </div>
 `
           }
