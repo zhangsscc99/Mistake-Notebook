@@ -170,3 +170,21 @@ npm run dev
 cd /Users/Zhuanz1/Desktop/Mistake-Notebook/backend
 set -a && source .env && set +a
 mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
+
+
+
+服务器IP
+
+103.146.124.206
+
+服务器端口
+
+22  
+
+服务器账号
+
+root
+
+服务器密码
+
+cdj069kl

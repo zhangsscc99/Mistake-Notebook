@@ -68,7 +68,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showLoadingToast, showDialog, showConfirmDialog } from 'vant'
 import categoryAPI from '../api/category'
-import { jsPDF } from 'jspdf'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 export default {
   name: 'PaperBuilder',
@@ -379,156 +380,118 @@ export default {
         // 等待一下让loading显示出来
         await new Promise(resolve => setTimeout(resolve, 300))
         
+        // 创建临时容器用于渲染HTML
+        const container = document.createElement('div')
+        container.style.cssText = `
+          position: fixed;
+          left: -9999px;
+          top: 0;
+          width: 800px;
+          background: white;
+          padding: 40px;
+          font-family: "SimSun", "宋体", serif;
+          line-height: 1.8;
+          color: #333;
+        `
+        
         // 生成HTML内容
         let htmlContent = `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${paper.title}</title>
-    <style>
-        body {
-            font-family: "SimSun", "宋体", serif;
-            max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
-            line-height: 1.8;
-            color: #333;
-        }
-        .paper-header {
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid #E8A855;
-            padding-bottom: 20px;
-        }
-        .paper-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-        .paper-info {
-            font-size: 14px;
-            color: #666;
-        }
-        .question {
-            margin-bottom: ${withAnalysis ? '40px' : '30px'};
-            page-break-inside: avoid;
-        }
-        .question-number {
-            font-weight: bold;
-            color: #E8A855;
-            margin-bottom: 8px;
-        }
-        .question-content {
-            margin-bottom: 15px;
-            padding: 15px;
-            background: #f9f9f9;
-            border-left: 4px solid #E8A855;
-            border-radius: 4px;
-        }
-        .answer-section {
-            margin-top: 15px;
-            padding: 15px;
-            background: #fff8e1;
-            border-left: 4px solid #4caf50;
-            border-radius: 4px;
-        }
-        .section-title {
-            font-weight: bold;
-            color: #4caf50;
-            margin-bottom: 8px;
-        }
-        .analysis-section {
-            margin-top: 10px;
-            padding: 15px;
-            background: #e3f2fd;
-            border-left: 4px solid #2196f3;
-            border-radius: 4px;
-        }
-        .analysis-title {
-            font-weight: bold;
-            color: #2196f3;
-            margin-bottom: 8px;
-        }
-        .footer {
-            margin-top: 60px;
-            text-align: center;
-            color: #999;
-            font-size: 12px;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-    </style>
-</head>
-<body>
-    <div class="paper-header">
-        <div class="paper-title">${paper.title}</div>
-        <div class="paper-info">共 ${paper.questionCount} 道题 · 创建时间：${paper.createdAt}</div>
-    </div>
-    
-    <div class="questions">
-`
+          <div style="text-align: center; margin-bottom: 40px; border-bottom: 2px solid #E8A855; padding-bottom: 20px;">
+            <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">${paper.title}</div>
+            <div style="font-size: 14px; color: #666;">共 ${paper.questionCount} 道题 · 创建时间：${paper.createdAt}</div>
+          </div>
+          <div>
+        `
         
         // 添加题目内容
         paper.questions.forEach((q, index) => {
           htmlContent += `
-        <div class="question">
-            <div class="question-number">第 ${index + 1} 题</div>
-            <div class="question-content">${q.content}</div>
-`
+            <div style="margin-bottom: ${withAnalysis ? '40px' : '30px'};">
+              <div style="font-weight: bold; color: #E8A855; margin-bottom: 8px;">第 ${index + 1} 题</div>
+              <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-left: 4px solid #E8A855; border-radius: 4px;">
+                ${q.content}
+              </div>
+          `
           
           // 只有带解析版才显示答案和解析
           if (withAnalysis) {
             htmlContent += `
-            <div class="answer-section">
-                <div class="section-title">参考答案</div>
+              <div style="margin-top: 15px; padding: 15px; background: #fff8e1; border-left: 4px solid #4caf50; border-radius: 4px;">
+                <div style="font-weight: bold; color: #4caf50; margin-bottom: 8px;">参考答案</div>
                 <div>${q.answer || 'A'}</div>
-            </div>
-            <div class="analysis-section">
-                <div class="analysis-title">详细解析</div>
+              </div>
+              <div style="margin-top: 10px; padding: 15px; background: #e3f2fd; border-left: 4px solid #2196f3; border-radius: 4px;">
+                <div style="font-weight: bold; color: #2196f3; margin-bottom: 8px;">详细解析</div>
                 <div>${q.analysis || 'AI暂未给出解析'}</div>
-            </div>
-`
+              </div>
+            `
           } else {
             // 不带解析版：添加空白答题区域
             htmlContent += `
-            <div style="margin-top: 15px; padding: 30px; background: #fafafa; border: 1px dashed #ddd; border-radius: 4px;">
+              <div style="margin-top: 15px; padding: 40px; background: #fafafa; border: 1px dashed #ddd; border-radius: 4px; min-height: 80px;">
                 <div style="color: #999; font-size: 12px;">答题区域（请在此处作答）</div>
-            </div>
-`
+              </div>
+            `
           }
           
-          htmlContent += `        </div>\n`
+          htmlContent += `</div>`
         })
         
         htmlContent += `
-    </div>
-    
-    <div class="footer">
-        本试卷由智能组卷系统生成
-    </div>
-</body>
-</html>
-`
+          </div>
+          <div style="margin-top: 60px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #eee; padding-top: 20px;">
+            本试卷由智能组卷系统生成
+          </div>
+        `
         
-        // 创建Blob并下载
-        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `${paper.title}_${mode}.html`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
+        container.innerHTML = htmlContent
+        document.body.appendChild(container)
         
-        showToast({ message: `${mode}试卷已下载!`, type: 'success' })
+        // 使用html2canvas转换为图片
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        })
+        
+        // 移除临时容器
+        document.body.removeChild(container)
+        
+        // 创建PDF
+        const pdf = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
+        })
+        
+        const imgData = canvas.toDataURL('image/png')
+        const imgWidth = 210 // A4宽度
+        const pageHeight = 297 // A4高度
+        const imgHeight = (canvas.height * imgWidth) / canvas.width
+        let heightLeft = imgHeight
+        let position = 0
+        
+        // 添加第一页
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+        
+        // 如果内容超过一页，添加更多页面
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight
+          pdf.addPage()
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+          heightLeft -= pageHeight
+        }
+        
+        // 下载PDF
+        pdf.save(`${paper.title}_${mode}.pdf`)
+        
+        showToast({ message: `${mode}PDF已下载!`, type: 'success' })
         console.log('导出试卷:', paper.title, '模式:', mode)
         
       } catch (error) {
         console.error('导出失败:', error)
-        showToast({ message: '导出失败，请重试', type: 'fail' })
+        showToast({ message: '导出失败：' + error.message, type: 'fail' })
       }
     }
 
