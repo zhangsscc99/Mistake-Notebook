@@ -430,26 +430,28 @@ export default {
       showDialog({
         title: `题目 #${question.id}`,
         message: `
-          <div class="dialog-section">
-            <div class="dialog-section__title">题目内容</div>
-            <div class="dialog-section__body">${content}</div>
-          </div>
-          <div class="dialog-section">
-            <div class="dialog-section__title">参考答案</div>
-            <div class="dialog-section__body">${answer}</div>
-          </div>
-          <div class="dialog-section">
-            <div class="dialog-section__title">解析</div>
-            <div class="dialog-section__body">${analysis}</div>
-          </div>
-          ${question.tags.length > 0 ? `
-            <div class="dialog-section">
-              <div class="dialog-section__title">标签</div>
-              <div class="dialog-section__body">${question.tags.join(', ')}</div>
-            </div>` : ''}
-          <div class="dialog-section">
-            <div class="dialog-section__title">添加时间</div>
-            <div class="dialog-section__body">${formatTime(question.createdAt)}</div>
+          <div style="text-align: left;">
+            <div class="dialog-section" style="text-align: left;">
+              <div class="dialog-section__title" style="text-align: left;">题目内容</div>
+              <div class="dialog-section__body" style="text-align: left;">${content}</div>
+            </div>
+            <div class="dialog-section" style="text-align: left;">
+              <div class="dialog-section__title" style="text-align: left;">参考答案</div>
+              <div class="dialog-section__body" style="text-align: left;">${answer}</div>
+            </div>
+            <div class="dialog-section" style="text-align: left;">
+              <div class="dialog-section__title" style="text-align: left;">解析</div>
+              <div class="dialog-section__body" style="text-align: left;">${analysis}</div>
+            </div>
+            ${question.tags.length > 0 ? `
+              <div class="dialog-section" style="text-align: left;">
+                <div class="dialog-section__title" style="text-align: left;">标签</div>
+                <div class="dialog-section__body" style="text-align: left;">${question.tags.join(', ')}</div>
+              </div>` : ''}
+            <div class="dialog-section" style="text-align: left;">
+              <div class="dialog-section__title" style="text-align: left;">添加时间</div>
+              <div class="dialog-section__body" style="text-align: left;">${formatTime(question.createdAt)}</div>
+            </div>
           </div>
         `,
         allowHtml: true,
@@ -732,35 +734,63 @@ export default {
   font-size: 14px;
 }
 
+/* 对话框容器左对齐 */
 :deep(.question-detail-dialog) {
-  width: 90% !important;
-  max-width: 560px;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  padding: 4vh 0 0 4vw !important;
 }
 
+/* 对话框本身左对齐 */
+:deep(.question-detail-dialog .van-dialog) {
+  width: 90vw !important;
+  max-width: 560px !important;
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  text-align: left !important;
+}
+
+/* 对话框标题左对齐 */
+:deep(.question-detail-dialog .van-dialog__header) {
+  text-align: left !important;
+  padding-left: 20px !important;
+}
+
+/* 对话框内容区域左对齐 */
 :deep(.question-detail-dialog .van-dialog__message) {
-  max-height: 70vh;
-  overflow-y: auto;
-  text-align: left;
+  max-height: 70vh !important;
+  overflow-y: auto !important;
+  text-align: left !important;
+  padding: 16px 20px !important;
 }
 
-.dialog-section {
-  margin-bottom: 16px;
+/* 所有段落左对齐 */
+:deep(.question-detail-dialog .van-dialog__message *) {
+  text-align: left !important;
 }
 
-.dialog-section__title {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 6px;
+/* 内容分区样式 */
+:deep(.dialog-section) {
+  margin-bottom: 16px !important;
+  text-align: left !important;
 }
 
-.dialog-section__body {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
-  padding: 12px;
-  line-height: 1.6;
-  color: var(--text-primary);
-  word-break: break-word;
+:deep(.dialog-section__title) {
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  color: var(--text-secondary) !important;
+  margin-bottom: 6px !important;
+  text-align: left !important;
+}
+
+:deep(.dialog-section__body) {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  line-height: 1.6 !important;
+  color: var(--text-primary) !important;
+  word-break: break-word !important;
+  text-align: left !important;
 }
 
 .nav-actions {
