@@ -1,0 +1,30 @@
+# 生产环境配置
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/mistake_notebook?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=GMT%2B8&createDatabaseIfNotExist=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+# 生产环境日志配置
+logging:
+  level:
+    com.mistake.notebook: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN
+  file:
+    name: /opt/mistake-notebook/logs/application.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 生产环境跨域配置（允许所有来源，实际部署时建议限制）
+cors:
+  allowed-origins: "*"
+  allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+  allowed-headers: "*"
+  allow-credentials: true
+
