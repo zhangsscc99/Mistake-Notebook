@@ -1,31 +1,8 @@
 // 图像识别API服务
-import axios from 'axios'
+// 使用统一的 API 配置（上传专用，超时时间更长，拦截器已在 config.js 中配置）
+import { uploadClient as apiClient } from './config'
 
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080/api'
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 300000, // 图像识别可能需要较长时间，延长到5分钟
-  // 移除默认的Content-Type，让axios自动设置FormData的Content-Type
-})
-
-// 请求拦截器
-apiClient.interceptors.request.use(
-  config => {
-    // 可以在这里添加认证token等
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  error => {
-    return Promise.reject(error)
-  }
-)
-
-// 响应拦截器
+// 响应拦截器（如果需要额外的处理，可以在这里添加）
 apiClient.interceptors.response.use(
   response => {
     return response.data

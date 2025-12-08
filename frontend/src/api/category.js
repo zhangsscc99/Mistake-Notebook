@@ -1,45 +1,6 @@
 // 分类管理API服务
-import axios from 'axios'
-
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080/api'
-
-// 创建axios实例
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-// 请求拦截器
-apiClient.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  error => {
-    return Promise.reject(error)
-  }
-)
-
-// 响应拦截器
-apiClient.interceptors.response.use(
-  response => {
-    return response
-  },
-  error => {
-    if (error.response?.status === 401) {
-      // 清除token并跳转到登录页
-      localStorage.removeItem('token')
-      // 这里可以添加路由跳转逻辑
-    }
-    return Promise.reject(error)
-  }
-)
+// 使用统一的 API 配置（拦截器已在 config.js 中配置）
+import { apiClient } from './config'
 
 // 分类API对象
 const categoryAPI = {

@@ -1,15 +1,5 @@
-import axios from 'axios'
-
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhost:8080/api'
-
-// 创建axios实例
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  }
-})
+// 使用统一的 API 配置
+import { apiClient as api } from './config'
 
 /**
  * 获取所有分类列表（包含题目数量）
