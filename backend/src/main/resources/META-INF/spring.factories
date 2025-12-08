@@ -1,0 +1,2 @@
+org.springframework.context.ApplicationListener=com.mistake.notebook.config.EnvironmentConfig
+

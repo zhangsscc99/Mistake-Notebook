@@ -42,7 +42,7 @@ spring:
 
 # 跨域配置
 cors:
-  allowed-origins: "http://localhost:3060,http://127.0.0.1:3060"
+  allowed-origins: "http://localhost:3060,http://127.0.0.1:3060,http://localhost:3000,http://127.0.0.1:3000,http://103.146.124.206:3060,http://103.146.124.206:3000,*"
   allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
   allowed-headers: "*"
   allow-credentials: true

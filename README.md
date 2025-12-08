@@ -191,3 +191,41 @@ cdj069kl
 
 
 ssh root@103.146.124.206
+
+
+
+
+npm install -g pm2
+
+# 2. 安装 serve
+npm install -g serve
+
+# 3. 启动前端
+cd /root/Mistake-Notebook/frontend
+pm2 serve dist 3060 --name "mistake-notebook-frontend" --spa
+
+# 4. 保存并设置自启
+pm2 save
+pm2 startup
+# 复制并执行输出的 sudo 命令
+
+# 5. 查看状态
+pm2 status
+
+
+set -a && source .env && set +a
+
+# 使用 PM2 启动（dev 环境）
+pm2 start java \
+  --name "mistake-notebook-backend" \
+  --cwd /root/Mistake-Notebook/backend \
+  -- \
+  -jar target/notebook-backend-1.0.0.jar \
+  --spring.profiles.active=dev
+
+# 保存并设置自启
+pm2 save
+pm2 startup
+
+
+pm2 logs mistake-notebook-backend

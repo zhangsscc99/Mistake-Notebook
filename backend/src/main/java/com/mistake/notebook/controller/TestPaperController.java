@@ -24,7 +24,7 @@ import java.util.Map;
 @RequestMapping("/test-paper")
 @RequiredArgsConstructor
 @Slf4j
-@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
+@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000", "http://103.146.124.206:3060", "http://103.146.124.206:3000", "*"})
 public class TestPaperController {
 
     private final PDFService pdfService;
