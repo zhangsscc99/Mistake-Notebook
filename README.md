@@ -242,3 +242,43 @@ pm2 startup
 
 
 pm2 logs mistake-notebook-backend
+
+
+
+
+
+
+
+
+cd /root/Mistake-Notebook/backend
+
+cat > .env << 'EOF'
+# 阿里云百炼平台API密钥
+DASHSCOPE_API_KEY=sk-b2ccb84e15b544bc84e9a8a02cb4e168
+
+# 视觉推理模型配置
+DASHSCOPE_VISION_MODEL=qwen3-vl-plus
+DASHSCOPE_ENABLE_THINKING=true
+DASHSCOPE_THINKING_BUDGET=81920
+DASHSCOPE_MAX_TOKENS=4000
+DASHSCOPE_TEMPERATURE=0.1
+
+# OCR服务配置
+ALIYUN_OCR_USE_VISION_REASONING=true
+
+# AI 通用模型配置（文本分类/对话）
+AI_ALIYUN_API_KEY=sk-b2ccb84e15b544bc84e9a8a02cb4e168
+AI_ALIYUN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
+AI_ALIYUN_MODEL=qwen-plus
+AI_ALIYUN_APPLICATION_ID=
+AI_ALIYUN_SYSTEM_CONTENT=你是一个擅长教育领域的智能助手，能够根据题目内容判断学科、知识点和难度，回答简洁准确。
+AI_ALIYUN_PAYMENT_MODEL=qwen-plus
+AI_ALIYUN_PAYMENT_SYSTEM_CONTENT=你是一个有用的AI助手
+
+# 数据库配置
+DB_USERNAME=root
+DB_PASSWORD=wyt!!010611ABC
+EOF
+
+# 验证文件创建成功
+cat .env
