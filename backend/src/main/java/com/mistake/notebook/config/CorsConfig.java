@@ -32,17 +32,37 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        // 允许的源
-        config.setAllowedOriginPatterns(Arrays.asList(allowedOrigins.split(",")));
+        // 处理允许的源
+        String[] origins = allowedOrigins.split(",");
+        java.util.List<String> originList = new java.util.ArrayList<>();
+        boolean hasWildcard = false;
+        
+        for (String origin : origins) {
+            String trimmed = origin.trim();
+            if ("*".equals(trimmed)) {
+                hasWildcard = true;
+                break;
+            } else if (!trimmed.isEmpty()) {
+                originList.add(trimmed);
+            }
+        }
+        
+        // 如果有通配符，允许所有来源
+        if (hasWildcard) {
+            config.addAllowedOriginPattern("*");
+            // 使用通配符时不能设置 allowCredentials
+            config.setAllowCredentials(false);
+        } else {
+            // 使用精确匹配
+            config.setAllowedOrigins(originList);
+            config.setAllowCredentials(allowCredentials);
+        }
         
         // 允许的方法
         config.setAllowedMethods(Arrays.asList(allowedMethods.split(",")));
         
         // 允许的头部
         config.setAllowedHeaders(Arrays.asList(allowedHeaders.split(",")));
-        
-        // 允许携带凭证
-        config.setAllowCredentials(allowCredentials);
         
         // 预检请求的有效期
         config.setMaxAge(3600L);

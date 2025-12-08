@@ -28,4 +28,3 @@ export ALIYUN_OCR_USE_VISION_REASONING
 
 # 启动后端（开发环境）
 java -jar target/notebook-backend-1.0.0.jar --spring.profiles.active=dev
-

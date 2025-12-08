@@ -223,6 +223,19 @@ pm2 start java \
   -jar target/notebook-backend-1.0.0.jar \
   --spring.profiles.active=dev
 
+
+# 1. 先加载环境变量，然后启动
+set -a && source .env && set +a && \
+pm2 start java \
+  --name "mistake-notebook-backend" \
+  --cwd /root/Mistake-Notebook/backend \
+  -- \
+  -jar target/notebook-backend-1.0.0.jar \
+  --spring.profiles.active=dev
+
+# 2. 保存配置
+pm2 save
+
 # 保存并设置自启
 pm2 save
 pm2 startup
