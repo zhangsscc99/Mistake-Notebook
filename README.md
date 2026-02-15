@@ -243,7 +243,88 @@ pm2 startup
 
 pm2 logs mistake-notebook-backend
 
+# 在服务器上执行
+cat > /tmp/fix-cors.sh << 'EOFSCRIPT'
+#!/bin/bash
+# 完整的 CORS 修复脚本
 
+echo "🔍 第1步：检查当前文件"
+CORS_FILE="/root/Mistake-Notebook/backend/src/main/java/com/mistake/notebook/config/CorsConfig.java"
+
+echo "📄 当前文件前 20 行："
+head -20 "$CORS_FILE"
+
+echo ""
+echo "🔄 第2步：更新 CORS 配置"
+
+# 备份
+cp "$CORS_FILE" "${CORS_FILE}.backup"
+
+# 写入新配置
+cat > "$CORS_FILE" << 'EOFJAVA'
+package com.mistake.notebook.config;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.filter.CorsFilter;
+
+@Configuration
+public class CorsConfig {
+    private static final Logger logger = LoggerFactory.getLogger(CorsConfig.class);
+
+    @Bean
+    public CorsFilter corsFilter() {
+        logger.info("======== 🌐 初始化 CORS 配置 ========");
+        
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedOriginPattern("*");
+        config.setAllowCredentials(true);
+        config.addAllowedMethod("*");
+        config.addAllowedHeader("*");
+        config.addExposedHeader("*");
+        config.setMaxAge(3600L);
+        
+        logger.info("✅ 允许所有来源和方法");
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        
+        logger.info("======== 🎉 CORS 配置完成 ========");
+        return new CorsFilter(source);
+    }
+}
+EOFJAVA
+
+echo "✅ 已更新配置"
+
+echo ""
+echo "🔨 第3步：重新编译"
+cd /root/Mistake-Notebook/backend
+mvn clean package -DskipTests
+
+echo ""
+echo "🔄 第4步：重启服务"
+pm2 restart mistake-notebook-backend
+sleep 5
+
+echo ""
+echo "📋 第5步：查看日志（找 CORS）"
+pm2 logs mistake-notebook-backend --lines 40 --nostream | grep -A3 -B3 "CORS"
+
+echo ""
+echo "🧪 第6步：测试 CORS"
+curl -X OPTIONS -H "Origin: http://103.146.124.206:3060" -i http://localhost:8080/api/categories 2>&1 | grep -E "(HTTP|Access-Control)"
+
+echo ""
+echo "✅ 完成！如果上面看到 Access-Control-Allow-Origin 头，就成功了"
+EOFSCRIPT
+
+chmod +x /tmp/fix-cors.sh
+bash /tmp/fix-cors.sh
 
 
 
