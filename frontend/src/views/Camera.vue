@@ -325,10 +325,78 @@ export default {
 
 <style scoped>
 .camera-page {
+  /* Homepage-only theme override (Copilot/M365-ish: premium glass panels on a crisp blue-white canvas). */
+  --primary-color: #2459ff;
+  --primary-light: #52b7ff;
+  --primary-dark: #1742d6;
+  --secondary-color: #1451d6;
+  --accent-color: #b6a6ff;
+  --accent-violet: #8a7dff;
+  --accent-pink: #ff7bd0;
+  --accent-peach: #ffb56a;
+
+  /* Canvas */
+  --bg-primary: #eaf3ff;
+  --bg-secondary: rgba(255, 255, 255, 0.85);
+  --bg-card: rgba(255, 255, 255, 0.72);
+  --bg-glass: rgba(255, 255, 255, 0.62);
+  --glass-strong: rgba(255, 255, 255, 0.78);
+  --glass-soft: rgba(255, 255, 255, 0.56);
+  --glass-lavender: rgba(246, 236, 255, 0.58);
+  --glass-rose: rgba(255, 235, 248, 0.34);
+
+  --text-primary: #0b1633;
+  --text-secondary: rgba(11, 22, 51, 0.62);
+  --text-disabled: rgba(11, 22, 51, 0.38);
+  --text-accent: #1f5bff;
+
+  --border-color: rgba(47, 107, 255, 0.14);
+  --border-glow: rgba(47, 107, 255, 0.22);
+  --divider-color: rgba(11, 22, 51, 0.08);
+
+  --shadow-glow: 0 20px 70px rgba(31, 91, 255, 0.12), 0 34px 120px rgba(255, 123, 208, 0.10);
+  --shadow-card: 0 14px 44px rgba(11, 22, 51, 0.10);
+  --shadow-hover: 0 20px 70px rgba(11, 22, 51, 0.16);
+  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+
   min-height: 100vh;
   background: var(--bg-primary);
   padding-bottom: 60px;
   position: relative;
+  overflow-x: hidden;
+  font-family: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.camera-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Meshy pastel blobs like the reference screenshots (no "grid", lots of air). */
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(247, 251, 255, 0.20) 45%, rgba(255, 245, 252, 0.18) 100%),
+    radial-gradient(900px 700px at 18% 22%, rgba(36, 89, 255, 0.18) 0%, transparent 60%),
+    radial-gradient(820px 620px at 82% 18%, rgba(255, 123, 208, 0.20) 0%, transparent 62%),
+    radial-gradient(980px 760px at 22% 78%, rgba(138, 125, 255, 0.22) 0%, transparent 60%),
+    radial-gradient(980px 760px at 76% 84%, rgba(255, 181, 106, 0.18) 0%, transparent 62%),
+    radial-gradient(1400px 1100px at 50% 110%, rgba(82, 183, 255, 0.12) 0%, transparent 58%);
+  pointer-events: none;
+  z-index: 0;
+  filter: saturate(1.02);
+}
+
+.camera-page::after {
+  /* Ultra subtle grain + top sheen (keeps it from feeling flat). */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(900px 320px at 52% -10%, rgba(255, 255, 255, 0.78) 0%, transparent 70%),
+    radial-gradient(1000px 520px at 50% 0%, rgba(255, 255, 255, 0.22) 0%, transparent 70%);
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: overlay;
 }
 
 
@@ -336,14 +404,81 @@ export default {
 .main-section {
   padding: 16px;
   min-height: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .content-container {
   min-height: auto;
-  border: 2px dashed var(--border-glow);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   position: relative;
   overflow: visible;
   padding: 20px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--glass-lavender), rgba(255, 255, 255, 0.48) 46%, var(--glass-rose));
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow:
+    var(--shadow-glow),
+    var(--shadow-inner),
+    var(--shadow-card);
+}
+
+.content-container::before {
+  /* Gradient glass stroke without changing layout. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(36, 89, 255, 0.34),
+    rgba(82, 183, 255, 0.18),
+    rgba(255, 123, 208, 0.16),
+    rgba(138, 125, 255, 0.14)
+  );
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.content-container::after {
+  /* Specular highlight band (very subtle). */
+  content: '';
+  position: absolute;
+  inset: -40% -60%;
+  background: linear-gradient(
+    120deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.35) 45%,
+    rgba(255, 255, 255, 0.10) 52%,
+    transparent 62%
+  );
+  transform: translateX(-22%) rotate(12deg);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: 0;
+  animation: glassSweep 8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+.content-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes glassSweep {
+  0% { transform: translateX(-22%) rotate(12deg); }
+  50% { transform: translateX(18%) rotate(12deg); }
+  100% { transform: translateX(-22%) rotate(12deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .content-container::after { animation: none; }
+  .action-buttons .van-button::after { display: none; }
+  .process-btn::after { display: none; }
 }
 
 /* 🌟 产品介绍指南样式 */
@@ -365,9 +500,9 @@ export default {
     90deg,
     var(--text-primary) 0%,
     var(--text-accent) 25%,
-    #FFD700 50%,
-    var(--text-accent) 75%,
-    var(--text-primary) 100%
+    #00a3ff 55%,
+    var(--text-accent) 78%,
+    rgba(11, 22, 51, 0.92) 100%
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -379,8 +514,8 @@ export default {
 
 .guide-subtitle {
   font-size: 16px;
-  color: var(--text-accent);
-  font-weight: 500;
+  color: rgba(11, 22, 51, 0.70);
+  font-weight: 600;
   margin: 0;
   opacity: 0.9;
 }
@@ -398,16 +533,59 @@ export default {
   text-align: left;
   gap: 12px;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.03);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.55));
   border-radius: var(--radius-md);
-  border: 1px solid rgba(232, 168, 85, 0.1);
-  backdrop-filter: blur(8px);
-  transition: all 0.3s var(--ease-smooth);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px) saturate(1.25);
+  -webkit-backdrop-filter: blur(14px) saturate(1.25);
+  transition: transform 0.26s var(--ease-smooth), box-shadow 0.26s var(--ease-smooth), border-color 0.26s var(--ease-smooth);
+  box-shadow:
+    0 8px 22px rgba(11, 22, 51, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.feature-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(47, 107, 255, 0.28),
+    rgba(142, 211, 255, 0.14),
+    rgba(138, 125, 255, 0.12)
+  );
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.65;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.feature-item::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(700px 220px at 12% 0%, rgba(47, 107, 255, 0.10) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+}
+
+.feature-item > * {
+  position: relative;
+  z-index: 1;
 }
 
 .feature-item:hover {
-  background: rgba(232, 168, 85, 0.05);
-  border-color: rgba(232, 168, 85, 0.2);
+  border-color: rgba(47, 107, 255, 0.22);
+  box-shadow:
+    0 14px 34px rgba(11, 22, 51, 0.12),
+    0 18px 44px rgba(31, 91, 255, 0.10);
   transform: translateY(-2px);
 }
 
@@ -418,7 +596,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(232, 168, 85, 0.1);
+  background: rgba(47, 107, 255, 0.10);
   border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
@@ -456,7 +634,7 @@ export default {
   transform: translate(-50%, -50%);
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(232, 168, 85, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(47, 107, 255, 0.12) 0%, transparent 70%);
   border-radius: 50%;
   animation: floatingGlow 8s ease-in-out infinite;
   z-index: -1;
@@ -485,7 +663,7 @@ export default {
 .image-item:hover {
   transform: scale(1.05);
   box-shadow: 
-    0 0 20px rgba(232, 168, 85, 0.2),
+    0 0 22px rgba(31, 91, 255, 0.16),
     var(--shadow-hover);
 }
 
@@ -502,7 +680,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(11, 22, 51, 0.38);
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
@@ -516,18 +694,19 @@ export default {
 }
 
 .remove-icon {
-  background: rgba(232, 168, 85, 0.9);
-  color: var(--bg-primary);
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(11, 22, 51, 0.92);
   border-radius: 50%;
   padding: 6px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s var(--ease-smooth);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 26px rgba(11, 22, 51, 0.20);
 }
 
 .remove-icon:hover {
-  background: var(--primary-light);
+  background: rgba(255, 255, 255, 1);
+  color: var(--primary-dark);
   transform: scale(1.1);
 }
 
@@ -546,47 +725,188 @@ export default {
   height: 48px;
   border-radius: var(--radius-md) !important;
   font-weight: 600 !important;
-  backdrop-filter: blur(8px);
-  transition: all 0.3s var(--ease-smooth) !important;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.16)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.62) !important;
+  color: rgba(11, 22, 51, 0.82) !important;
+  backdrop-filter: blur(16px) saturate(1.35);
+  -webkit-backdrop-filter: blur(16px) saturate(1.35);
+  box-shadow:
+    0 14px 34px rgba(11, 22, 51, 0.10) !important,
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+  transition: transform 0.22s var(--ease-smooth), box-shadow 0.22s var(--ease-smooth), border-color 0.22s var(--ease-smooth) !important;
 }
 
 .action-buttons .van-button--primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
-  border: none !important;
-  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  /* Primary stays transparent glass; differentiation via border/glow + text color. */
+  color: rgba(31, 91, 255, 0.92) !important;
+  border-color: rgba(47, 107, 255, 0.24) !important;
+  box-shadow:
+    0 18px 44px rgba(31, 91, 255, 0.14) !important,
+    0 10px 28px rgba(11, 22, 51, 0.08) !important,
+    inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
 }
 
 .action-buttons .van-button--default {
-  background: var(--bg-glass) !important;
-  border: 1px solid var(--border-glow) !important;
-  color: var(--text-accent) !important;
+  border-color: rgba(255, 255, 255, 0.58) !important;
+  color: rgba(11, 22, 51, 0.78) !important;
+}
+
+.action-buttons .van-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(47, 107, 255, 0.22),
+    rgba(142, 211, 255, 0.14),
+    rgba(138, 125, 255, 0.12)
+  );
+  pointer-events: none;
+  opacity: 0.55;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.action-buttons .van-button--primary::before {
+  opacity: 0.85;
+}
+
+.action-buttons .van-button::after {
+  content: '';
+  position: absolute;
+  inset: -80% -60%;
+  background: linear-gradient(
+    120deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.34) 46%,
+    rgba(255, 255, 255, 0.10) 54%,
+    transparent 64%
+  );
+  transform: translateX(-14%) rotate(12deg);
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.22s var(--ease-smooth);
+}
+
+.action-buttons .van-button:hover::after {
+  opacity: 0.85;
+}
+
+.action-buttons .van-button :deep(.van-icon) {
+  color: currentColor !important;
 }
 
 .action-buttons .van-button:hover {
   transform: translateY(-2px);
 }
 
+.action-buttons .van-button:active {
+  transform: translateY(-1px) scale(0.99);
+}
+
 .process-btn {
   margin-top: 12px;
   height: 52px !important;
   border-radius: var(--radius-lg) !important;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.16)) !important;
+  border: 1px solid rgba(47, 107, 255, 0.24) !important;
+  color: rgba(31, 91, 255, 0.92) !important;
+  backdrop-filter: blur(18px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
   box-shadow: 
-    0 6px 24px rgba(232, 168, 85, 0.4) !important,
-    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+    0 22px 54px rgba(31, 91, 255, 0.16) !important,
+    0 12px 30px rgba(11, 22, 51, 0.10) !important,
+    inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
+}
+
+.process-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(47, 107, 255, 0.34),
+    rgba(142, 211, 255, 0.18),
+    rgba(138, 125, 255, 0.14)
+  );
+  pointer-events: none;
+  opacity: 0.95;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+.process-btn::after {
+  content: '';
+  position: absolute;
+  inset: -70% -70%;
+  background: linear-gradient(
+    120deg,
+    transparent 38%,
+    rgba(255, 255, 255, 0.34) 46%,
+    rgba(255, 255, 255, 0.10) 54%,
+    transparent 64%
+  );
+  transform: translateX(-12%) rotate(12deg);
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.process-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 28px 70px rgba(31, 91, 255, 0.18) !important,
+    0 18px 44px rgba(11, 22, 51, 0.12) !important,
+    inset 0 1px 0 rgba(255, 255, 255, 0.68) !important;
+}
+
+.process-btn:active {
+  transform: translateY(-1px) scale(0.99);
 }
 
 .recent-section {
   padding: 0 20px 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .recent-list {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--border-color);
+  position: relative;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.56));
+  backdrop-filter: blur(18px) saturate(1.3);
+  -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.55);
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow-glow);
+}
+
+.recent-list::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(
+    135deg,
+    rgba(47, 107, 255, 0.26),
+    rgba(142, 211, 255, 0.14),
+    rgba(138, 125, 255, 0.12)
+  );
+  pointer-events: none;
+  opacity: 0.65;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
 }
 
 .recent-item {
@@ -595,7 +915,7 @@ export default {
   padding: 16px 20px;
   border-bottom: 1px solid var(--divider-color);
   cursor: pointer;
-  transition: all 0.3s var(--ease-smooth);
+  transition: transform 0.26s var(--ease-smooth), background 0.26s var(--ease-smooth);
   position: relative;
 }
 
@@ -604,7 +924,7 @@ export default {
 }
 
 .recent-item:hover {
-  background: rgba(232, 168, 85, 0.05);
+  background: rgba(47, 107, 255, 0.06);
   transform: translateX(4px);
 }
 
@@ -615,7 +935,7 @@ export default {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
+  background: linear-gradient(180deg, var(--primary-color), rgba(0, 163, 255, 0.9));
   opacity: 0;
   transition: opacity 0.3s var(--ease-smooth);
 }
@@ -625,6 +945,11 @@ export default {
 }
 
 
+
+.camera-page :deep(.van-divider) {
+  color: rgba(11, 22, 51, 0.50) !important;
+  border-color: rgba(11, 22, 51, 0.10) !important;
+}
 
 .recent-info {
   flex: 1;
@@ -645,46 +970,59 @@ export default {
 
 /* 🔥 强制覆盖底部导航栏样式 */
 :deep(.van-tabbar) {
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(16px) !important;
-  border-top: 1px solid var(--border-glow) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.72)) !important;
+  backdrop-filter: blur(18px) saturate(1.35) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.35) !important;
+  border-top: 1px solid rgba(47, 107, 255, 0.16) !important;
   box-shadow: 
-    0 -4px 20px rgba(0, 0, 0, 0.4) !important,
-    0 -1px 0 rgba(232, 168, 85, 0.1) !important;
+    0 -14px 34px rgba(11, 22, 51, 0.10) !important,
+    0 -1px 0 rgba(255, 255, 255, 0.72) !important;
   padding: 8px 12px !important;
 }
 
 :deep(.van-tabbar-item) {
-  color: rgba(255, 255, 255, 0.6) !important;
+  color: rgba(11, 22, 51, 0.60) !important;
   border-radius: 12px !important;
   margin: 0 4px !important;
   padding: 6px 8px !important;
-  transition: all 0.3s ease !important;
+  transition: transform 0.22s var(--ease-smooth), background 0.22s var(--ease-smooth), color 0.22s var(--ease-smooth) !important;
   position: relative !important;
   overflow: hidden !important;
 }
 
 :deep(.van-tabbar-item:hover) {
-  background: rgba(232, 168, 85, 0.1) !important;
+  background: rgba(47, 107, 255, 0.08) !important;
   transform: translateY(-1px) !important;
 }
 
 :deep(.van-tabbar-item--active) {
-  color: #E8A855 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
+  color: var(--primary-color) !important;
+  background: rgba(47, 107, 255, 0.08) !important;
+  border: 1px solid rgba(47, 107, 255, 0.16) !important;
+  box-shadow: 0 10px 22px rgba(31, 91, 255, 0.10) !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__text) {
-  color: #E8A855 !important;
+  color: var(--primary-color) !important;
   font-weight: 700 !important;
-  text-shadow: 0 0 8px rgba(232, 168, 85, 0.6) !important;
+  text-shadow: 0 0 12px rgba(31, 91, 255, 0.16) !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: currentColor !important;
+  animation: none !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__icon) {
-  color: #E8A855 !important;
-  filter: drop-shadow(0 0 8px rgba(232, 168, 85, 0.6)) !important;
+  color: var(--primary-color) !important;
+  filter: drop-shadow(0 0 10px rgba(31, 91, 255, 0.18)) !important;
   transform: scale(1.1) !important;
+  animation: none !important;
+}
+
+/* Remove global gold indicator bars/pulses from App.vue for this page. */
+:deep(.van-tabbar-item--active::before),
+:deep(.van-tabbar-item--active::after) {
+  content: none !important;
 }
 </style>

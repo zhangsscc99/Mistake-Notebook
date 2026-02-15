@@ -34,3 +34,8 @@ frontend/node_modules
 
 node_modules
 
+# App runtime / generated files
+backend/uploads/
+
+# Local design references / screenshots (not part of the app build)
+frontend/images/
