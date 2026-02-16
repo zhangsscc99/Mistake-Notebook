@@ -957,15 +957,15 @@ export default {
 }
 
 :deep(.van-tabbar-item:hover) {
-  background: rgba(47, 107, 255, 0.08) !important;
+  background: transparent !important;
   transform: translateY(-1px) !important;
 }
 
 :deep(.van-tabbar-item--active) {
   color: var(--primary-color) !important;
-  background: rgba(47, 107, 255, 0.08) !important;
-  border: 1px solid rgba(47, 107, 255, 0.16) !important;
-  box-shadow: 0 10px 22px rgba(31, 91, 255, 0.10) !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__text) {
