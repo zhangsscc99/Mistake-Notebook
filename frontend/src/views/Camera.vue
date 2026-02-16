@@ -477,7 +477,6 @@ export default {
 
 @media (prefers-reduced-motion: reduce) {
   .content-container::after { animation: none; }
-  .action-buttons .van-button::after { display: none; }
   .process-btn::after { display: none; }
 }
 
@@ -753,52 +752,19 @@ export default {
   color: rgba(11, 22, 51, 0.78) !important;
 }
 
-.action-buttons .van-button::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(47, 107, 255, 0.22),
-    rgba(142, 211, 255, 0.14),
-    rgba(138, 125, 255, 0.12)
-  );
-  pointer-events: none;
-  opacity: 0.55;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-}
-
-.action-buttons .van-button--primary::before {
-  opacity: 0.85;
-}
-
+/* Honor browser can render black curved seams on button pseudo layers. */
+.action-buttons .van-button::before,
 .action-buttons .van-button::after {
-  content: '';
-  position: absolute;
-  inset: -80% -60%;
-  background: linear-gradient(
-    120deg,
-    transparent 38%,
-    rgba(255, 255, 255, 0.34) 46%,
-    rgba(255, 255, 255, 0.10) 54%,
-    transparent 64%
-  );
-  transform: translateX(-14%) rotate(12deg);
-  opacity: 0.55;
-  pointer-events: none;
-  transition: opacity 0.22s var(--ease-smooth);
-}
-
-.action-buttons .van-button:hover::after {
-  opacity: 0.85;
+  content: none !important;
+  display: none !important;
 }
 
 .action-buttons .van-button :deep(.van-icon) {
   color: currentColor !important;
+}
+
+.action-buttons .van-button :deep(.van-button__content::before) {
+  content: none !important;
 }
 
 .action-buttons .van-button:hover {
