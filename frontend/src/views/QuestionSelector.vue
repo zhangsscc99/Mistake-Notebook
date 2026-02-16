@@ -440,8 +440,8 @@ export default {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle 600px at 20% 30%, rgba(232, 168, 85, 0.03) 0%, transparent 60%),
-    radial-gradient(circle 400px at 80% 70%, rgba(232, 168, 85, 0.04) 0%, transparent 50%);
+    radial-gradient(circle 600px at 20% 30%, rgba(31, 91, 255, 0.03) 0%, transparent 60%),
+    radial-gradient(circle 400px at 80% 70%, rgba(31, 91, 255, 0.04) 0%, transparent 50%);
   z-index: -1;
   pointer-events: none;
 }
@@ -554,7 +554,7 @@ export default {
   box-shadow: 
     var(--shadow-glow),
     var(--shadow-card),
-    0 8px 32px rgba(232, 168, 85, 0.08);
+    0 8px 32px rgba(31, 91, 255, 0.08);
   margin-bottom: 20px;
 }
 
@@ -578,7 +578,7 @@ export default {
   position: absolute;
   border: 2px solid transparent;
   border-radius: var(--radius-md);
-  background: rgba(232, 168, 85, 0.06);
+  background: rgba(31, 91, 255, 0.06);
   cursor: pointer;
   pointer-events: all;
   transition: all 0.4s var(--ease-smooth);
@@ -587,16 +587,16 @@ export default {
   justify-content: space-between;
   padding: 6px;
   box-shadow: 
-    0 2px 12px rgba(232, 168, 85, 0.1),
+    0 2px 12px rgba(31, 91, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .question-box:hover {
-  background: rgba(232, 168, 85, 0.12);
+  background: rgba(31, 91, 255, 0.12);
   border-color: var(--primary-color);
   transform: scale(1.02);
   box-shadow: 
-    0 4px 20px rgba(232, 168, 85, 0.2),
+    0 4px 20px rgba(31, 91, 255, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -649,7 +649,7 @@ export default {
   justify-content: center;
   transition: all 0.4s var(--ease-smooth);
   box-shadow: 
-    0 2px 8px rgba(232, 168, 85, 0.3),
+    0 2px 8px rgba(31, 91, 255, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
@@ -721,26 +721,26 @@ export default {
   padding: 6px 12px !important;
   border-radius: var(--radius-sm) !important;
   background: linear-gradient(135deg, 
-    rgba(232, 168, 85, 0.1) 0%, 
-    rgba(232, 168, 85, 0.05) 100%) !important;
-  border: 1px solid rgba(232, 168, 85, 0.2) !important;
+    rgba(31, 91, 255, 0.1) 0%, 
+    rgba(31, 91, 255, 0.05) 100%) !important;
+  border: 1px solid rgba(31, 91, 255, 0.2) !important;
   color: var(--text-primary) !important;
   font-weight: 500 !important;
   transition: all 0.3s var(--ease-smooth) !important;
   backdrop-filter: blur(4px);
   box-shadow: 
-    0 2px 4px rgba(232, 168, 85, 0.1),
+    0 2px 4px rgba(31, 91, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .category-tag:hover {
   background: linear-gradient(135deg, 
-    rgba(232, 168, 85, 0.15) 0%, 
-    rgba(232, 168, 85, 0.08) 100%) !important;
-  border-color: rgba(232, 168, 85, 0.3) !important;
+    rgba(31, 91, 255, 0.15) 0%, 
+    rgba(31, 91, 255, 0.08) 100%) !important;
+  border-color: rgba(31, 91, 255, 0.3) !important;
   transform: translateY(-1px);
   box-shadow: 
-    0 4px 8px rgba(232, 168, 85, 0.2),
+    0 4px 8px rgba(31, 91, 255, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -760,12 +760,12 @@ export default {
 
 .modify-btn:hover {
   background: linear-gradient(135deg, 
-    rgba(232, 168, 85, 0.1) 0%, 
-    rgba(232, 168, 85, 0.05) 100%);
+    rgba(31, 91, 255, 0.1) 0%, 
+    rgba(31, 91, 255, 0.05) 100%);
   border-color: var(--primary-color);
   transform: translateY(-1px);
   box-shadow: 
-    0 4px 12px rgba(232, 168, 85, 0.2),
+    0 4px 12px rgba(31, 91, 255, 0.2),
     var(--shadow-inner);
 }
 
@@ -784,7 +784,7 @@ export default {
   overflow: hidden !important;
   border: none !important;
   box-shadow: 
-    0 8px 24px rgba(232, 168, 85, 0.3),
+    0 8px 24px rgba(31, 91, 255, 0.3),
     0 4px 16px rgba(184, 134, 11, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
   transition: all 0.4s var(--ease-smooth) !important;
@@ -811,7 +811,7 @@ export default {
 .save-btn:hover {
   transform: translateY(-2px) !important;
   box-shadow: 
-    0 12px 32px rgba(232, 168, 85, 0.4),
+    0 12px 32px rgba(31, 91, 255, 0.4),
     0 6px 24px rgba(184, 134, 11, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
@@ -915,14 +915,14 @@ export default {
   background: linear-gradient(135deg, var(--primary-color), #B8860B) !important;
   border: none !important;
   box-shadow: 
-    0 6px 20px rgba(232, 168, 85, 0.3),
+    0 6px 20px rgba(31, 91, 255, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
 }
 
 .confirm-btn:hover {
   transform: translateY(-2px) !important;
   box-shadow: 
-    0 8px 28px rgba(232, 168, 85, 0.4),
+    0 8px 28px rgba(31, 91, 255, 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
 }
 

@@ -621,7 +621,7 @@ export default {
               style="
                 width: 100%;
                 padding: 12px;
-                border: 1px solid rgba(232, 168, 85, 0.3);
+                border: 1px solid rgba(31, 91, 255, 0.3);
                 border-radius: 8px;
                 font-size: 14px;
                 background: rgba(255, 255, 255, 0.05);
@@ -747,7 +747,7 @@ export default {
               name: category.name || '未知分类',
               description: category.description || '暂无描述',
               icon: category.icon || 'apps-o',
-              color: category.color || '#E8A855'
+              color: category.color || '#2459ff'
             }
             Object.assign(categoryInfo, categoryData)
             console.log('成功加载分类信息:', categoryData)
@@ -916,7 +916,7 @@ export default {
     var(--primary-light) 50%,
     var(--accent-color) 100%) !important;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
-  box-shadow: 0 2px 12px rgba(232, 168, 85, 0.5) !important;
+  box-shadow: 0 2px 12px rgba(31, 91, 255, 0.5) !important;
 }
 
 /* 🎨 对话框标题样式 */
@@ -954,12 +954,12 @@ export default {
 }
 
 :deep(.question-detail-dialog .van-dialog__message)::-webkit-scrollbar-thumb {
-  background: rgba(232, 168, 85, 0.4) !important;
+  background: rgba(31, 91, 255, 0.4) !important;
   border-radius: 3px !important;
 }
 
 :deep(.question-detail-dialog .van-dialog__message)::-webkit-scrollbar-thumb:hover {
-  background: rgba(232, 168, 85, 0.6) !important;
+  background: rgba(31, 91, 255, 0.6) !important;
 }
 
 /* 📝 所有内容左对齐 */
@@ -996,7 +996,7 @@ export default {
   background: linear-gradient(180deg, var(--primary-color) 0%, var(--primary-light) 100%) !important;
   border-radius: 2px !important;
   margin-right: 8px !important;
-  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5) !important;
+  box-shadow: 0 0 8px rgba(31, 91, 255, 0.5) !important;
 }
 
 :deep(.dialog-section__body) {
@@ -1026,7 +1026,7 @@ export default {
   padding: 12px 32px !important;
   font-weight: 600 !important;
   box-shadow: 
-    0 4px 16px rgba(232, 168, 85, 0.3),
+    0 4px 16px rgba(31, 91, 255, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
   transition: all 0.3s var(--ease-smooth) !important;
 }
@@ -1050,8 +1050,8 @@ export default {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle 400px at 20% 30%, rgba(232, 168, 85, 0.04) 0%, transparent 50%),
-    radial-gradient(circle 300px at 80% 70%, rgba(244, 190, 126, 0.03) 0%, transparent 50%);
+    radial-gradient(circle 400px at 20% 30%, rgba(31, 91, 255, 0.04) 0%, transparent 50%),
+    radial-gradient(circle 300px at 80% 70%, rgba(82, 183, 255, 0.03) 0%, transparent 50%);
   animation: floatingGlow 30s ease-in-out infinite;
   pointer-events: none;
   z-index: -1;
@@ -1180,13 +1180,13 @@ export default {
   height: 100%;
   background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5);
+  box-shadow: 0 0 8px rgba(31, 91, 255, 0.5);
 }
 
 .question-card:hover {
   border-color: var(--border-glow);
   box-shadow: 
-    0 0 40px rgba(232, 168, 85, 0.15),
+    0 0 40px rgba(31, 91, 255, 0.15),
     var(--shadow-inner),
     var(--shadow-hover);
   transform: translateY(-4px);
@@ -1250,9 +1250,9 @@ export default {
 
 /* 自定义标签样式 */
 .custom-tag {
-  background: rgba(232, 168, 85, 0.15) !important;
+  background: rgba(31, 91, 255, 0.15) !important;
   color: var(--text-accent) !important;
-  border: 1px solid rgba(232, 168, 85, 0.3) !important;
+  border: 1px solid rgba(31, 91, 255, 0.3) !important;
   border-radius: var(--radius-sm) !important;
 }
 
@@ -1327,13 +1327,13 @@ export default {
   height: 100%;
   background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5);
+  box-shadow: 0 0 8px rgba(31, 91, 255, 0.5);
 }
 
 .group-header:hover {
   border-color: var(--border-glow);
   box-shadow: 
-    0 0 30px rgba(232, 168, 85, 0.15),
+    0 0 30px rgba(31, 91, 255, 0.15),
     var(--shadow-inner),
     var(--shadow-hover);
   transform: translateY(-2px);
@@ -1363,10 +1363,10 @@ export default {
 .group-count {
   font-size: 14px;
   color: var(--text-secondary);
-  background: rgba(232, 168, 85, 0.1);
+  background: rgba(31, 91, 255, 0.1);
   padding: 4px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid rgba(232, 168, 85, 0.2);
+  border: 1px solid rgba(31, 91, 255, 0.2);
   font-weight: 500;
 }
 
@@ -1383,8 +1383,8 @@ export default {
   bottom: 0;
   width: 2px;
   background: linear-gradient(180deg, 
-    rgba(232, 168, 85, 0.3) 0%, 
-    rgba(232, 168, 85, 0.1) 50%,
+    rgba(31, 91, 255, 0.3) 0%, 
+    rgba(31, 91, 255, 0.1) 50%,
     transparent 100%
   );
   border-radius: 1px;
@@ -1406,7 +1406,7 @@ export default {
   height: 6px;
   background: var(--primary-color);
   border-radius: 50%;
-  box-shadow: 0 0 8px rgba(232, 168, 85, 0.6);
+  box-shadow: 0 0 8px rgba(31, 91, 255, 0.6);
 }
 
 /* 🌑 保存试卷对话框 - 深色主题 */
@@ -1468,6 +1468,6 @@ export default {
 /* 输入框焦点样式 */
 :deep(.save-paper-dialog #paper-title-input:focus) {
   border-color: var(--primary-color) !important;
-  box-shadow: 0 0 0 2px rgba(232, 168, 85, 0.2) !important;
+  box-shadow: 0 0 0 2px rgba(31, 91, 255, 0.2) !important;
 }
 </style>

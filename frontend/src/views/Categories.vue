@@ -219,7 +219,7 @@ export default {
             name: cat.name,
             description: cat.description || '暂无描述',
             icon: cat.icon || 'apps-o',
-            color: cat.color || '#E8A855',
+            color: cat.color || '#2459ff',
             count: cat.questionCount || 0,
             tags: [],
             lastUpdated: Date.now() // 暂时使用当前时间
@@ -319,7 +319,7 @@ export default {
   border: 1px solid var(--border-glow) !important;
   border-radius: var(--radius-md) !important;
   box-shadow: 
-    0 4px 16px rgba(232, 168, 85, 0.1),
+    0 4px 16px rgba(31, 91, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
   backdrop-filter: blur(8px) !important;
 }
@@ -356,7 +356,7 @@ export default {
   display: flex;
   justify-content: space-around;
   box-shadow: 
-    0 8px 32px rgba(232, 168, 85, 0.3),
+    0 8px 32px rgba(31, 91, 255, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   overflow: hidden;
 }
@@ -386,7 +386,7 @@ export default {
   backdrop-filter: blur(8px);
   border: 2px solid rgba(255, 255, 255, 0.3);
   box-shadow: 
-    0 8px 32px rgba(232, 168, 85, 0.4),
+    0 8px 32px rgba(31, 91, 255, 0.4),
     0 4px 16px rgba(0, 0, 0, 0.2),
     inset 0 2px 0 rgba(255, 255, 255, 0.4);
   animation: glowPulse 4s ease-in-out infinite;
@@ -440,13 +440,13 @@ export default {
   height: 100%;
   background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5);
+  box-shadow: 0 0 8px rgba(31, 91, 255, 0.5);
 }
 
 .category-card:hover {
   border-color: var(--border-glow);
   box-shadow: 
-    0 0 40px rgba(232, 168, 85, 0.15),
+    0 0 40px rgba(31, 91, 255, 0.15),
     var(--shadow-inner),
     var(--shadow-hover);
   transform: translateY(-4px);
@@ -498,7 +498,7 @@ export default {
   font-size: 20px;
   font-weight: bold;
   color: var(--text-accent);
-  text-shadow: 0 0 8px rgba(232, 168, 85, 0.3);
+  text-shadow: 0 0 8px rgba(31, 91, 255, 0.3);
 }
 
 .count-label {
@@ -534,54 +534,67 @@ export default {
 
 /* 自定义标签样式 */
 .custom-tag {
-  background: rgba(232, 168, 85, 0.15) !important;
+  background: rgba(31, 91, 255, 0.15) !important;
   color: var(--text-accent) !important;
-  border: 1px solid rgba(232, 168, 85, 0.3) !important;
+  border: 1px solid rgba(31, 91, 255, 0.3) !important;
   border-radius: var(--radius-sm) !important;
 }
 
 /* 🔥 强制覆盖底部导航栏样式 */
 :deep(.van-tabbar) {
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(16px) !important;
-  border-top: 1px solid var(--border-glow) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.72)) !important;
+  backdrop-filter: blur(18px) saturate(1.35) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.35) !important;
+  border-top: 1px solid rgba(47, 107, 255, 0.16) !important;
   box-shadow: 
-    0 -4px 20px rgba(0, 0, 0, 0.4) !important,
-    0 -1px 0 rgba(232, 168, 85, 0.1) !important;
+    0 -14px 34px rgba(11, 22, 51, 0.10) !important,
+    0 -1px 0 rgba(255, 255, 255, 0.72) !important;
   padding: 8px 12px !important;
 }
 
 :deep(.van-tabbar-item) {
-  color: rgba(255, 255, 255, 0.6) !important;
+  color: rgba(11, 22, 51, 0.60) !important;
   border-radius: 12px !important;
   margin: 0 4px !important;
   padding: 6px 8px !important;
-  transition: all 0.3s ease !important;
+  transition: transform 0.22s var(--ease-smooth), background 0.22s var(--ease-smooth), color 0.22s var(--ease-smooth) !important;
   position: relative !important;
   overflow: hidden !important;
 }
 
 :deep(.van-tabbar-item:hover) {
-  background: rgba(232, 168, 85, 0.1) !important;
+  background: transparent !important;
   transform: translateY(-1px) !important;
 }
 
 :deep(.van-tabbar-item--active) {
-  color: #E8A855 !important;
+  color: #2459ff !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__text) {
-  color: #E8A855 !important;
+  color: #2459ff !important;
   font-weight: 700 !important;
-  text-shadow: 0 0 8px rgba(232, 168, 85, 0.6) !important;
+  text-shadow: 0 0 12px rgba(31, 91, 255, 0.16) !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: currentColor !important;
+  animation: none !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__icon) {
-  color: #E8A855 !important;
-  filter: drop-shadow(0 0 8px rgba(232, 168, 85, 0.6)) !important;
+  color: #2459ff !important;
+  filter: drop-shadow(0 0 10px rgba(31, 91, 255, 0.18)) !important;
   transform: scale(1.1) !important;
+  animation: none !important;
+}
+
+/* Remove global active indicator/glow layers from App.vue on this page. */
+:deep(.van-tabbar-item--active::before),
+:deep(.van-tabbar-item--active::after) {
+  content: none !important;
 }
 </style>

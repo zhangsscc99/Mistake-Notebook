@@ -33,8 +33,8 @@ export default {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(ellipse 1200px 800px at 20% 30%, rgba(232, 168, 85, 0.06) 0%, transparent 50%),
-    radial-gradient(ellipse 800px 600px at 80% 70%, rgba(244, 190, 126, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse 1200px 800px at 20% 30%, rgba(31, 91, 255, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 800px 600px at 80% 70%, rgba(82, 183, 255, 0.04) 0%, transparent 50%),
     radial-gradient(ellipse 600px 400px at 50% 90%, rgba(248, 213, 168, 0.03) 0%, transparent 50%);
   animation: floatingGlow 25s ease-in-out infinite;
   pointer-events: none;
@@ -76,23 +76,13 @@ export default {
   border-top: 1px solid var(--border-glow) !important;
   box-shadow: 
     0 -4px 20px rgba(0, 0, 0, 0.4),
-    0 -1px 0 rgba(232, 168, 85, 0.1) !important;
+    0 -1px 0 rgba(31, 91, 255, 0.1) !important;
   position: relative !important;
 }
 
 :deep(.van-tabbar::before) {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(232, 168, 85, 0.3) 20%, 
-    rgba(232, 168, 85, 0.6) 50%, 
-    rgba(232, 168, 85, 0.3) 80%, 
-    transparent 100%);
+  content: none !important;
+  display: none !important;
 }
 
 .van-tabbar-item,
@@ -117,40 +107,14 @@ export default {
 
 /* 激活状态的顶部金色指示条 */
 :deep(.van-tabbar-item--active::before) {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 32px;
-  height: 3px;
-  background: linear-gradient(90deg, 
-    var(--primary-color) 0%, 
-    #FFD700 50%, 
-    var(--primary-light) 100%);
-  border-radius: 0 0 2px 2px;
-  box-shadow: 
-    0 0 12px rgba(232, 168, 85, 0.8),
-    0 2px 4px rgba(232, 168, 85, 0.3);
-  animation: tabGlow 2s ease-in-out infinite;
+  content: none !important;
+  display: none !important;
 }
 
 /* 激活状态的背景光晕 */
 :deep(.van-tabbar-item--active::after) {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 48px;
-  height: 48px;
-  background: radial-gradient(circle, 
-    rgba(232, 168, 85, 0.15) 0%, 
-    rgba(232, 168, 85, 0.05) 50%, 
-    transparent 100%);
-  border-radius: 50%;
-  z-index: -1;
-  animation: tabPulse 3s ease-in-out infinite;
+  content: none !important;
+  display: none !important;
 }
 
 .van-tabbar-item--active .van-tabbar-item__text,
@@ -158,11 +122,11 @@ export default {
   color: var(--text-accent) !important;
   font-weight: 700 !important;
   text-shadow: 
-    0 0 8px rgba(232, 168, 85, 0.4),
+    0 0 8px rgba(31, 91, 255, 0.4),
     0 1px 2px rgba(0, 0, 0, 0.3) !important;
   background: linear-gradient(135deg, 
     var(--text-accent) 0%, 
-    #FFD700 50%, 
+    #52b7ff 50%, 
     var(--text-accent) 100%) !important;
   background-size: 200% 100% !important;
   -webkit-background-clip: text !important;
@@ -175,7 +139,7 @@ export default {
 :deep(.van-tabbar-item--active .van-tabbar-item__icon) {
   color: var(--text-accent) !important;
   filter: 
-    drop-shadow(0 0 8px rgba(232, 168, 85, 0.6))
+    drop-shadow(0 0 8px rgba(31, 91, 255, 0.6))
     drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
   transform: scale(1.15) translateY(-1px) !important;
   animation: iconFloat 3s ease-in-out infinite !important;
@@ -196,7 +160,7 @@ export default {
 /* 添加底部导航栏动画 */
 @keyframes tabGlow {
   0%, 100% { opacity: 0.8; }
-  50% { opacity: 1; box-shadow: 0 0 16px rgba(232, 168, 85, 1), 0 2px 6px rgba(232, 168, 85, 0.4); }
+  50% { opacity: 1; box-shadow: 0 0 16px rgba(31, 91, 255, 1), 0 2px 6px rgba(31, 91, 255, 0.4); }
 }
 
 @keyframes tabPulse {
@@ -212,7 +176,7 @@ export default {
 :deep(.van-button--primary) {
   background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
   border: none !important;
-  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(31, 91, 255, 0.3) !important;
   color: var(--bg-primary) !important;
 }
 
@@ -238,9 +202,9 @@ export default {
 }
 
 :deep(.van-tag--primary) {
-  background: rgba(232, 168, 85, 0.2) !important;
+  background: rgba(31, 91, 255, 0.2) !important;
   color: var(--text-accent) !important;
-  border: 1px solid rgba(232, 168, 85, 0.3) !important;
+  border: 1px solid rgba(31, 91, 255, 0.3) !important;
 }
 
 :deep(.van-tag--default) {

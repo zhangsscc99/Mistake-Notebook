@@ -317,7 +317,7 @@ export default {
     const viewPaper = (paper) => {
       // 显示试卷详情对话框
       const questionsList = paper.questions.map((q, index) => `
-        <div style="padding: 12px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(232, 168, 85, 0.15); border-radius: 8px; text-align: left;">
+        <div style="padding: 12px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(31, 91, 255, 0.15); border-radius: 8px; text-align: left;">
           <div style="display: flex; align-items: flex-start; gap: 8px;">
             <span style="color: var(--text-accent); font-weight: 600; min-width: 30px;">${index + 1}.</span>
             <span style="color: var(--text-primary); flex: 1;">${q.content}</span>
@@ -330,7 +330,7 @@ export default {
         title: paper.title,
         message: `
           <div style="text-align: left;">
-            <div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(232, 168, 85, 0.15);">
+            <div style="margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid rgba(31, 91, 255, 0.15);">
               <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 4px;">
                 📊 共 ${paper.questionCount} 道题
               </div>
@@ -396,7 +396,7 @@ export default {
         
         // 生成HTML内容
         let htmlContent = `
-          <div style="text-align: center; margin-bottom: 40px; border-bottom: 2px solid #E8A855; padding-bottom: 20px;">
+          <div style="text-align: center; margin-bottom: 40px; border-bottom: 2px solid #2459ff; padding-bottom: 20px;">
             <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">${paper.title}</div>
             <div style="font-size: 14px; color: #666;">共 ${paper.questionCount} 道题 · 创建时间：${paper.createdAt}</div>
           </div>
@@ -407,8 +407,8 @@ export default {
         paper.questions.forEach((q, index) => {
           htmlContent += `
             <div style="margin-bottom: ${withAnalysis ? '40px' : '30px'};">
-              <div style="font-weight: bold; color: #E8A855; margin-bottom: 8px;">第 ${index + 1} 题</div>
-              <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-left: 4px solid #E8A855; border-radius: 4px;">
+              <div style="font-weight: bold; color: #2459ff; margin-bottom: 8px;">第 ${index + 1} 题</div>
+              <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-left: 4px solid #2459ff; border-radius: 4px;">
                 ${q.content}
               </div>
           `
@@ -517,7 +517,7 @@ export default {
             name: cat.name,
             description: cat.description || '暂无描述',
             icon: cat.icon || 'apps-o',
-            color: cat.color || '#E8A855',
+            color: cat.color || '#2459ff',
             count: cat.questionCount || 0
           }))
           availableCategories.splice(0, availableCategories.length, ...categories)
@@ -532,7 +532,7 @@ export default {
             name: '数学 - 二次函数',
             description: '关于二次函数的图像、性质等问题',
             icon: 'chart-trending-o',
-            color: '#E8A855',
+            color: '#2459ff',
             count: 15
           },
           {
@@ -649,8 +649,8 @@ export default {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle 500px at 30% 20%, rgba(232, 168, 85, 0.05) 0%, transparent 50%),
-    radial-gradient(circle 400px at 70% 80%, rgba(244, 190, 126, 0.04) 0%, transparent 50%);
+    radial-gradient(circle 500px at 30% 20%, rgba(31, 91, 255, 0.05) 0%, transparent 50%),
+    radial-gradient(circle 400px at 70% 80%, rgba(82, 183, 255, 0.04) 0%, transparent 50%);
   animation: floatingGlow 35s ease-in-out infinite;
   pointer-events: none;
   z-index: -1;
@@ -683,7 +683,7 @@ export default {
   border: none !important;
   color: var(--bg-primary) !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(31, 91, 255, 0.3) !important;
   border-radius: var(--radius-md) !important;
 }
 
@@ -694,7 +694,7 @@ export default {
   font-weight: 600 !important;
   padding: 12px 32px !important;
   font-size: 16px !important;
-  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(31, 91, 255, 0.3) !important;
   border-radius: var(--radius-md) !important;
 }
 
@@ -729,13 +729,13 @@ export default {
   height: 100%;
   background: linear-gradient(180deg, var(--primary-color), var(--primary-light));
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  box-shadow: 0 0 8px rgba(232, 168, 85, 0.5);
+  box-shadow: 0 0 8px rgba(31, 91, 255, 0.5);
 }
 
 .paper-card:hover {
   border-color: var(--border-glow);
   box-shadow: 
-    0 0 40px rgba(232, 168, 85, 0.15),
+    0 0 40px rgba(31, 91, 255, 0.15),
     var(--shadow-inner),
     var(--shadow-hover);
   transform: translateY(-4px);
@@ -750,7 +750,7 @@ export default {
 
 .paper-icon {
   font-size: 32px;
-  filter: drop-shadow(0 2px 4px rgba(232, 168, 85, 0.3));
+  filter: drop-shadow(0 2px 4px rgba(31, 91, 255, 0.3));
 }
 
 .paper-info {
@@ -781,9 +781,9 @@ export default {
 }
 
 .stat-badge {
-  background: rgba(232, 168, 85, 0.15);
+  background: rgba(31, 91, 255, 0.15);
   color: var(--text-accent);
-  border: 1px solid rgba(232, 168, 85, 0.3);
+  border: 1px solid rgba(31, 91, 255, 0.3);
   border-radius: var(--radius-sm);
   padding: 4px 12px;
   font-size: 12px;
@@ -853,7 +853,7 @@ export default {
 
 .category-item:hover,
 .question-item:hover {
-  background: rgba(232, 168, 85, 0.05);
+  background: rgba(31, 91, 255, 0.05);
 }
 
 .category-card {
@@ -985,7 +985,7 @@ export default {
   font-size: 20px;
   font-weight: bold;
   color: var(--text-accent);
-  text-shadow: 0 0 8px rgba(232, 168, 85, 0.3);
+  text-shadow: 0 0 8px rgba(31, 91, 255, 0.3);
 }
 
 .export-buttons {
@@ -1020,9 +1020,9 @@ export default {
 
 /* 自定义标签样式 */
 .custom-tag-category {
-  background: rgba(232, 168, 85, 0.15) !important;
+  background: rgba(31, 91, 255, 0.15) !important;
   color: var(--text-accent) !important;
-  border: 1px solid rgba(232, 168, 85, 0.3) !important;
+  border: 1px solid rgba(31, 91, 255, 0.3) !important;
   border-radius: var(--radius-sm) !important;
 }
 
@@ -1060,7 +1060,7 @@ export default {
   border: none !important;
   color: var(--bg-primary) !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(31, 91, 255, 0.3) !important;
   border-radius: var(--radius-md) !important;
 }
 
@@ -1069,7 +1069,7 @@ export default {
   border: none !important;
   color: var(--bg-primary) !important;
   font-weight: 600 !important;
-  box-shadow: 0 4px 16px rgba(232, 168, 85, 0.3) !important;
+  box-shadow: 0 4px 16px rgba(31, 91, 255, 0.3) !important;
   border-radius: var(--radius-md) !important;
 }
 
@@ -1124,47 +1124,60 @@ export default {
 
 /* 🔥 强制覆盖底部导航栏样式 */
 :deep(.van-tabbar) {
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(16px) !important;
-  border-top: 1px solid var(--border-glow) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.72)) !important;
+  backdrop-filter: blur(18px) saturate(1.35) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.35) !important;
+  border-top: 1px solid rgba(47, 107, 255, 0.16) !important;
   box-shadow: 
-    0 -4px 20px rgba(0, 0, 0, 0.4) !important,
-    0 -1px 0 rgba(232, 168, 85, 0.1) !important;
+    0 -14px 34px rgba(11, 22, 51, 0.10) !important,
+    0 -1px 0 rgba(255, 255, 255, 0.72) !important;
   padding: 8px 12px !important;
 }
 
 :deep(.van-tabbar-item) {
-  color: rgba(255, 255, 255, 0.6) !important;
+  color: rgba(11, 22, 51, 0.60) !important;
   border-radius: 12px !important;
   margin: 0 4px !important;
   padding: 6px 8px !important;
-  transition: all 0.3s ease !important;
+  transition: transform 0.22s var(--ease-smooth), background 0.22s var(--ease-smooth), color 0.22s var(--ease-smooth) !important;
   position: relative !important;
   overflow: hidden !important;
 }
 
 :deep(.van-tabbar-item:hover) {
-  background: rgba(232, 168, 85, 0.1) !important;
+  background: transparent !important;
   transform: translateY(-1px) !important;
 }
 
 :deep(.van-tabbar-item--active) {
-  color: #E8A855 !important;
+  color: #2459ff !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__text) {
-  color: #E8A855 !important;
+  color: #2459ff !important;
   font-weight: 700 !important;
-  text-shadow: 0 0 8px rgba(232, 168, 85, 0.6) !important;
+  text-shadow: 0 0 12px rgba(31, 91, 255, 0.16) !important;
+  background: none !important;
+  -webkit-background-clip: initial !important;
+  background-clip: initial !important;
+  -webkit-text-fill-color: currentColor !important;
+  animation: none !important;
 }
 
 :deep(.van-tabbar-item--active .van-tabbar-item__icon) {
-  color: #E8A855 !important;
-  filter: drop-shadow(0 0 8px rgba(232, 168, 85, 0.6)) !important;
+  color: #2459ff !important;
+  filter: drop-shadow(0 0 10px rgba(31, 91, 255, 0.18)) !important;
   transform: scale(1.1) !important;
+  animation: none !important;
+}
+
+/* Remove global active indicator/glow layers from App.vue on this page. */
+:deep(.van-tabbar-item--active::before),
+:deep(.van-tabbar-item--active::after) {
+  content: none !important;
 }
 
 /* 🌑 试卷详情对话框 - 深色主题 */
@@ -1267,9 +1280,9 @@ export default {
 }
 
 :deep(.export-options-dialog .van-dialog__cancel) {
-  background: rgba(232, 168, 85, 0.15) !important;
+  background: rgba(31, 91, 255, 0.15) !important;
   color: var(--text-accent) !important;
-  border: 1px solid rgba(232, 168, 85, 0.3) !important;
+  border: 1px solid rgba(31, 91, 255, 0.3) !important;
   font-weight: 600 !important;
 }
 </style>

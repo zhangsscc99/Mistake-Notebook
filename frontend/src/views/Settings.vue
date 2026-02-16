@@ -554,8 +554,8 @@ export default {
   right: 0;
   bottom: 0;
   background: 
-    radial-gradient(circle 400px at 25% 25%, rgba(232, 168, 85, 0.04) 0%, transparent 50%),
-    radial-gradient(circle 300px at 75% 75%, rgba(244, 190, 126, 0.03) 0%, transparent 50%);
+    radial-gradient(circle 400px at 25% 25%, rgba(31, 91, 255, 0.04) 0%, transparent 50%),
+    radial-gradient(circle 300px at 75% 75%, rgba(82, 183, 255, 0.03) 0%, transparent 50%);
   animation: floatingGlow 40s ease-in-out infinite;
   pointer-events: none;
   z-index: -1;
@@ -574,7 +574,7 @@ export default {
   display: flex;
   align-items: center;
   box-shadow: 
-    0 8px 32px rgba(232, 168, 85, 0.3),
+    0 8px 32px rgba(31, 91, 255, 0.3),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   overflow: hidden;
 }
