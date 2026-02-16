@@ -139,6 +139,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { imageRecognitionAPI } from '../api/recognition'
+import { apiClient } from '../api/config'
+import categoryAPI from '../api/category'
 
 export default {
   name: 'Homepage',
@@ -263,7 +265,11 @@ export default {
 
     // 查看记录
     const viewRecord = (record) => {
-      router.push(`/category/${record.categoryId}`)
+      if (record.categoryId) {
+        router.push(`/category/${record.categoryId}`)
+      } else {
+        showToast('未找到该题目的分类')
+      }
     }
 
     // 格式化时间
@@ -278,32 +284,61 @@ export default {
       return `${Math.floor(diff / 86400000)}天前`
     }
 
-    // 加载最近记录
-    const loadRecentRecords = () => {
-      // 模拟最近记录数据
-      const mockRecords = [
-        {
-          id: 1,
-          title: '数学题 - 二次函数',
-          createdAt: Date.now() - 3600000,
-          categoryId: 1
-        },
-        {
-          id: 2,
-          title: '物理题 - 力学',
-          createdAt: Date.now() - 7200000,
-          categoryId: 2
+    // 生成最近记录标题
+    const buildRecentTitle = (question) => {
+      const categoryName = question.category || '未分类'
+      const plainContent = (question.content || '').replace(/\s+/g, ' ').trim()
+      if (!plainContent) {
+        return `${categoryName}题`
+      }
+      const shortContent = plainContent.length > 22
+        ? `${plainContent.slice(0, 22)}...`
+        : plainContent
+      return `${categoryName}题 - ${shortContent}`
+    }
+
+    // 加载最近记录（真实数据）
+    const loadRecentRecords = async () => {
+      try {
+        const [categoriesResponse, questionsResponse] = await Promise.all([
+          categoryAPI.getCategories(),
+          apiClient.get('/questions')
+        ])
+
+        const categories = categoriesResponse?.data?.data || []
+        const questions = questionsResponse?.data?.data || []
+
+        if (!Array.isArray(questions) || questions.length === 0) {
+          recentRecords.splice(0)
+          return
         }
-      ]
-      
-      recentRecords.splice(0, recentRecords.length, ...mockRecords)
+
+        const categoryIdMap = new Map()
+        categories.forEach((category) => {
+          if (category?.name) {
+            categoryIdMap.set(String(category.name).trim(), category.id)
+          }
+        })
+
+        const records = questions.slice(0, 10).map((question) => ({
+          id: question.id,
+          title: buildRecentTitle(question),
+          createdAt: question.createdAt,
+          categoryId: categoryIdMap.get(String(question.category || '').trim()) || null
+        }))
+
+        recentRecords.splice(0, recentRecords.length, ...records)
+      } catch (error) {
+        console.error('加载最近记录失败:', error)
+        recentRecords.splice(0)
+      }
     }
 
 
 
     // 组件挂载时加载数据
-    onMounted(() => {
-      loadRecentRecords()
+    onMounted(async () => {
+      await loadRecentRecords()
     })
 
     return {
