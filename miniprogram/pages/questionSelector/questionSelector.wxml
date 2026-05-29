@@ -1,0 +1,39 @@
+<!--pages/questionSelector/questionSelector.wxml-->
+<view class="container">
+  <!-- 顶部的分类选择滑动栏 -->
+  <scroll-view class="category-tabs" scroll-x scroll-with-animation>
+    <view class="tab-item {{activeTabId === item.id ? 'active' : ''}}" wx:for="{{categories}}" wx:key="id" bindtap="switchTab" data-id="{{item.id}}">
+      {{item.name}}
+    </view>
+  </scroll-view>
+
+  <!-- 题目多选列表 -->
+  <scroll-view class="questions-scroll" scroll-y>
+    <checkbox-group bindchange="onCheckboxChange" wx:if="{{questions.length > 0}}">
+      <view class="card select-question-card" wx:for="{{questions}}" wx:key="id">
+        <label class="checkbox-label justify-between align-start">
+          <checkbox value="{{item.id}}" checked="{{item.checked}}" color="#1989fa" style="margin-top: 4px;"></checkbox>
+          <view class="question-info">
+            <view class="badge-row">
+              <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+            </view>
+            <text class="question-text">{{item.content}}</text>
+          </view>
+        </label>
+      </view>
+    </checkbox-group>
+
+    <!-- 空白状态 -->
+    <view class="empty-state justify-center align-center" wx:else>
+      <text class="text-desc">该学科分类下暂无错题</text>
+    </view>
+  </scroll-view>
+
+  <!-- 底部固定操作框 -->
+  <view class="bottom-bar justify-between align-center">
+    <view class="select-info">
+      已选中 <text class="text-primary" style="font-weight: bold;">{{selectedTempCount}}</text> 题
+    </view>
+    <button class="btn btn-primary confirm-btn" bindtap="confirmSelection">确定（{{selectedTempCount}}）</button>
+  </view>
+</view>

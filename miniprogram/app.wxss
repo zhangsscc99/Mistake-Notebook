@@ -1,0 +1,90 @@
+/**app.wxss**/
+page {
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
+    Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei',
+    sans-serif;
+  font-size: 16px;
+  background-color: #f7f8fa;
+  color: #323233;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+container {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* 常用工具类样式 */
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.align-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+/* 主题颜色 */
+.text-primary {
+  color: #1989fa;
+}
+
+.bg-primary {
+  background-color: #1989fa;
+}
+
+.text-desc {
+  color: #969799;
+  font-size: 13px;
+}
+
+/* 卡片样式 */
+.card {
+  margin: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #ffffff;
+  box-shadow: 0 2px 12px rgba(100, 101, 102, 0.08);
+}
+
+/* 按钮通用样式 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  transition: opacity 0.2s;
+}
+
+.btn:active {
+  opacity: 0.8;
+}
+
+.btn-primary {
+  background-color: #1989fa;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #f2f3f5;
+  color: #323233;
+}

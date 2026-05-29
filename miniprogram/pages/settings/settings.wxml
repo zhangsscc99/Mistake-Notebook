@@ -1,0 +1,44 @@
+<!--pages/settings/settings.wxml-->
+<view class="container">
+  <!-- 用户个人中心头部 -->
+  <view class="user-header bg-primary">
+    <view class="avatar-container">
+      <open-data type="userAvatarUrl" class="user-avatar" wx:if="{{hasUserInfo}}"></open-data>
+      <image class="user-avatar" src="../../images/default-avatar.png" mode="aspectFill" wx:else></image>
+    </view>
+    <view class="user-info">
+      <view class="user-name" wx:if="{{hasUserInfo}}">
+        <open-data type="userNickName"></open-data>
+      </view>
+      <view class="user-name" bindtap="getUserProfile" wx:else>点击授权微信登录</view>
+      <view class="user-vip-tag">智能错题本·终身免费版</view>
+    </view>
+  </view>
+
+  <!-- 选项列表 -->
+  <view class="card settings-list">
+    <view class="settings-item justify-between align-center">
+      <text class="item-title">后端服务地址 (API)</text>
+      <input class="item-input" value="{{apiUrl}}" placeholder="请配置您的后端地址" bindconfirm="onApiUrlConfirm" bindblur="onApiUrlConfirm" />
+    </view>
+
+    <view class="settings-item justify-between align-center" bindtap="cleanCache">
+      <text class="item-title">清除本地缓存</text>
+      <text class="text-desc">清除图片和历史选择</text>
+    </view>
+
+    <view class="settings-item justify-between align-center" bindtap="showVersionInfo">
+      <text class="item-title">关于与版本</text>
+      <text class="text-desc">v1.0.0 (2026版)</text>
+    </view>
+  </view>
+
+  <!-- 说明卡片 -->
+  <view class="card help-card">
+    <view class="help-title text-primary">使用指引</view>
+    <view class="help-desc">
+      <text>1. 本程序已内置全套模拟数据。即便未部署后台，也能够点击【拍错题】体验一键拍照、AI 识别分析以及将错题生成 PDF 试卷的全流程。</text>
+      <text style="margin-top: 10px; display: block;">2. 如需对接您本地电脑的 Spring Boot 后端，请将上方的后端 API 地址修改为您的局域网 IP (例如：http://192.168.1.100:8080/api)。并在微信开发者工具中勾选【不校验合法域名】。</text>
+    </view>
+  </view>
+</view>

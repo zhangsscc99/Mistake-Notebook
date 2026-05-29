@@ -1,0 +1,50 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/categories/categories",
+    "pages/categoryDetail/categoryDetail",
+    "pages/paperBuilder/paperBuilder",
+    "pages/questionSelector/questionSelector",
+    "pages/settings/settings"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#1989fa",
+    "navigationBarTitleText": "智能错题本",
+    "navigationBarTextStyle": "white"
+  },
+  "tabBar": {
+    "color": "#7a7e83",
+    "selectedColor": "#1989fa",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "拍错题",
+        "iconPath": "images/tabbar/camera.png",
+        "selectedIconPath": "images/tabbar/camera-active.png"
+      },
+      {
+        "pagePath": "pages/categories/categories",
+        "text": "分类",
+        "iconPath": "images/tabbar/category.png",
+        "selectedIconPath": "images/tabbar/category-active.png"
+      },
+      {
+        "pagePath": "pages/paperBuilder/paperBuilder",
+        "text": "试卷",
+        "iconPath": "images/tabbar/paper.png",
+        "selectedIconPath": "images/tabbar/paper-active.png"
+      },
+      {
+        "pagePath": "pages/settings/settings",
+        "text": "设置",
+        "iconPath": "images/tabbar/settings.png",
+        "selectedIconPath": "images/tabbar/settings-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

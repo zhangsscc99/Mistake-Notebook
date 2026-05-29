@@ -1,0 +1,55 @@
+<!--pages/categoryDetail/categoryDetail.wxml-->
+<view class="container">
+  <view class="header bg-primary">
+    <view class="header-title">{{categoryName}}</view>
+    <view class="header-subtitle">共收录 {{questions.length || 0}} 道错题</view>
+  </view>
+
+  <!-- 错题卡片列表 -->
+  <view class="question-list" wx:if="{{questions.length > 0}}">
+    <view class="card question-card" wx:for="{{questions}}" wx:key="id">
+      <view class="question-header justify-between align-center">
+        <view class="badge-container">
+          <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+          <text class="tag-badge" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+        </view>
+        <text class="question-date">{{item.formattedDate}}</text>
+      </view>
+
+      <!-- 题目文本内容 -->
+      <view class="question-body">
+        <text class="question-text">{{item.content}}</text>
+      </view>
+
+      <!-- 错题图（如果有） -->
+      <image class="question-img" src="{{item.imageUrl}}" mode="aspectFill" wx:if="{{item.imageUrl}}" bindtap="previewImage" data-url="{{item.imageUrl}}"></image>
+
+      <!-- 折叠的 AI 答案与解析 -->
+      <view class="ai-box" wx:if="{{item.showAI}}">
+        <view class="ai-title text-primary">★ AI 标准答案与解析</view>
+        <view class="ai-subtitle">标准答案：</view>
+        <text class="ai-content">{{item.aiAnswer || '暂无解答'}}</text>
+        <view class="ai-subtitle" style="margin-top: 10px;">智能解析：</view>
+        <text class="ai-content">{{item.aiAnalysis || '暂无解析'}}</text>
+      </view>
+
+      <!-- 底部操作按钮 -->
+      <view class="question-actions justify-between align-center">
+        <button class="btn btn-secondary btn-sm" bindtap="toggleAI" data-index="{{index}}">
+          {{item.showAI ? '收起解析' : 'AI 智能解析'}}
+        </button>
+        <view class="right-actions">
+          <button class="btn btn-secondary btn-sm delete-btn" bindtap="deleteQuestion" data-id="{{item.id}}" data-index="{{index}}">删除</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空白状态 -->
+  <view class="empty-state" wx:else>
+    <image class="empty-img" src="../../images/empty.png" mode="aspectFit" style="width: 120px; height: 120px; margin-bottom: 16px;"></image>
+    <text class="empty-text">当前分类暂无错题</text>
+    <text class="empty-desc">赶紧去首页拍一张吧！</text>
+    <button class="btn btn-primary go-back-btn" bindtap="goBackToHome">去拍错题</button>
+  </view>
+</view>

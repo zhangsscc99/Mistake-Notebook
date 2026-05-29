@@ -1,0 +1,36 @@
+<!--pages/categories/categories.wxml-->
+<view class="container">
+  <!-- 统计卡片 -->
+  <view class="card stats-card bg-primary">
+    <view class="stats-item">
+      <view class="stats-num">{{totalQuestions}}</view>
+      <view class="stats-label">收录错题</view>
+    </view>
+    <view class="stats-divider"></view>
+    <view class="stats-item">
+      <view class="stats-num">{{todayAdded}}</view>
+      <view class="stats-label">今日新增</view>
+    </view>
+    <view class="stats-divider"></view>
+    <view class="stats-item">
+      <view class="stats-num">{{masteredCount}}</view>
+      <view class="stats-label">已掌握</view>
+    </view>
+  </view>
+
+  <view class="section-title">学科分类</view>
+
+  <!-- 分类列表 -->
+  <view class="category-grid">
+    <view class="category-card" wx:for="{{categories}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}" data-name="{{item.name}}">
+      <view class="card-accent" style="background-color: {{item.color || '#1989fa'}}"></view>
+      <view class="card-content">
+        <view class="card-header justify-between align-center">
+          <text class="category-name">{{item.name}}</text>
+          <text class="category-count bg-primary" style="background-color: {{item.color || '#1989fa'}}">{{item.questionCount || 0}} 题</text>
+        </view>
+        <text class="category-desc">{{item.description || '暂无描述'}}</text>
+      </view>
+    </view>
+  </view>
+</view>
