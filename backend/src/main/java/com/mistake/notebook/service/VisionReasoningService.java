@@ -116,7 +116,7 @@ public class VisionReasoningService {
             // 构建题目分割的提示词
             String prompt = buildQuestionSegmentationPrompt();
 
-            VisionResult result = callVisionAPI(file, prompt, true);
+            VisionResult result = callVisionAPI(file, prompt, false);
             
             if (!result.isSuccess()) {
                 return new VisionQuestionResult(false, null, result.getReasoningContent(), 

@@ -18,7 +18,6 @@ public class MistakeNotebookApplication {
                 "  错题本整理系统启动成功！\n" +
                 "  前端地址: http://localhost:3000\n" +
                 "  后端地址: http://localhost:8080/api\n" +
-                "  H2控制台: http://localhost:8080/api/h2-console\n" +
                 "================================\n");
     }
 } 
