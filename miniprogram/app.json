@@ -4,44 +4,41 @@
     "pages/categories/categories",
     "pages/categoryDetail/categoryDetail",
     "pages/paperBuilder/paperBuilder",
+    "pages/questionPicker/questionPicker",
     "pages/questionSelector/questionSelector",
     "pages/settings/settings"
   ],
   "window": {
-    "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#1989fa",
-    "navigationBarTitleText": "智能错题本",
-    "navigationBarTextStyle": "white"
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#eaf3ff",
+    "navigationBarTextStyle": "black",
+    "backgroundColorTop": "#eaf3ff",
+    "backgroundColorBottom": "#eaf3ff",
+    "backgroundColor": "#eaf3ff"
   },
   "tabBar": {
-    "color": "#7a7e83",
-    "selectedColor": "#1989fa",
-    "borderStyle": "black",
-    "backgroundColor": "#ffffff",
+    "color": "rgba(11,22,51,0.55)",
+    "selectedColor": "#2459ff",
+    "borderStyle": "white",
+    "backgroundColor": "rgba(255,255,255,0.88)",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "拍错题",
-        "iconPath": "images/tabbar/camera.png",
-        "selectedIconPath": "images/tabbar/camera-active.png"
+        "text": "首页",
+        "iconPath": "images/tabbar/home.png",
+        "selectedIconPath": "images/tabbar/home-active.png"
       },
       {
         "pagePath": "pages/categories/categories",
         "text": "分类",
-        "iconPath": "images/tabbar/category.png",
-        "selectedIconPath": "images/tabbar/category-active.png"
+        "iconPath": "images/tabbar/apps.png",
+        "selectedIconPath": "images/tabbar/apps-active.png"
       },
       {
         "pagePath": "pages/paperBuilder/paperBuilder",
-        "text": "试卷",
-        "iconPath": "images/tabbar/paper.png",
-        "selectedIconPath": "images/tabbar/paper-active.png"
-      },
-      {
-        "pagePath": "pages/settings/settings",
-        "text": "设置",
-        "iconPath": "images/tabbar/settings.png",
-        "selectedIconPath": "images/tabbar/settings-active.png"
+        "text": "组卷",
+        "iconPath": "images/tabbar/edit.png",
+        "selectedIconPath": "images/tabbar/edit-active.png"
       }
     ]
   },

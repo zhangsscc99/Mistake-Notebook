@@ -3,17 +3,58 @@ page {
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
     Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB', 'Microsoft Yahei',
     sans-serif;
-  font-size: 16px;
-  background-color: #f7f8fa;
-  color: #323233;
+  font-size: 14px;
   box-sizing: border-box;
   -webkit-font-smoothing: antialiased;
+  
+  /* 🎨 蓝白玻璃调色板 */
+  --primary-color: #2459ff;
+  --primary-light: #52b7ff;
+  --primary-dark: #1742d6;
+  --secondary-color: #1451d6;
+  --accent-color: #b6a6ff;
+  
+  /* 🌤️ 轻透背景 */
+  --bg-primary: #eaf3ff;
+  --bg-secondary: rgba(255, 255, 255, 0.85);
+  --bg-card: rgba(255, 255, 255, 0.72);
+  --bg-glass: rgba(255, 255, 255, 0.62);
+  
+  /* ✨ 文字色彩 */
+  --text-primary: #0b1633;
+  --text-secondary: rgba(11, 22, 51, 0.62);
+  --text-disabled: rgba(11, 22, 51, 0.38);
+  --text-accent: #1f5bff;
+  
+  /* 🔮 边框和光效 */
+  --border-color: rgba(47, 107, 255, 0.14);
+  --border-glow: rgba(47, 107, 255, 0.22);
+  --divider-color: rgba(11, 22, 51, 0.08);
+  
+  /* 🌟 阴影系统 */
+  --shadow-glow: 0 10px 35px rgba(31, 91, 255, 0.06), 0 17px 60px rgba(82, 183, 255, 0.05);
+  --shadow-card: 0 14px 44px rgba(11, 22, 51, 0.06);
+  --shadow-hover: 0 20px 70px rgba(11, 22, 51, 0.10);
+  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  
+  /* 🎯 圆角系统 */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  /* 🌌 全局背景 */
+  background: #eaf3ff;
+  min-height: 100vh;
+  color: var(--text-primary);
 }
 
-container {
+.container {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  min-height: 100vh;
+  padding-bottom: 40rpx;
 }
 
 /* 常用工具类样式 */
@@ -41,50 +82,91 @@ container {
 
 /* 主题颜色 */
 .text-primary {
-  color: #1989fa;
+  color: var(--primary-color) !important;
 }
 
 .bg-primary {
-  background-color: #1989fa;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  color: #ffffff !important;
 }
 
 .text-desc {
-  color: #969799;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
-/* 卡片样式 */
+/* 🔮 精致卡片系统 */
 .card {
-  margin: 12px;
+  position: relative;
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 
+    var(--shadow-glow),
+    var(--shadow-inner),
+    var(--shadow-card);
   padding: 16px;
-  border-radius: 8px;
-  background-color: #ffffff;
-  box-shadow: 0 2px 12px rgba(100, 101, 102, 0.08);
+  margin: 12px;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
 }
 
-/* 按钮通用样式 */
+/* ✨ 精致按钮系统 */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 10px 20px;
-  border-radius: 20px;
+  border-radius: var(--radius-md);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   text-align: center;
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
 }
 
 .btn:active {
-  opacity: 0.8;
+  transform: scale(0.98);
+  opacity: 0.9;
 }
 
 .btn-primary {
-  background-color: #1989fa;
-  color: #ffffff;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 
+    0 4px 16px rgba(31, 91, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
 }
 
 .btn-secondary {
-  background-color: #f2f3f5;
-  color: #323233;
+  background: rgba(31, 91, 255, 0.1) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  border: 1px solid rgba(31, 91, 255, 0.2) !important;
+  color: var(--text-accent) !important;
+}
+
+/* 头部大 Banner 样式 (多个页面共用) */
+.header {
+  padding: 24px 20px;
+  color: #ffffff;
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  box-shadow: 0 8px 32px rgba(31, 91, 255, 0.15);
+  margin-bottom: 8px;
+}
+
+.header-title {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.header-subtitle {
+  font-size: 13px;
+  margin-top: 8px;
+  opacity: 0.9;
 }

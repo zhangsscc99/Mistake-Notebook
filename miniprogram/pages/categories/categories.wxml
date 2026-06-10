@@ -1,36 +1,74 @@
 <!--pages/categories/categories.wxml-->
-<view class="container">
-  <!-- 统计卡片 -->
-  <view class="card stats-card bg-primary">
-    <view class="stats-item">
-      <view class="stats-num">{{totalQuestions}}</view>
-      <view class="stats-label">收录错题</view>
-    </view>
-    <view class="stats-divider"></view>
-    <view class="stats-item">
-      <view class="stats-num">{{todayAdded}}</view>
-      <view class="stats-label">今日新增</view>
-    </view>
-    <view class="stats-divider"></view>
-    <view class="stats-item">
-      <view class="stats-num">{{masteredCount}}</view>
-      <view class="stats-label">已掌握</view>
+<view class="categories-page">
+
+  <!-- 顶部搜索栏 -->
+  <view class="search-section">
+    <view class="search-box">
+      <view class="search-icon-wrap">
+        <text class="search-icon">🔍</text>
+      </view>
+      <input class="search-input" placeholder="搜索错题分类" value="{{searchKeyword}}" bindinput="onSearchInput" />
+      <text class="search-action" bindtap="onSearch">搜索</text>
     </view>
   </view>
 
-  <view class="section-title">学科分类</view>
+  <!-- 统计卡片 -->
+  <view class="stats-section">
+    <view class="stats-card">
+      <view class="stats-decoration"></view>
+      <view class="stat-item">
+        <text class="stat-number">{{totalQuestions}}</text>
+        <text class="stat-label">总题数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{categories.length}}</text>
+        <text class="stat-label">分类数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{todayAdded}}</text>
+        <text class="stat-label">今日新增</text>
+      </view>
+    </view>
+  </view>
 
   <!-- 分类列表 -->
-  <view class="category-grid">
-    <view class="category-card" wx:for="{{categories}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}" data-name="{{item.name}}">
-      <view class="card-accent" style="background-color: {{item.color || '#1989fa'}}"></view>
-      <view class="card-content">
-        <view class="card-header justify-between align-center">
-          <text class="category-name">{{item.name}}</text>
-          <text class="category-count bg-primary" style="background-color: {{item.color || '#1989fa'}}">{{item.questionCount || 0}} 题</text>
+  <view class="categories-section">
+    <view class="category-card"
+      wx:for="{{filteredCategories}}"
+      wx:key="id"
+      bindtap="goToDetail"
+      data-id="{{item.id}}"
+      data-name="{{item.name}}">
+
+      <view class="category-header">
+        <view class="category-icon" style="background: {{item.color || '#2459ff'}}15;">
+          <text class="category-icon-text">{{item.icon || '题'}}</text>
         </view>
-        <text class="category-desc">{{item.description || '暂无描述'}}</text>
+        <view class="category-info">
+          <text class="category-title">{{item.name}}</text>
+          <text class="category-description">{{item.description || '暂无描述'}}</text>
+        </view>
+        <view class="category-count">
+          <text class="count-number">{{item.questionCount || 0}}</text>
+          <text class="count-label">题</text>
+        </view>
       </view>
+
+      <view class="category-tags" wx:if="{{item.tags && item.tags.length > 0}}">
+        <text class="custom-tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:for-index="ti" wx:if="{{ti < 3}}" wx:key="*this">{{tag}}</text>
+        <text class="more-tags" wx:if="{{item.tags.length > 3}}">+{{item.tags.length - 3}}</text>
+      </view>
+
+      <view class="category-footer">
+        <text class="last-updated">最近更新: 刚刚</text>
+        <text class="footer-arrow">›</text>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{filteredCategories.length === 0}}">
+      <text class="empty-text">暂无分类数据</text>
+      <button class="btn btn-primary go-camera-btn" bindtap="goToCamera">去拍照录入</button>
     </view>
   </view>
 </view>

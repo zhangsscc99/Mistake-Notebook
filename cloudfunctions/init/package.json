@@ -1,0 +1,9 @@
+{
+  "name": "init",
+  "version": "1.0.0",
+  "description": "Initialize cloud database with default categories",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

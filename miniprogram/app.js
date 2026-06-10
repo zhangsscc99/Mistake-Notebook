@@ -5,17 +5,32 @@ App({
       console.error('请使用 2.2.3 或以上的基础库以使用云能力');
     } else {
       wx.cloud.init({
-        // env 参数决定接下来小程序发起的云开发调用（wx.cloud.xxx）会默认请求到哪个云环境的资源
-        // 此处请填入您的微信云开发环境 ID，如：'prod-1gxxxxxx'
-        env: '', 
-        traceUser: true,
+        env: 'cloud1-d4g7l44nyca7c18e6',
+        traceUser: true
       });
     }
 
     // 全局数据，可用于存放用户信息等
     this.globalData = {
       userInfo: null,
-      apiUrl: 'http://localhost:8080/api' // 本地开发后端接口地址（如果不使用云函数，也可以直连您的SpringBoot后端）
+      recognitionDraft: null,
+      selectedPaperQuestions: []
     };
+
+    // 首次启动时初始化云数据库（创建默认分类）
+    setTimeout(() => {
+      wx.cloud.callFunction({
+        name: 'init',
+        data: { action: 'seed' },
+        success: (res) => {
+          if (res.result && res.result.success) {
+            console.log('云数据库初始化:', res.result.message || res.result.data);
+          }
+        },
+        fail: (err) => {
+          console.warn('云数据库初始化失败，请在开发者工具部署 init 云函数:', err);
+        }
+      });
+    }, 1000);
   }
 });

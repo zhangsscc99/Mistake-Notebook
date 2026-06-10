@@ -84,7 +84,7 @@ Page({
   showVersionInfo: function () {
     wx.showModal({
       title: '错题本小程序版',
-      content: '基于原生微信小程序开发。支持一键拍照、AI OCR 识别、去手写笔迹、多学科自动归类、拼装试卷并极速导出 A4 打印版 PDF。2026年尊享版。',
+      content: '基于原生微信小程序开发。支持一键拍照、AI 识别、去手写笔迹、多学科自动归类、拼装试卷并极速导出 A4 打印版 PDF。2026年尊享版。',
       showCancel: false,
       confirmText: '极好'
     });

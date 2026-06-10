@@ -3,8 +3,10 @@
   display: flex;
   padding: 30px 20px;
   align-items: center;
-  border-bottom-left-radius: 16px;
-  border-bottom-right-radius: 16px;
+  border-bottom-left-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
+  box-shadow: 0 8px 32px rgba(31, 91, 255, 0.15);
 }
 
 .avatar-container {
@@ -12,8 +14,9 @@
   height: 64px;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid rgba(255, 255, 255, 0.4);
-  background-color: #f7f8fa;
+  border: 3px solid rgba(255, 255, 255, 0.45);
+  background-color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .user-avatar {
@@ -29,15 +32,20 @@
 .user-name {
   font-size: 18px;
   font-weight: bold;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .user-vip-tag {
   font-size: 11px;
-  background-color: rgba(255, 255, 255, 0.2);
-  padding: 2px 8px;
-  border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 3px 10px;
+  border-radius: 12px;
   margin-top: 6px;
   display: inline-block;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .settings-list {
@@ -46,7 +54,10 @@
 
 .settings-item {
   padding: 16px 0;
-  border-bottom: 1px solid #f2f3f5;
+  border-bottom: 1px solid var(--divider-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .settings-item:last-child {
@@ -55,29 +66,32 @@
 
 .item-title {
   font-size: 15px;
-  color: #323233;
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 .item-input {
   font-size: 14px;
-  color: #1989fa;
+  color: var(--primary-color);
   text-align: right;
   flex: 1;
   margin-left: 20px;
+  font-weight: 600;
 }
 
 .help-card {
-  padding: 16px;
+  padding: 20px 16px;
 }
 
 .help-title {
   font-size: 15px;
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  color: var(--primary-color);
 }
 
 .help-desc {
   font-size: 13px;
-  color: #646566;
+  color: var(--text-secondary);
   line-height: 1.6;
 }

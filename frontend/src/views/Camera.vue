@@ -816,8 +816,11 @@ export default {
   border-radius: var(--radius-lg) !important;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.16)) !important;
-  border: 1px solid rgba(47, 107, 255, 0.24) !important;
+  /* 用 background-clip 实现渐变边框，避免 mask-composite 黑线 */
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.16)) padding-box,
+    linear-gradient(135deg, rgba(47, 107, 255, 0.34), rgba(142, 211, 255, 0.18), rgba(138, 125, 255, 0.14)) border-box !important;
   color: rgba(31, 91, 255, 0.92) !important;
   backdrop-filter: blur(18px) saturate(1.4) !important;
   -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
@@ -825,25 +828,6 @@ export default {
     0 22px 54px rgba(31, 91, 255, 0.16) !important,
     0 12px 30px rgba(11, 22, 51, 0.10) !important,
     inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
-}
-
-.process-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(47, 107, 255, 0.34),
-    rgba(142, 211, 255, 0.18),
-    rgba(138, 125, 255, 0.14)
-  );
-  pointer-events: none;
-  opacity: 0.95;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
 }
 
 .process-btn::after {
@@ -872,6 +856,12 @@ export default {
 
 .process-btn:active {
   transform: translateY(-1px) scale(0.99);
+}
+
+/* 禁用 Vant button 默认的黑色 ::before（在玻璃背景下可能显示异常） */
+button.process-btn.van-button::before {
+  background-color: transparent !important;
+  opacity: 0 !important;
 }
 
 .recent-section {

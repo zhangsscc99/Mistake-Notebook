@@ -1,55 +1,92 @@
 <!--pages/categoryDetail/categoryDetail.wxml-->
-<view class="container">
-  <view class="header bg-primary">
-    <view class="header-title">{{categoryName}}</view>
-    <view class="header-subtitle">共收录 {{questions.length || 0}} 道错题</view>
-  </view>
+<view class="category-detail-page">
 
-  <!-- 错题卡片列表 -->
-  <view class="question-list" wx:if="{{questions.length > 0}}">
-    <view class="card question-card" wx:for="{{questions}}" wx:key="id">
-      <view class="question-header justify-between align-center">
-        <view class="badge-container">
-          <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
-          <text class="tag-badge" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+  <!-- 分类信息卡片（精确复刻 Web 端 .category-info-card） -->
+  <view class="info-section">
+    <view class="category-info-card">
+      <view class="info-header">
+        <view class="category-icon-wrap">
+          <text class="category-icon-text">{{categoryIcon}}</text>
         </view>
-        <text class="question-date">{{item.formattedDate}}</text>
-      </view>
-
-      <!-- 题目文本内容 -->
-      <view class="question-body">
-        <text class="question-text">{{item.content}}</text>
-      </view>
-
-      <!-- 错题图（如果有） -->
-      <image class="question-img" src="{{item.imageUrl}}" mode="aspectFill" wx:if="{{item.imageUrl}}" bindtap="previewImage" data-url="{{item.imageUrl}}"></image>
-
-      <!-- 折叠的 AI 答案与解析 -->
-      <view class="ai-box" wx:if="{{item.showAI}}">
-        <view class="ai-title text-primary">★ AI 标准答案与解析</view>
-        <view class="ai-subtitle">标准答案：</view>
-        <text class="ai-content">{{item.aiAnswer || '暂无解答'}}</text>
-        <view class="ai-subtitle" style="margin-top: 10px;">智能解析：</view>
-        <text class="ai-content">{{item.aiAnalysis || '暂无解析'}}</text>
-      </view>
-
-      <!-- 底部操作按钮 -->
-      <view class="question-actions justify-between align-center">
-        <button class="btn btn-secondary btn-sm" bindtap="toggleAI" data-index="{{index}}">
-          {{item.showAI ? '收起解析' : 'AI 智能解析'}}
-        </button>
-        <view class="right-actions">
-          <button class="btn btn-secondary btn-sm delete-btn" bindtap="deleteQuestion" data-id="{{item.id}}" data-index="{{index}}">删除</button>
+        <view class="info-details">
+          <view class="category-name">{{categoryName}}</view>
+          <view class="category-desc-text">{{questions.length === 0 ? '暂无题目' : '共收录 ' + questions.length + ' 道错题'}}</view>
+          <view class="category-stats-row">
+            <text class="stat-pill">{{questions.length}} 道题目</text>
+            <text class="stat-pill">正确率 {{accuracy}}%</text>
+          </view>
         </view>
+      </view>
+
+      <!-- 操作按钮：Web 端顺序是 "开始练习" + "加入组卷" -->
+      <view class="action-buttons-row">
+        <button class="btn btn-primary action-btn" size="small" bindtap="startPractice">开始练习</button>
+        <button class="btn btn-secondary action-btn" size="small" bindtap="addToExam">加入组卷</button>
       </view>
     </view>
   </view>
 
-  <!-- 空白状态 -->
-  <view class="empty-state" wx:else>
-    <image class="empty-img" src="../../images/empty.png" mode="aspectFit" style="width: 120px; height: 120px; margin-bottom: 16px;"></image>
-    <text class="empty-text">当前分类暂无错题</text>
-    <text class="empty-desc">赶紧去首页拍一张吧！</text>
+  <!-- 筛选栏（对应 Web 端的 van-dropdown-menu） -->
+  <view class="filter-section">
+    <view class="filter-scroll">
+      <view class="filter-chip {{sortBy === 'latest' ? 'active' : ''}}" bindtap="setSort" data-sort="latest">最新添加</view>
+      <view class="filter-chip {{sortBy === 'earliest' ? 'active' : ''}}" bindtap="setSort" data-sort="earliest">最早添加</view>
+      <view class="filter-chip {{filterBy === 'all' ? 'active' : ''}}" bindtap="setFilter" data-filter="all">全部</view>
+      <view class="filter-chip {{filterBy === 'easy' ? 'active' : ''}}" bindtap="setFilter" data-filter="easy">简单</view>
+      <view class="filter-chip {{filterBy === 'medium' ? 'active' : ''}}" bindtap="setFilter" data-filter="medium">中等</view>
+      <view class="filter-chip {{filterBy === 'hard' ? 'active' : ''}}" bindtap="setFilter" data-filter="hard">困难</view>
+    </view>
+  </view>
+
+  <!-- 错题卡片列表（精确复刻 Web 端 .questions-section） -->
+  <view class="questions-section" wx:if="{{displayQuestions.length > 0}}">
+    <view class="question-card" wx:for="{{displayQuestions}}" wx:key="id" bindtap="viewQuestion" data-index="{{index}}">
+
+      <!-- 题目图片（如果有） -->
+      <image class="question-img" src="{{item.imageUrl}}" mode="aspectFit"
+        wx:if="{{item.imageUrl}}" bindtap="previewImage" data-url="{{item.imageUrl}}"></image>
+
+      <!-- 题目文字 -->
+      <view class="question-text-wrap">
+        <text class="question-text">{{item.content}}</text>
+      </view>
+
+      <!-- 标签 -->
+      <view class="question-tags" wx:if="{{item.tags && item.tags.length}}">
+        <text class="custom-tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+      </view>
+
+      <!-- 底部元信息 -->
+      <view class="question-meta">
+        <view class="meta-left">
+          <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+          <text class="add-time">{{item.formattedDate}}</text>
+        </view>
+        <view class="meta-right">
+          <button class="ai-toggle-btn {{item.showAI ? 'active' : ''}}" bindtap="toggleAI" data-index="{{index}}"
+            catch:tap="toggleAI">
+            {{item.showAI ? '收起解析' : 'AI 智能解析'}}
+          </button>
+          <button class="delete-btn" bindtap="deleteQuestion" data-id="{{item.id}}" data-index="{{index}}"
+            catch:tap="deleteQuestion">删除</button>
+        </view>
+      </view>
+
+      <!-- AI 解析折叠区 -->
+      <view class="ai-box" wx:if="{{item.showAI}}">
+        <view class="ai-title">AI 标准答案与解析</view>
+        <view class="ai-subtitle">标准答案：</view>
+        <text class="ai-content">{{item.aiAnswer || '暂无解答'}}</text>
+        <view class="ai-subtitle" style="margin-top:10px">智能解析：</view>
+        <text class="ai-content">{{item.aiAnalysis || '暂无解析'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{displayQuestions.length === 0}}">
+    <text class="empty-text" wx:if="{{questions.length === 0}}">当前分类暂无错题</text>
+    <text class="empty-text" wx:else>没有匹配的题目</text>
     <button class="btn btn-primary go-back-btn" bindtap="goBackToHome">去拍错题</button>
   </view>
 </view>

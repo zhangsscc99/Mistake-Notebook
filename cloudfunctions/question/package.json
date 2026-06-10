@@ -1,0 +1,9 @@
+{
+  "name": "question",
+  "version": "1.0.0",
+  "description": "Question CRUD, search, and pagination",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

@@ -1,52 +1,47 @@
 <!--pages/paperBuilder/paperBuilder.wxml-->
-<view class="container">
-  <view class="card form-card">
-    <view class="section-title text-primary" style="margin: 0 0 16px 0;">试卷设置</view>
-    
-    <view class="form-item">
-      <text class="form-label">试卷名称</text>
-      <input class="form-input" placeholder="例如：期末复习错题集" value="{{title}}" bindinput="onTitleInput" />
-    </view>
+<view class="paper-builder-page">
 
-    <view class="form-item">
-      <text class="form-label">答卷时间 (分钟)</text>
-      <slider min="30" max="180" step="5" value="{{duration}}" show-value activeColor="#1989fa" bindchange="onDurationChange"></slider>
+  <!-- 页面顶部 Header -->
+  <view class="page-header">
+    <view class="page-title-row">
+      <text class="page-title">智能组卷</text>
     </view>
-
-    <view class="form-item">
-      <text class="form-label">试卷总分</text>
-      <input class="form-input" type="number" placeholder="例如：100" value="{{totalScore}}" bindinput="onScoreInput" />
-    </view>
+    <button class="btn btn-primary create-btn" bindtap="createNewPaper">组建新卷</button>
   </view>
 
-  <!-- 题目列表 -->
-  <view class="card list-card">
-    <view class="list-header justify-between align-center">
-      <view>
-        <text class="section-title" style="margin: 0;">已选择题目</text>
-        <text class="text-desc" style="margin-left: 8px;">共 {{selectedQuestions.length}} 题</text>
-      </view>
-      <button class="btn btn-secondary btn-sm" bindtap="goToSelector">+ 选择题目</button>
+  <!-- 已保存的试卷列表 -->
+  <view class="saved-papers-section" wx:if="{{savedPapers.length > 0}}">
+    <view class="section-header">
+      <text class="section-title">我的试卷</text>
     </view>
 
-    <view class="selected-questions-list" wx:if="{{selectedQuestions.length > 0}}">
-      <view class="question-item justify-between align-center" wx:for="{{selectedQuestions}}" wx:key="id">
-        <view class="question-info">
-          <text class="q-index">{{index + 1}}.</text>
-          <text class="q-content">{{item.content}}</text>
+    <view class="paper-card"
+      wx:for="{{savedPapers}}"
+      wx:key="id"
+      bindtap="viewPaper"
+      data-index="{{index}}">
+      <view class="paper-left-accent"></view>
+      <view class="paper-body">
+        <view class="paper-header-row">
+          <text class="paper-icon-text">卷</text>
+          <view class="paper-info">
+            <text class="paper-title-text">{{item.title}}</text>
+            <text class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}}</text>
+          </view>
+          <text class="paper-arrow">›</text>
         </view>
-        <image class="remove-icon" src="../../images/remove.png" mode="aspectFit" style="width: 20px; height: 20px; padding: 4px;" bindtap="removeQuestion" data-index="{{index}}"></image>
+        <view class="paper-stats-row">
+          <text class="stat-badge">{{item.questionCount}} 题</text>
+          <text class="stat-badge">{{item.duration || 90}} 分钟</text>
+        </view>
       </view>
     </view>
-
-    <view class="no-questions justify-center align-center" wx:else>
-      <text class="text-desc">还没有添加题目，点击上方“选择题目”添加</text>
-    </view>
   </view>
 
-  <view class="btn-group">
-    <button class="btn btn-primary submit-btn" loading="{{generating}}" disabled="{{selectedQuestions.length === 0 || generating}}" bindtap="generatePaper">
-      {{generating ? '正在生成 PDF...' : '一键生成试卷 PDF'}}
-    </button>
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{savedPapers.length === 0}}">
+    <text class="empty-desc-text">还没有组建试卷</text>
+    <button class="empty-action-btn" bindtap="createNewPaper">立即组建新卷</button>
   </view>
+
 </view>

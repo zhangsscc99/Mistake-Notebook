@@ -1,0 +1,54 @@
+{
+  "envId": "cloud1-d4g7l44nyca7c18e6",
+  "functionRoot": "cloudfunctions",
+  "functions": [
+    {
+      "name": "segment",
+      "timeout": 60,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "classify",
+      "timeout": 60,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "answer",
+      "timeout": 60,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "upload",
+      "timeout": 60,
+      "memorySize": 512,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "init",
+      "timeout": 20,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "question",
+      "timeout": 20,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "category",
+      "timeout": 20,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "pdf",
+      "timeout": 60,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    }
+  ]
+}

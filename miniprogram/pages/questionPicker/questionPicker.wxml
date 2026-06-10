@@ -1,0 +1,54 @@
+<view class="picker-page">
+  <view class="tips-bar">
+    <text class="tips-text">已自动选中疑难题目，可点击勾选或取消</text>
+  </view>
+
+  <view class="image-section" wx:if="{{imagePath}}">
+    <image class="preview-image" src="{{imagePath}}" mode="widthFix"></image>
+  </view>
+
+  <view class="questions-section">
+    <checkbox-group bindchange="onQuestionChange">
+      <label class="question-card" wx:for="{{questions}}" wx:key="id">
+        <checkbox value="{{item.id}}" checked="{{item.selected}}" color="#2459ff" />
+        <view class="question-body">
+          <view class="question-meta">
+            <text class="question-index">第{{index + 1}}题</text>
+            <text class="question-type" wx:if="{{item.type}}">{{item.type}}</text>
+          </view>
+          <text class="question-text">{{item.text}}</text>
+        </view>
+      </label>
+    </checkbox-group>
+  </view>
+
+  <view class="bottom-bar">
+    <scroll-view class="category-scroll" scroll-x>
+      <view
+        class="category-chip {{selectedCategory === item.name ? 'active' : ''}}"
+        wx:for="{{categories}}"
+        wx:key="_id"
+        bindtap="selectCategory"
+        data-name="{{item.name}}"
+      >
+        {{item.name}}
+      </view>
+    </scroll-view>
+
+    <view class="difficulty-row">
+      <view
+        class="difficulty-chip {{selectedDifficulty === item ? 'active' : ''}}"
+        wx:for="{{difficulties}}"
+        wx:key="*this"
+        bindtap="selectDifficulty"
+        data-value="{{item}}"
+      >
+        {{item}}
+      </view>
+    </view>
+
+    <button class="save-btn" loading="{{saving}}" disabled="{{saving || selectedCount === 0}}" bindtap="saveSelected">
+      保存到错题本 ({{selectedCount}})
+    </button>
+  </view>
+</view>

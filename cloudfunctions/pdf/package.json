@@ -1,0 +1,10 @@
+{
+  "name": "pdf",
+  "version": "1.0.0",
+  "description": "Generate PDF test papers",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest",
+    "pdfkit": "latest"
+  }
+}

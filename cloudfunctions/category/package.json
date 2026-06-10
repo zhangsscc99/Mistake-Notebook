@@ -1,0 +1,9 @@
+{
+  "name": "category",
+  "version": "1.0.0",
+  "description": "Category CRUD and statistics",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

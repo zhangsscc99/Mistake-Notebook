@@ -1,0 +1,9 @@
+{
+  "name": "segment",
+  "version": "1.0.0",
+  "description": "Multi-question segmentation from uploaded images",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

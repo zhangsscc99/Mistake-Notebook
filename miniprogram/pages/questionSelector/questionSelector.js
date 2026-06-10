@@ -32,16 +32,17 @@ Page({
    */
   fetchCategories: function () {
     const that = this;
-    wx.request({
-      url: app.globalData.apiUrl + '/categories',
-      method: 'GET',
+    wx.cloud.callFunction({
+      name: 'category',
+      data: { action: 'list' },
       success: (res) => {
-        if (res.statusCode === 200 && res.data) {
+        if (res.result && res.result.success) {
+          const cats = res.result.data;
           that.setData({
-            categories: res.data,
-            activeTabId: res.data[0] ? res.data[0].id : 1
+            categories: cats,
+            activeTabId: cats[0] ? cats[0].id : 1
           });
-          that.fetchQuestionsByCategory(res.data[0] ? res.data[0].id : 1);
+          that.fetchQuestionsByCategory(cats[0] ? cats[0].id : 1);
         } else {
           that.useMockData();
         }
@@ -77,13 +78,13 @@ Page({
     const that = this;
     wx.showLoading({ title: '加载错题...' });
 
-    wx.request({
-      url: app.globalData.apiUrl + `/questions/by-category/${categoryId}`,
-      method: 'GET',
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'byCategory', categoryId: categoryId },
       success: (res) => {
         wx.hideLoading();
-        if (res.statusCode === 200 && res.data) {
-          that.processQuestions(res.data);
+        if (res.result && res.result.success) {
+          that.processQuestions(res.result.data);
         } else {
           that.useMockQuestions(categoryId);
         }

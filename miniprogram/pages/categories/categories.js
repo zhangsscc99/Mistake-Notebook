@@ -1,107 +1,110 @@
 // pages/categories/categories.js
 const app = getApp();
 
+const SYMBOL_MAP = {
+  '数学': '数', '物理': '物', '化学': '化', '英语': '英',
+  '语文': '语', '生物': '生', '历史': '史', '地理': '地',
+  '政治': '政', '体育': '体'
+};
+
 Page({
-  /**
-   * 页面的初始数据
-   */
   data: {
     totalQuestions: 0,
     todayAdded: 0,
-    masteredCount: 0,
-    categories: []
+    categories: [],
+    filteredCategories: [],
+    searchKeyword: ''
   },
 
-  /**
-   * 生命周期函数--监听页面显示
-   */
   onShow: function () {
     this.fetchStats();
     this.fetchCategories();
   },
 
-  /**
-   * 获取错题统计信息
-   */
   fetchStats: function () {
-    const that = this;
-    wx.request({
-      url: app.globalData.apiUrl + '/categories/stats',
-      method: 'GET',
+    wx.cloud.callFunction({
+      name: 'category',
+      data: { action: 'stats' },
       success: (res) => {
-        if (res.statusCode === 200 && res.data) {
-          that.setData({
-            totalQuestions: res.data.totalQuestions || 0,
-            todayAdded: res.data.todayAdded || 0,
-            masteredCount: res.data.masteredCount || 0
+        if (res.result && res.result.success) {
+          const data = res.result.data;
+          this.setData({
+            totalQuestions: data.totalQuestions || 0,
+            todayAdded: data.todayAdded || 0
           });
         } else {
-          that.setMockStats();
+          this.setData({ totalQuestions: 42, todayAdded: 3 });
         }
       },
       fail: () => {
-        that.setMockStats();
+        this.setData({ totalQuestions: 42, todayAdded: 3 });
       }
     });
   },
 
-  /**
-   * 获取分类列表
-   */
   fetchCategories: function () {
-    const that = this;
-    wx.request({
-      url: app.globalData.apiUrl + '/categories',
-      method: 'GET',
+    wx.cloud.callFunction({
+      name: 'category',
+      data: { action: 'list' },
       success: (res) => {
-        if (res.statusCode === 200 && res.data) {
-          that.setData({
-            categories: res.data
-          });
+        if (res.result && res.result.success) {
+          const categories = res.result.data.map(c => ({
+            ...c,
+            icon: SYMBOL_MAP[c.name] || '题'
+          }));
+          this.setData({ categories, filteredCategories: categories });
         } else {
-          that.setMockCategories();
+          this.setMockCategories();
         }
       },
       fail: () => {
-        that.setMockCategories();
+        this.setMockCategories();
       }
     });
   },
 
-  /**
-   * 设置模拟统计数据
-   */
-  setMockStats: function () {
-    this.setData({
-      totalQuestions: 42,
-      todayAdded: 3,
-      masteredCount: 15
-    });
-  },
-
-  /**
-   * 设置模拟分类数据
-   */
   setMockCategories: function () {
-    this.setData({
-      categories: [
-        { id: 1, name: '数学', description: '高数、代数、几何错题等', color: '#E8A855', questionCount: 15 },
-        { id: 2, name: '物理', description: '力学、电磁学、光学、热学等', color: '#4A90E2', questionCount: 10 },
-        { id: 3, name: '化学', description: '无机、有机、化学反应平衡等', color: '#7ED321', questionCount: 6 },
-        { id: 4, name: '英语', description: '阅读理解、完形填空、语法填空等', color: '#F5A623', questionCount: 8 },
-        { id: 5, name: '语文', description: '文言文阅读、诗歌鉴赏、现代文等', color: '#BD10E0', questionCount: 3 }
-      ]
-    });
+    const raw = [
+      { id: 1, name: '数学', description: '高数、代数、几何错题等', color: '#2459ff', questionCount: 15, tags: ['函数', '方程', '几何'] },
+      { id: 2, name: '物理', description: '力学、电磁学、光学、热学等', color: '#2459ff', questionCount: 10, tags: ['力学', '电学'] },
+      { id: 3, name: '化学', description: '无机、有机、化学反应平衡等', color: '#2459ff', questionCount: 6, tags: ['有机', '无机', '反应'] },
+      { id: 4, name: '英语', description: '阅读理解、完形填空、语法填空等', color: '#2459ff', questionCount: 8, tags: ['阅读', '填空'] },
+      { id: 5, name: '语文', description: '文言文阅读、诗歌鉴赏、现代文等', color: '#2459ff', questionCount: 3, tags: ['文言文', '诗歌'] }
+    ];
+    const categories = raw.map(c => ({ ...c, icon: SYMBOL_MAP[c.name] || '题' }));
+    this.setData({ categories, filteredCategories: categories });
   },
 
-  /**
-   * 跳转到分类详情页
-   */
+  onSearchInput: function (e) {
+    const keyword = e.detail.value;
+    this.setData({ searchKeyword: keyword });
+    this.filterCategories(keyword);
+  },
+
+  onSearch: function () {
+    this.filterCategories(this.data.searchKeyword);
+  },
+
+  filterCategories: function (keyword) {
+    if (!keyword) {
+      this.setData({ filteredCategories: this.data.categories });
+      return;
+    }
+    const filtered = this.data.categories.filter(c =>
+      c.name.includes(keyword) || (c.description && c.description.includes(keyword))
+    );
+    this.setData({ filteredCategories: filtered });
+  },
+
   goToDetail: function (e) {
     const id = e.currentTarget.dataset.id;
     const name = e.currentTarget.dataset.name;
     wx.navigateTo({
       url: `/pages/categoryDetail/categoryDetail?id=${id}&name=${name}`
     });
+  },
+
+  goToCamera: function () {
+    wx.switchTab({ url: '/pages/index/index' });
   }
 });

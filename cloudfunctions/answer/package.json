@@ -1,0 +1,9 @@
+{
+  "name": "answer",
+  "version": "1.0.0",
+  "description": "AI answer generation for questions",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

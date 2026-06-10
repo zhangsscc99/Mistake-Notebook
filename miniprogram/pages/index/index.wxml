@@ -1,78 +1,67 @@
 <!--pages/index/index.wxml-->
-<view class="container">
-  <!-- 顶部 Banner 区域 -->
-  <view class="header bg-primary">
-    <view class="header-title">智能错题本</view>
-    <view class="header-subtitle">拍照一键录入，AI 智能分类，整理成试卷</view>
-  </view>
+<view class="index-page">
+  <!-- 多色背景光晕层 -->
+  <view class="bg-blob bg-blob-blue"></view>
+  <view class="bg-blob bg-blob-pink"></view>
+  <view class="bg-blob bg-blob-purple"></view>
+  <view class="bg-blob bg-blob-peach"></view>
 
-  <!-- 拍摄与导入区域 -->
-  <view class="card upload-card" bindtap="chooseImage" wx:if="{{!tempFilePath}}">
-    <image class="upload-icon" src="../../images/upload-placeholder.png" mode="aspectFit" style="width: 64px; height: 64px; margin-bottom: 12px;"></image>
-    <view class="upload-text">点击拍摄或从相册选择错题图片</view>
-    <view class="text-desc" style="margin-top: 6px;">支持拍照、相册多选导入，支持 AI 识别与去手写</view>
-  </view>
+  <view class="main-section">
+    <view class="content-container">
 
-  <!-- 图片预览区域 -->
-  <view class="card preview-card" wx:if="{{tempFilePath}}">
-    <view class="preview-header justify-between align-center">
-      <text class="preview-title">已选择错题图片</text>
-      <text class="text-primary" bindtap="resetImage">重新选择</text>
-    </view>
-    <image class="preview-img" src="{{tempFilePath}}" mode="aspectFit"></image>
-  </view>
-
-  <!-- 错题属性表单 -->
-  <view class="card form-card" wx:if="{{tempFilePath}}">
-    <view class="form-item">
-      <text class="form-label">题目名称</text>
-      <input class="form-input" placeholder="请输入错题简短描述（可选）" value="{{title}}" bindinput="onTitleInput" />
-    </view>
-
-    <view class="form-item">
-      <text class="form-label">学科分类</text>
-      <picker bindchange="onCategoryChange" value="{{categoryIndex}}" range="{{categories}}" range-key="name">
-        <view class="picker-val">
-          {{categories[categoryIndex] ? categories[categoryIndex].name : '请选择分类/科目'}}
-          <text class="picker-arrow">▼</text>
+      <!-- 产品介绍（无图片时） -->
+      <view class="product-guide" wx:if="{{!tempFilePath}}">
+        <view class="guide-header">
+          <view class="guide-title">错题本整理助手</view>
+          <view class="guide-subtitle">智能识别 · 自动分类 · 高效复习</view>
         </view>
-      </picker>
-    </view>
 
-    <!-- 识别与处理选项 -->
-    <view class="options-container">
-      <view class="option-item justify-between align-center">
-        <view>
-          <view class="option-title">AI 智能去手写</view>
-          <view class="option-desc">自动擦除试卷上的手写笔迹</view>
+        <view class="guide-features">
+          <view class="feature-item">
+            <view class="feature-text">
+              <view class="feature-h4">拍照识别</view>
+              <view class="feature-p">一键拍摄错题，AI自动识别文字内容</view>
+            </view>
+          </view>
+          <view class="feature-item">
+            <view class="feature-text">
+              <view class="feature-h4">智能分类</view>
+              <view class="feature-p">大模型自动分析题目类型并归类整理</view>
+            </view>
+          </view>
+          <view class="feature-item">
+            <view class="feature-text">
+              <view class="feature-h4">组卷练习</view>
+              <view class="feature-p">自由组合错题生成试卷，支持打印导出</view>
+            </view>
+          </view>
         </view>
-        <switch checked="{{removeHandwriting}}" color="#1989fa" bindchange="onHandwritingSwitch" />
       </view>
 
-      <view class="option-item justify-between align-center">
-        <view>
-          <view class="option-title">AI 自动分类</view>
-          <view class="option-desc">利用 AI 识别内容并归入推荐分类</view>
+      <!-- 已选择的图片预览（对齐 Web 端 Camera.vue） -->
+      <view class="image-preview-area" wx:if="{{tempFilePath}}">
+        <view class="image-grid">
+          <view class="image-item">
+            <image class="preview-image" src="{{tempFilePath}}" mode="aspectFill"></image>
+            <view class="image-overlay">
+              <view class="remove-icon" bindtap="resetImage">×</view>
+            </view>
+          </view>
         </view>
-        <switch checked="{{autoClassify}}" color="#1989fa" bindchange="onAutoClassifySwitch" />
       </view>
-    </view>
 
-    <button class="btn btn-primary submit-btn" loading="{{uploading}}" disabled="{{uploading}}" bindtap="submitQuestion">
-      {{uploading ? '正在识别与上传...' : '上传并 AI 分析错题'}}
-    </button>
-  </view>
+      <!-- 操作按钮 -->
+      <view class="action-area">
+        <view class="action-buttons">
+          <button class="action-btn action-btn-primary" bindtap="chooseImage">开始拍照</button>
+          <button class="action-btn action-btn-default" bindtap="chooseImage">从相册选择</button>
+        </view>
+        <button class="process-btn" wx:if="{{tempFilePath}}"
+          loading="{{uploading}}" disabled="{{uploading}}" bindtap="submitQuestion">
+          {{uploading ? 'AI识别中...' : '开始识别 (1张)'}}
+        </button>
+      </view>
 
-  <!-- 识别结果展示 -->
-  <view class="card result-card" wx:if="{{result}}">
-    <view class="result-title text-primary">✔ AI 识别成功</view>
-    <view class="result-item">
-      <text class="result-label">识别学科：</text>
-      <text>{{result.category}}</text>
-    </view>
-    <view class="result-item">
-      <text class="result-label">识别文本：</text>
-      <text class="result-text">{{result.ocrText}}</text>
     </view>
   </view>
 </view>
