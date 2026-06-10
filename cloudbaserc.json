@@ -34,6 +34,12 @@
     },
     {
       "name": "question",
+      "timeout": 60,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "paper",
       "timeout": 20,
       "memorySize": 256,
       "runtime": "Nodejs16.13"

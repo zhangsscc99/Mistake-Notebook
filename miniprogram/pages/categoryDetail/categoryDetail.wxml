@@ -41,6 +41,8 @@
       <view class="filter-chip {{filterBy === 'easy' ? 'active' : ''}}" bindtap="setFilter" data-filter="easy">简单</view>
       <view class="filter-chip {{filterBy === 'medium' ? 'active' : ''}}" bindtap="setFilter" data-filter="medium">中等</view>
       <view class="filter-chip {{filterBy === 'hard' ? 'active' : ''}}" bindtap="setFilter" data-filter="hard">困难</view>
+      <view class="filter-chip {{tagFilter === 'all' ? 'active' : ''}}" bindtap="setTagFilter" data-tag="all" wx:if="{{availableTags.length}}">全部知识点</view>
+      <view class="filter-chip {{tagFilter === item ? 'active' : ''}}" wx:for="{{availableTags}}" wx:key="*this" bindtap="setTagFilter" data-tag="{{item}}">{{item}}</view>
     </view>
   </view>
 

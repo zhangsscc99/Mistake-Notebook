@@ -29,11 +29,14 @@ Page({
 
     const questions = draft.segments.map((segment, index) => ({
       id: String(index + 1),
-      text: segment.content || '',
+      text: segment.content || segment.text || '',
       type: segment.type || '',
       subject: segment.subject || '',
       confidence: segment.confidence || 0,
-      selected: isDifficultQuestion(segment)
+      bounds: segment.bounds || null,
+      selected: segment.isDifficult !== undefined
+        ? !!segment.isDifficult
+        : isDifficultQuestion(segment)
     })).filter((q) => q.text);
 
     const defaultCategory = questions[0] && questions[0].subject ? questions[0].subject : '数学';
@@ -73,6 +76,17 @@ Page({
           ]
         });
       }
+    });
+  },
+
+  toggleQuestionOverlay: function (e) {
+    const id = e.currentTarget.dataset.id;
+    const questions = this.data.questions.map((q) => (
+      q.id === id ? { ...q, selected: !q.selected } : q
+    ));
+    this.setData({
+      questions,
+      selectedCount: questions.filter((q) => q.selected).length
     });
   },
 

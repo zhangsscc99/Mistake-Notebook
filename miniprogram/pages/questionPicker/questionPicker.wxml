@@ -3,8 +3,19 @@
     <text class="tips-text">已自动选中疑难题目，可点击勾选或取消</text>
   </view>
 
-  <view class="image-section" wx:if="{{imagePath}}">
+  <view class="image-section image-overlay-wrap" wx:if="{{imagePath}}">
     <image class="preview-image" src="{{imagePath}}" mode="widthFix"></image>
+    <view
+      class="question-overlay {{item.selected ? 'selected' : ''}}"
+      wx:for="{{questions}}"
+      wx:key="id"
+      wx:if="{{item.bounds}}"
+      style="top: {{item.bounds.top}}%; left: {{item.bounds.left}}%; width: {{item.bounds.width}}%; height: {{item.bounds.height}}%;"
+      catchtap="toggleQuestionOverlay"
+      data-id="{{item.id}}"
+    >
+      <text class="overlay-index">{{index + 1}}</text>
+    </view>
   </view>
 
   <view class="questions-section">

@@ -3,6 +3,11 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
 const $ = db.command.aggregate;
+const { normalizeQuestion } = require('./normalize');
+
+function mapQuestionList(records) {
+  return (records || []).map(normalizeQuestion);
+}
 
 exports.main = async (event, context) => {
   const { action } = event;
@@ -79,7 +84,7 @@ async function createQuestion(event) {
     data: questionData
   });
 
-  return { success: true, data: { _id: result._id, ...questionData } };
+  return { success: true, data: normalizeQuestion({ _id: result._id, ...questionData }) };
 }
 
 async function getQuestion(event) {
@@ -96,7 +101,7 @@ async function getQuestion(event) {
     return { success: false, error: 'Question not found' };
   }
 
-  return { success: true, data: result.data };
+  return { success: true, data: normalizeQuestion(result.data) };
 }
 
 async function listQuestions(event) {
@@ -124,7 +129,7 @@ async function listQuestions(event) {
     .orderBy('createdAt', 'desc')
     .get();
 
-  return { success: true, data: result.data };
+  return { success: true, data: mapQuestionList(result.data) };
 }
 
 async function pageQuestions(event) {
@@ -158,7 +163,7 @@ async function pageQuestions(event) {
   return {
     success: true,
     data: {
-      records: result.data,
+      records: mapQuestionList(result.data),
       total: totalResult.total,
       page,
       size,
@@ -180,7 +185,7 @@ async function batchGetQuestions(event) {
     })
     .get();
 
-  return { success: true, data: result.data };
+  return { success: true, data: mapQuestionList(result.data) };
 }
 
 async function updateQuestion(event) {
@@ -251,21 +256,58 @@ async function batchDeleteQuestions(event) {
   return { success: true, data: { deletedCount: ids.length } };
 }
 
+async function resolveCategory(event) {
+  const { categoryId, categoryName } = event;
+  if (categoryId) {
+    try {
+      const result = await db.collection('categories').doc(String(categoryId)).get();
+      if (result.data && !result.data.isDeleted) {
+        return result.data;
+      }
+    } catch (e) {
+      // fall through
+    }
+  }
+
+  const name = categoryName || categoryId;
+  if (name) {
+    const byName = await db.collection('categories')
+      .where({ name: String(name), isDeleted: false })
+      .limit(1)
+      .get();
+    if (byName.data.length > 0) {
+      return byName.data[0];
+    }
+  }
+
+  return null;
+}
+
 async function getQuestionsByCategory(event) {
-  const { categoryId } = event;
-  if (!categoryId) {
+  const { categoryId, categoryName } = event;
+  if (!categoryId && !categoryName) {
     return { success: false, error: 'Missing categoryId' };
   }
 
+  const category = await resolveCategory({ categoryId, categoryName });
+  const conditions = [{ categoryId: String(categoryId), isDeleted: false }];
+
+  if (category && category._id) {
+    conditions.push({ categoryId: category._id, isDeleted: false });
+  }
+  if (category && category.name) {
+    conditions.push({ category: category.name, isDeleted: false });
+  }
+  if (categoryName) {
+    conditions.push({ category: String(categoryName), isDeleted: false });
+  }
+
   const result = await db.collection('questions')
-    .where({
-      categoryId,
-      isDeleted: false
-    })
+    .where(_.or(conditions))
     .orderBy('createdAt', 'desc')
     .get();
 
-  return { success: true, data: result.data };
+  return { success: true, data: mapQuestionList(result.data) };
 }
 
 async function statsByCategory() {

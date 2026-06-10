@@ -11,6 +11,38 @@ Page({
   },
 
   loadSavedPapers: function () {
+    const that = this;
+    wx.cloud.callFunction({
+      name: 'paper',
+      data: { action: 'list' },
+      success: (res) => {
+        if (res.result && res.result.success && Array.isArray(res.result.data)) {
+          const papers = res.result.data.map((p) => ({
+            id: p.id || p._id,
+            title: p.title,
+            questionCount: p.questionCount,
+            questions: p.questions || [],
+            duration: p.duration || 90,
+            totalScore: p.totalScore || (p.questionCount || 0) * 5,
+            createdAt: p.createdAt ? String(p.createdAt).split('T')[0] : ''
+          }));
+          try {
+            wx.setStorageSync('savedPapers', JSON.stringify(papers));
+          } catch (e) {
+            // ignore cache errors
+          }
+          that.setData({ savedPapers: papers });
+          return;
+        }
+        that.loadLocalPapers();
+      },
+      fail: () => {
+        that.loadLocalPapers();
+      }
+    });
+  },
+
+  loadLocalPapers: function () {
     try {
       const papersJson = wx.getStorageSync('savedPapers');
       const papers = papersJson ? JSON.parse(papersJson) : [];

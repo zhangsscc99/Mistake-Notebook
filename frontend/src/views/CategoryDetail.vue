@@ -761,17 +761,7 @@ export default {
         }
       } catch (error) {
         console.error('加载分类信息失败:', error)
-        const mockCategories = [
-          { id: 1, name: '数学', description: '高数、代数、几何、概率统计等', icon: 'chart-trending-o', color: '#2459ff' },
-          { id: 2, name: '物理', description: '力学、电磁学、光学、热学等', icon: 'fire-o', color: '#2459ff' },
-          { id: 3, name: '化学', description: '无机化学、有机化学、反应平衡等', icon: 'experiment-o', color: '#2459ff' },
-          { id: 4, name: '英语', description: '阅读理解、完形填空、语法填空等', icon: 'bookmark-o', color: '#2459ff' },
-          { id: 5, name: '语文', description: '文言文阅读、诗歌鉴赏、现代文等', icon: 'edit', color: '#2459ff' }
-        ]
-        const category = mockCategories.find(cat => cat.id == categoryId)
-        if (category) {
-          Object.assign(categoryInfo, category)
-        }
+        showToast('加载分类信息失败')
       }
     }
 
@@ -815,45 +805,8 @@ export default {
         }
       } catch (error) {
         console.error('加载题目失败:', error)
-        // 注入 mock 题目数据
-        const id1 = parseInt(categoryId) * 100 + 1
-        const id2 = parseInt(categoryId) * 100 + 2
-        const mockNames = {
-          1: [
-            { id: id1, content: '已知函数 f(x) = x² - 2x + 1，当 x ∈ [0, 3] 时，求 f(x) 的最大值与最小值。', difficulty: 'medium', tags: ['二次函数', '最值'], createdAt: Date.now() - 172800000, isCorrect: true, aiAnswer: '最小值为0，最大值为4。', aiAnalysis: 'f(x)=(x-1)²，对称轴x=1，区间[0,3]上最小值为f(1)=0，最大值为f(3)=4。' },
-            { id: id2, content: '若集合 A = {x | x² - 3x + 2 = 0}，B = {x | 1 < x < 3}，求 A ∩ B。', difficulty: 'easy', tags: ['集合', '一元二次方程'], createdAt: Date.now() - 86400000, isCorrect: true, aiAnswer: 'A ∩ B = {2}', aiAnalysis: '解方程得A={1,2}，B={x|1<x<3}，交集为{2}。' }
-          ],
-          2: [
-            { id: id1, content: '一质量为2kg的物体在水平面上受到10N的水平推力，动摩擦因数为0.2，求物体的加速度。(g=10m/s²)', difficulty: 'medium', tags: ['牛顿第二定律', '摩擦力'], createdAt: Date.now() - 259200000, isCorrect: false, aiAnswer: 'a = 3 m/s²', aiAnalysis: 'f=μmg=4N，F-f=ma，a=(10-4)/2=3m/s²。' },
-            { id: id2, content: '一个质量为0.5kg的小球从10m高处自由落下，求落地时的速度。(g=10m/s²，不计空气阻力)', difficulty: 'easy', tags: ['自由落体', '动能'], createdAt: Date.now() - 43200000, isCorrect: true, aiAnswer: 'v = 10√2 m/s', aiAnalysis: 'v²=2gh=200，v=10√2≈14.14m/s。' }
-          ],
-          3: [
-            { id: id1, content: '写出甲烷完全燃烧的化学方程式，并计算16g甲烷完全燃烧需要消耗多少克氧气。', difficulty: 'medium', tags: ['有机化学', '化学方程式'], createdAt: Date.now() - 86400000, isCorrect: true, aiAnswer: '需要64g氧气', aiAnalysis: 'CH₄+2O₂→CO₂+2H₂O，16g甲烷为1mol，需2mol O₂即64g。' },
-            { id: id2, content: '向100mL 0.1mol/L的盐酸中滴加0.1mol/L的NaOH溶液，求恰好完全中和时消耗NaOH的体积。', difficulty: 'easy', tags: ['酸碱中和', '物质的量'], createdAt: Date.now(), isCorrect: true, aiAnswer: '100mL', aiAnalysis: 'n(HCl)=0.01mol，n(NaOH)=n(HCl)，V=100mL。' }
-          ],
-          4: [
-            { id: id1, content: 'The rapid development of artificial intelligence ___ (bring) great changes to our daily life in recent years.', difficulty: 'medium', tags: ['语法填空', '时态'], createdAt: Date.now() - 86400000, isCorrect: false, aiAnswer: 'has brought', aiAnalysis: '"in recent years"表示从过去到现在，用现在完成时。' },
-            { id: id2, content: 'Despite ___ (face) numerous challenges, the research team finally achieved a breakthrough last month.', difficulty: 'hard', tags: ['非谓语动词', '让步状语'], createdAt: Date.now() - 172800000, isCorrect: false, aiAnswer: 'facing', aiAnalysis: 'Despite是介词后接动名词，主动含义用facing。' }
-          ],
-          5: [
-            { id: id1, content: '阅读《过秦论》选段，分析贾谊运用了哪些论证方法来说明秦朝灭亡的原因。', difficulty: 'medium', tags: ['文言文', '论证方法'], createdAt: Date.now() - 86400000, isCorrect: false, aiAnswer: '对比论证、举例论证、引用论证', aiAnalysis: '贾谊通过对比秦国兴衰、列举历史事实、引用前人言论等多种论证方法，深刻揭示秦亡原因。' },
-            { id: id2, content: '请赏析杜甫《登高》中"无边落木萧萧下，不尽长江滚滚来"的艺术手法。', difficulty: 'medium', tags: ['诗歌鉴赏', '杜甫'], createdAt: Date.now(), isCorrect: true, aiAnswer: '运用了对偶、叠词和夸张手法', aiAnalysis: '对仗工整，叠词"萧萧""滚滚"增强节奏感和画面感，以广阔视野展现苍凉意境。' }
-          ]
-        }
-        const mockList = (mockNames[categoryId] || mockNames[1]).map(q => ({
-          id: q.id,
-          recognizedText: q.content,
-          imageUrl: '',
-          aiAnswer: q.aiAnswer || '待补充',
-          aiAnalysis: q.aiAnalysis || 'AI暂未给出解析',
-          tags: q.tags || [],
-          difficulty: q.difficulty || 'medium',
-          confidence: 0.85,
-          createdAt: q.createdAt,
-          isCorrect: q.isCorrect || false,
-          selected: false
-        }))
-        questions.splice(0, questions.length, ...mockList)
+        showToast('加载题目失败')
+        questions.splice(0, questions.length) // 清空数组
       }
     }
 

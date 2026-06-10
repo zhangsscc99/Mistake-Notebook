@@ -14,6 +14,8 @@ Page({
     displayQuestions: [],
     sortBy: 'latest',
     filterBy: 'all',
+    tagFilter: 'all',
+    availableTags: [],
     accuracy: 0,
     editMode: false,
     isPaperSelectMode: false,
@@ -40,7 +42,7 @@ Page({
     wx.showLoading({ title: '加载中...' });
     wx.cloud.callFunction({
       name: 'question',
-      data: { action: 'byCategory', categoryId: categoryId },
+      data: { action: 'byCategory', categoryId: categoryId, categoryName: categoryName },
       success: (res) => {
         wx.hideLoading();
         if (res.result && res.result.success) {
@@ -55,6 +57,7 @@ Page({
             selected: false
           }));
           this.setData({ questions: processed });
+          this.refreshTags();
           this.applyFilters();
           this.calcAccuracy();
         } else {
@@ -85,14 +88,26 @@ Page({
       ];
     }
     this.setData({ questions: mockList });
+    this.refreshTags();
     this.applyFilters();
     this.calcAccuracy();
+  },
+
+  refreshTags() {
+    const tags = new Set();
+    this.data.questions.forEach((q) => {
+      (q.tags || []).forEach((tag) => tags.add(tag));
+    });
+    this.setData({ availableTags: Array.from(tags), tagFilter: 'all' });
   },
 
   applyFilters() {
     let list = [...this.data.questions];
     if (this.data.filterBy !== 'all') {
       list = list.filter(q => (q.difficulty || '').toLowerCase() === this.data.filterBy);
+    }
+    if (this.data.tagFilter !== 'all') {
+      list = list.filter(q => (q.tags || []).includes(this.data.tagFilter));
     }
     if (this.data.sortBy === 'latest') {
       list.sort((a, b) => (b.formattedDate || '').localeCompare(a.formattedDate || ''));
@@ -126,6 +141,11 @@ Page({
 
   setFilter(e) {
     this.setData({ filterBy: e.currentTarget.dataset.filter });
+    this.applyFilters();
+  },
+
+  setTagFilter(e) {
+    this.setData({ tagFilter: e.currentTarget.dataset.tag });
     this.applyFilters();
   },
 
@@ -286,30 +306,57 @@ Page({
           createdAt: new Date().toLocaleDateString()
         };
 
-        try {
+        const persistLocal = () => {
           const papersJson = wx.getStorageSync('savedPapers');
           const papers = papersJson ? JSON.parse(papersJson) : [];
           papers.unshift(paper);
           wx.setStorageSync('savedPapers', JSON.stringify(papers));
-        } catch (e) {
-          wx.showToast({ title: '保存失败', icon: 'none' });
-          return;
-        }
+        };
 
-        wx.showToast({ title: '试卷保存成功', icon: 'success' });
-
-        if (this.data.isPaperSelectMode) {
-          app.globalData.categoriesMode = null;
-          setTimeout(() => {
-            wx.switchTab({ url: '/pages/paperBuilder/paperBuilder' });
-          }, 800);
-        } else {
-          const questions = this.data.questions.map(q => ({ ...q, selected: false }));
-          this.setData({ questions, editMode: false });
-          this.applyFilters();
-        }
+        wx.cloud.callFunction({
+          name: 'paper',
+          data: { action: 'save', paper },
+          success: (cloudRes) => {
+            if (cloudRes.result && cloudRes.result.success && cloudRes.result.data) {
+              const cloudPaper = cloudRes.result.data;
+              paper.id = cloudPaper.id || cloudPaper._id || paper.id;
+            }
+            try {
+              persistLocal();
+            } catch (e) {
+              wx.showToast({ title: '本地保存失败', icon: 'none' });
+              return;
+            }
+            this.afterPaperSaved();
+          },
+          fail: () => {
+            try {
+              persistLocal();
+              wx.showToast({ title: '已本地保存', icon: 'none' });
+            } catch (e) {
+              wx.showToast({ title: '保存失败', icon: 'none' });
+              return;
+            }
+            this.afterPaperSaved();
+          }
+        });
       }
     });
+  },
+
+  afterPaperSaved: function () {
+    wx.showToast({ title: '试卷保存成功', icon: 'success' });
+
+    if (this.data.isPaperSelectMode) {
+      app.globalData.categoriesMode = null;
+      setTimeout(() => {
+        wx.switchTab({ url: '/pages/paperBuilder/paperBuilder' });
+      }, 800);
+    } else {
+      const questions = this.data.questions.map(q => ({ ...q, selected: false }));
+      this.setData({ questions, editMode: false });
+      this.applyFilters();
+    }
   },
 
   batchDelete() {

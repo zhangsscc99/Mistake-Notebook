@@ -2,6 +2,7 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const $ = db.command.aggregate;
+const { normalizeCategory } = require('./normalize');
 
 exports.main = async (event, context) => {
   const { action } = event;
@@ -10,6 +11,8 @@ exports.main = async (event, context) => {
     switch (action) {
       case 'list':
         return await listCategories();
+      case 'get':
+        return await getCategory(event);
       case 'stats':
         return await getStats();
       default:
@@ -36,13 +39,54 @@ async function listCategories() {
         isDeleted: false
       })
       .count();
-    return {
+    return normalizeCategory({
       ...cat,
       questionCount: countResult.total
-    };
+    });
   }));
 
   return { success: true, data: categoriesWithCounts };
+}
+
+async function getCategory(event) {
+  const { id, name } = event;
+  if (!id && !name) {
+    return { success: false, error: 'Missing category id or name' };
+  }
+
+  let category = null;
+  if (id) {
+    try {
+      const result = await db.collection('categories').doc(id).get();
+      category = result.data;
+    } catch (e) {
+      category = null;
+    }
+  }
+
+  if (!category && name) {
+    const result = await db.collection('categories')
+      .where({ name, isDeleted: false })
+      .limit(1)
+      .get();
+    category = result.data[0] || null;
+  }
+
+  if (!category || category.isDeleted) {
+    return { success: false, error: 'Category not found' };
+  }
+
+  const countResult = await db.collection('questions')
+    .where({ categoryId: category._id, isDeleted: false })
+    .count();
+
+  return {
+    success: true,
+    data: normalizeCategory({
+      ...category,
+      questionCount: countResult.total
+    })
+  };
 }
 
 async function getStats() {

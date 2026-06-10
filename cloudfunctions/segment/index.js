@@ -134,5 +134,62 @@ async function segmentQuestions(event) {
     segments = [{ content, type: '其他', subject: '', confidence: 0.5, bounds: null }];
   }
 
-  return { success: true, data: { segments, count: segments.length } };
+  const normalized = segments.map((segment, index) => normalizeSegment(segment, index, segments.length));
+
+  return { success: true, data: { segments: normalized, count: normalized.length } };
+}
+
+function toPercent(value, fallback = 0) {
+  if (typeof value !== 'number' || Number.isNaN(value)) {
+    return fallback;
+  }
+  const clamped = Math.min(1, Math.max(0, value <= 1 ? value : value / 100));
+  return clamped * 100;
+}
+
+function normalizeBounds(bounds, index, total) {
+  if (bounds && typeof bounds === 'object') {
+    if (bounds.top !== undefined || bounds.left !== undefined) {
+      return {
+        top: toPercent(bounds.top, index * (100 / Math.max(total, 1))),
+        left: toPercent(bounds.left, 2),
+        width: toPercent(bounds.width, 45),
+        height: toPercent(bounds.height, Math.max(12, 100 / Math.max(total, 1)))
+      };
+    }
+
+    if (bounds.x !== undefined) {
+      const scale = (v) => Math.min(100, Math.max(0, (Number(v) / 1000) * 100));
+      return {
+        left: scale(bounds.x),
+        top: scale(bounds.y || 0),
+        width: scale(bounds.width || 200),
+        height: scale(bounds.height || 120)
+      };
+    }
+  }
+
+  const row = Math.floor(index / 2);
+  const col = index % 2;
+  return {
+    top: row * 18,
+    left: 2 + col * 48,
+    width: 45,
+    height: Math.max(12, Math.min(25, 100 / Math.max(total, 1)))
+  };
+}
+
+function normalizeSegment(segment, index, total) {
+  const content = segment.content || segment.text || '';
+  const type = segment.type || '其他';
+  return {
+    ...segment,
+    content,
+    text: content,
+    type,
+    subject: segment.subject || '',
+    confidence: typeof segment.confidence === 'number' ? segment.confidence : 0.5,
+    isDifficult: type.includes('解答'),
+    bounds: normalizeBounds(segment.bounds, index, total)
+  };
 }

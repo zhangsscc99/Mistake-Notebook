@@ -232,14 +232,8 @@ export default {
         }
       } catch (error) {
         console.error('加载分类失败:', error)
-        // 使用 mock 数据作为回退
-        categories.splice(0, categories.length, ...[
-          { id: 1, name: '数学', description: '高数、代数、几何、概率统计等', icon: 'chart-trending-o', color: '#2459ff', count: 15, tags: ['函数', '方程', '几何', '概率'], lastUpdated: Date.now() },
-          { id: 2, name: '物理', description: '力学、电磁学、光学、热学等', icon: 'fire-o', color: '#2459ff', count: 10, tags: ['力学', '电学', '光学'], lastUpdated: Date.now() - 86400000 },
-          { id: 3, name: '化学', description: '无机化学、有机化学、反应平衡等', icon: 'experiment-o', color: '#2459ff', count: 6, tags: ['有机', '无机', '反应'], lastUpdated: Date.now() - 172800000 },
-          { id: 4, name: '英语', description: '阅读理解、完形填空、语法填空等', icon: 'bookmark-o', color: '#2459ff', count: 8, tags: ['阅读', '语法', '词汇'], lastUpdated: Date.now() },
-          { id: 5, name: '语文', description: '文言文阅读、诗歌鉴赏、现代文等', icon: 'edit', color: '#2459ff', count: 3, tags: ['文言文', '诗歌'], lastUpdated: Date.now() - 43200000 }
-        ])
+        // 不使用模拟数据，保持categories为空数组
+        categories.splice(0, categories.length)
       }
     }
 
@@ -263,10 +257,11 @@ export default {
         }
       } catch (error) {
         console.error('加载统计失败:', error)
+        // 不使用模拟数据，保持统计数据为0
         Object.assign(stats, {
-          totalQuestions: 42,
-          totalCategories: 5,
-          todayAdded: 3
+          totalQuestions: 0,
+          totalCategories: 0,
+          todayAdded: 0
         })
       }
     }
