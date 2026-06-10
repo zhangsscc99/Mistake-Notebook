@@ -1,44 +1,115 @@
 <!--pages/settings/settings.wxml-->
-<view class="container">
-  <!-- 用户个人中心头部 -->
-  <view class="user-header bg-primary">
+<view class="settings-page">
+
+  <!-- 用户头部 -->
+  <view class="user-header">
     <view class="avatar-container">
-      <open-data type="userAvatarUrl" class="user-avatar" wx:if="{{hasUserInfo}}"></open-data>
-      <image class="user-avatar" src="../../images/default-avatar.png" mode="aspectFill" wx:else></image>
+      <image class="user-avatar" src="../../images/tabbar/home-active.png" mode="aspectFill" wx:if="{{!hasUserInfo}}"></image>
+      <open-data type="userAvatarUrl" class="user-avatar" wx:else></open-data>
     </view>
-    <view class="user-info">
+    <view class="user-info-block">
       <view class="user-name" wx:if="{{hasUserInfo}}">
         <open-data type="userNickName"></open-data>
       </view>
-      <view class="user-name" bindtap="getUserProfile" wx:else>点击授权微信登录</view>
-      <view class="user-vip-tag">智能错题本·终身免费版</view>
+      <view class="user-name user-name-placeholder" wx:else>微信用户</view>
+      <view class="user-sub">智能错题本 · 终身免费版</view>
+    </view>
+    <view class="user-stats">
+      <view class="stat-block">
+        <text class="stat-num">{{totalQuestions}}</text>
+        <text class="stat-lab">错题数</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-block">
+        <text class="stat-num">{{totalCategories}}</text>
+        <text class="stat-lab">分类数</text>
+      </view>
     </view>
   </view>
 
-  <!-- 选项列表 -->
-  <view class="card settings-list">
-    <view class="settings-item justify-between align-center">
-      <text class="item-title">后端服务地址 (API)</text>
-      <input class="item-input" value="{{apiUrl}}" placeholder="请配置您的后端地址" bindconfirm="onApiUrlConfirm" bindblur="onApiUrlConfirm" />
+  <!-- 功能设置 -->
+  <view class="section-group">
+    <view class="section-title">功能设置</view>
+    <view class="cell-list">
+      <view class="cell">
+        <text class="cell-label">自动分类</text>
+        <switch checked="{{autoClassify}}" bindchange="onAutoClassifyChange" color="#2459ff" />
+      </view>
+      <view class="cell" bindtap="onImageQualityTap">
+        <text class="cell-label">图片质量</text>
+        <view class="cell-right">
+          <text class="cell-value">{{imageQuality === 'high' ? '高清' : imageQuality === 'medium' ? '标准' : '省流'}}</text>
+          <text class="cell-arrow">›</text>
+        </view>
+      </view>
+      <view class="cell">
+        <text class="cell-label">自动备份</text>
+        <switch checked="{{autoBackup}}" bindchange="onAutoBackupChange" color="#2459ff" />
+      </view>
     </view>
+  </view>
 
-    <view class="settings-item justify-between align-center" bindtap="cleanCache">
-      <text class="item-title">清除本地缓存</text>
-      <text class="text-desc">清除图片和历史选择</text>
-    </view>
-
-    <view class="settings-item justify-between align-center" bindtap="showVersionInfo">
-      <text class="item-title">关于与版本</text>
-      <text class="text-desc">v1.0.0 (2026版)</text>
+  <!-- 云服务 -->
+  <view class="section-group">
+    <view class="section-title">云服务</view>
+    <view class="cell-list">
+      <view class="cell" bindtap="syncData">
+        <text class="cell-label">数据同步</text>
+        <view class="cell-right">
+          <text class="cell-value sync-text" wx:if="{{cloudSyncing}}">同步中...</text>
+          <text class="cell-arrow">›</text>
+        </view>
+      </view>
+      <view class="cell">
+        <text class="cell-label">云存储状态</text>
+        <view class="cell-right">
+          <view class="status-dot status-ok"></view>
+          <text class="cell-value">正常</text>
+        </view>
+      </view>
     </view>
   </view>
 
-  <!-- 说明卡片 -->
-  <view class="card help-card">
-    <view class="help-title text-primary">使用指引</view>
-    <view class="help-desc">
-      <text>1. 本程序已内置全套模拟数据。即便未部署后台，也能够点击【拍错题】体验一键拍照、AI 识别分析以及将错题生成 PDF 试卷的全流程。</text>
-      <text style="margin-top: 10px; display: block;">2. 如需对接您本地电脑的 Spring Boot 后端，请将上方的后端 API 地址修改为您的局域网 IP (例如：http://192.168.1.100:8080/api)。并在微信开发者工具中勾选【不校验合法域名】。</text>
+  <!-- 数据管理 -->
+  <view class="section-group">
+    <view class="section-title">数据管理</view>
+    <view class="cell-list">
+      <view class="cell" bindtap="exportData">
+        <text class="cell-label">导出数据</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="clearCache">
+        <text class="cell-label">清除本地缓存</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell cell-danger" bindtap="resetApp">
+        <text class="cell-label cell-label-danger">重置应用</text>
+        <text class="cell-arrow">›</text>
+      </view>
     </view>
   </view>
+
+  <!-- 关于 -->
+  <view class="section-group">
+    <view class="section-title">关于</view>
+    <view class="cell-list">
+      <view class="cell">
+        <text class="cell-label">应用版本</text>
+        <text class="cell-value">{{appVersion}}</text>
+      </view>
+      <view class="cell" bindtap="feedback">
+        <text class="cell-label">用户反馈</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="showPrivacyPolicy">
+        <text class="cell-label">隐私政策</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="showVersionInfo">
+        <text class="cell-label">关于错题本</text>
+        <text class="cell-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
 </view>

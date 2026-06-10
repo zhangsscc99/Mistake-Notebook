@@ -1,22 +1,27 @@
 /* pages/settings/settings.wxss */
+.settings-page {
+  min-height: 100vh;
+  background: #eaf3ff;
+  padding-bottom: 40px;
+}
+
+/* 用户头部 */
 .user-header {
   display: flex;
-  padding: 30px 20px;
   align-items: center;
-  border-bottom-left-radius: var(--radius-xl);
-  border-bottom-right-radius: var(--radius-xl);
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
-  box-shadow: 0 8px 32px rgba(31, 91, 255, 0.15);
+  padding: 32rpx 28rpx 28rpx;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  gap: 20rpx;
 }
 
 .avatar-container {
-  width: 64px;
-  height: 64px;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   overflow: hidden;
-  border: 3px solid rgba(255, 255, 255, 0.45);
-  background-color: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 3rpx solid rgba(255,255,255,0.5);
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.2);
 }
 
 .user-avatar {
@@ -24,74 +29,129 @@
   height: 100%;
 }
 
-.user-info {
-  margin-left: 16px;
-  color: #ffffff;
+.user-info-block {
+  flex: 1;
 }
 
 .user-name {
-  font-size: 18px;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 6rpx;
 }
 
-.user-vip-tag {
-  font-size: 11px;
-  background-color: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  padding: 3px 10px;
-  border-radius: 12px;
-  margin-top: 6px;
-  display: inline-block;
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.user-name-placeholder {
+  opacity: 0.8;
 }
 
-.settings-list {
-  padding: 0 16px;
+.user-sub {
+  font-size: 22rpx;
+  color: rgba(255,255,255,0.75);
 }
 
-.settings-item {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--divider-color);
+.user-stats {
   display: flex;
-  justify-content: space-between;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.stat-block {
+  display: flex;
+  flex-direction: column;
   align-items: center;
 }
 
-.settings-item:last-child {
+.stat-num {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+  margin-bottom: 4rpx;
+}
+
+.stat-lab {
+  font-size: 20rpx;
+  color: rgba(255,255,255,0.75);
+}
+
+.stat-divider {
+  width: 1rpx;
+  height: 36rpx;
+  background: rgba(255,255,255,0.35);
+}
+
+/* 分组 */
+.section-group {
+  margin: 24rpx 24rpx 0;
+}
+
+.section-title {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: rgba(11,22,51,0.5);
+  padding: 0 4rpx 12rpx;
+  letter-spacing: 1rpx;
+}
+
+.cell-list {
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(12px);
+  border: 1rpx solid rgba(47,107,255,0.1);
+  border-radius: 20rpx;
+  overflow: hidden;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 28rpx;
+  border-bottom: 1rpx solid rgba(11,22,51,0.06);
+}
+
+.cell:last-child {
   border-bottom: none;
 }
 
-.item-title {
-  font-size: 15px;
-  color: var(--text-primary);
+.cell-label {
+  font-size: 28rpx;
+  color: #0b1633;
   font-weight: 500;
 }
 
-.item-input {
-  font-size: 14px;
-  color: var(--primary-color);
-  text-align: right;
-  flex: 1;
-  margin-left: 20px;
-  font-weight: 600;
+.cell-label-danger {
+  color: #ff4d4f;
 }
 
-.help-card {
-  padding: 20px 16px;
+.cell-right {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
 }
 
-.help-title {
-  font-size: 15px;
-  font-weight: bold;
-  margin-bottom: 10px;
-  color: var(--primary-color);
+.cell-value {
+  font-size: 26rpx;
+  color: rgba(11,22,51,0.45);
 }
 
-.help-desc {
-  font-size: 13px;
-  color: var(--text-secondary);
-  line-height: 1.6;
+.sync-text {
+  color: #2459ff;
+}
+
+.cell-arrow {
+  font-size: 32rpx;
+  color: rgba(11,22,51,0.3);
+  line-height: 1;
+}
+
+/* 云状态点 */
+.status-dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+}
+
+.status-ok {
+  background: #52c41a;
+  box-shadow: 0 0 6rpx rgba(82,196,26,0.5);
 }

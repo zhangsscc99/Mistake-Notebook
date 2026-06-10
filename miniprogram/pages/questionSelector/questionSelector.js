@@ -1,23 +1,25 @@
 // pages/questionSelector/questionSelector.js
+// 此页面已被新流程替代：paperBuilder -> categories(paper-builder mode) -> categoryDetail(paper-select mode)
+// 保留此文件防止 app.json 报错，onLoad 直接跳转到分类页走新流程
 const app = getApp();
 
 Page({
-  /**
-   * 页面的初始数据
-   */
   data: {
     categories: [],
     activeTabId: null,
     questions: [],
     selectedTempCount: 0,
     selectedIds: [],
-    allLoadedQuestions: [] // 暂存所有已获取的错题
+    allLoadedQuestions: []
   },
 
-  /**
-   * 生命周期函数--监听页面加载
-   */
   onLoad: function (options) {
+    // 新流程：设置组卷模式后跳转到分类 Tab
+    app.globalData.categoriesMode = 'paper-builder';
+    wx.switchTab({ url: '/pages/categories/categories' });
+  },
+
+  _onLoad_legacy: function (options) {
     this.fetchCategories();
     // 读取已经勾选进去的题目，便于在 selector 里默认打上勾
     const alreadySelected = app.globalData.selectedPaperQuestions || [];
