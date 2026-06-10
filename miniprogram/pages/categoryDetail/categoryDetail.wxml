@@ -26,6 +26,12 @@
     </view>
   </view>
 
+  <!-- 编辑工具栏（对齐 Web 端导航栏操作） -->
+  <view class="edit-toolbar">
+    <text class="edit-action" wx:if="{{editMode}}" bindtap="toggleSelectAll">{{isAllSelected ? '取消全选' : '全选'}}</text>
+    <text class="edit-action" bindtap="toggleEditMode">{{editMode ? '完成' : '编辑'}}</text>
+  </view>
+
   <!-- 筛选栏（对应 Web 端的 van-dropdown-menu） -->
   <view class="filter-section">
     <view class="filter-scroll">
@@ -38,48 +44,57 @@
     </view>
   </view>
 
-  <!-- 错题卡片列表（精确复刻 Web 端 .questions-section） -->
+  <!-- 错题卡片列表 -->
   <view class="questions-section" wx:if="{{displayQuestions.length > 0}}">
-    <view class="question-card" wx:for="{{displayQuestions}}" wx:key="id" bindtap="viewQuestion" data-index="{{index}}">
-
-      <!-- 题目图片（如果有） -->
-      <image class="question-img" src="{{item.imageUrl}}" mode="aspectFit"
-        wx:if="{{item.imageUrl}}" bindtap="previewImage" data-url="{{item.imageUrl}}"></image>
-
-      <!-- 题目文字 -->
-      <view class="question-text-wrap">
-        <text class="question-text">{{item.content}}</text>
-      </view>
-
-      <!-- 标签 -->
-      <view class="question-tags" wx:if="{{item.tags && item.tags.length}}">
-        <text class="custom-tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
-      </view>
-
-      <!-- 底部元信息 -->
-      <view class="question-meta">
-        <view class="meta-left">
-          <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
-          <text class="add-time">{{item.formattedDate}}</text>
+    <checkbox-group bindchange="onCheckboxChange">
+      <view class="question-card {{item.selected ? 'selected' : ''}}" wx:for="{{displayQuestions}}" wx:key="id"
+        bindtap="onQuestionTap" data-id="{{item.id}}" data-index="{{index}}">
+        <view class="question-select-wrap" wx:if="{{editMode}}">
+          <checkbox value="{{item.id}}" checked="{{item.selected}}" color="#2459ff" />
         </view>
-        <view class="meta-right">
-          <button class="ai-toggle-btn {{item.showAI ? 'active' : ''}}" bindtap="toggleAI" data-index="{{index}}"
-            catch:tap="toggleAI">
-            {{item.showAI ? '收起解析' : 'AI 智能解析'}}
-          </button>
-          <button class="delete-btn" bindtap="deleteQuestion" data-id="{{item.id}}" data-index="{{index}}"
-            catch:tap="deleteQuestion">删除</button>
+        <view class="question-card-body">
+          <image class="question-img" src="{{item.imageUrl}}" mode="aspectFit"
+            wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}"></image>
+
+          <view class="question-text-wrap">
+            <text class="question-text">{{item.content}}</text>
+          </view>
+
+          <view class="question-tags" wx:if="{{item.tags && item.tags.length}}">
+            <text class="custom-tag" wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+          </view>
+
+          <view class="question-meta">
+            <view class="meta-left">
+              <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+              <text class="add-time">{{item.formattedDate}}</text>
+            </view>
+            <view class="meta-right" wx:if="{{!editMode}}">
+              <button class="ai-toggle-btn {{item.showAI ? 'active' : ''}}" catchtap="toggleAI" data-index="{{index}}">
+                {{item.showAI ? '收起解析' : 'AI 智能解析'}}
+              </button>
+              <button class="delete-btn" catchtap="deleteQuestion" data-id="{{item.id}}" data-index="{{index}}">删除</button>
+            </view>
+          </view>
+
+          <view class="ai-box" wx:if="{{item.showAI && !editMode}}">
+            <view class="ai-title">AI 标准答案与解析</view>
+            <view class="ai-subtitle">标准答案：</view>
+            <text class="ai-content">{{item.aiAnswer || '暂无解答'}}</text>
+            <view class="ai-subtitle ai-subtitle-gap">智能解析：</view>
+            <text class="ai-content">{{item.aiAnalysis || '暂无解析'}}</text>
+          </view>
         </view>
       </view>
+    </checkbox-group>
+  </view>
 
-      <!-- AI 解析折叠区 -->
-      <view class="ai-box" wx:if="{{item.showAI}}">
-        <view class="ai-title">AI 标准答案与解析</view>
-        <view class="ai-subtitle">标准答案：</view>
-        <text class="ai-content">{{item.aiAnswer || '暂无解答'}}</text>
-        <view class="ai-subtitle" style="margin-top:10px">智能解析：</view>
-        <text class="ai-content">{{item.aiAnalysis || '暂无解析'}}</text>
-      </view>
+  <!-- 批量操作栏（对齐 Web 端 batch-actions） -->
+  <view class="batch-actions" wx:if="{{editMode && selectedCount > 0}}">
+    <text class="batch-info">已选择 {{selectedCount}} 道题</text>
+    <view class="batch-buttons">
+      <button class="btn btn-primary batch-btn" size="mini" bindtap="savePaper">保存为试卷</button>
+      <button class="btn btn-danger batch-btn" size="mini" bindtap="batchDelete">删除</button>
     </view>
   </view>
 

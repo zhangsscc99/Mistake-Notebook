@@ -13,10 +13,13 @@ Page({
     todayAdded: 0,
     categories: [],
     filteredCategories: [],
-    searchKeyword: ''
+    searchKeyword: '',
+    isPaperBuilderMode: false
   },
 
   onShow: function () {
+    const isPaperBuilderMode = app.globalData.categoriesMode === 'paper-builder';
+    this.setData({ isPaperBuilderMode });
     this.fetchStats();
     this.fetchCategories();
   },
@@ -99,9 +102,16 @@ Page({
   goToDetail: function (e) {
     const id = e.currentTarget.dataset.id;
     const name = e.currentTarget.dataset.name;
-    wx.navigateTo({
-      url: `/pages/categoryDetail/categoryDetail?id=${id}&name=${name}`
-    });
+    let url = `/pages/categoryDetail/categoryDetail?id=${id}&name=${encodeURIComponent(name)}`;
+    if (this.data.isPaperBuilderMode) {
+      url += '&mode=paper-select';
+    }
+    wx.navigateTo({ url });
+  },
+
+  exitPaperBuilderMode: function () {
+    app.globalData.categoriesMode = null;
+    this.setData({ isPaperBuilderMode: false });
   },
 
   goToCamera: function () {

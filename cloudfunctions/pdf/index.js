@@ -19,7 +19,7 @@ exports.main = async (event, context) => {
 };
 
 async function generatePDF(event) {
-  const { title, duration, totalScore, questions } = event;
+  const { title, duration, totalScore, questions, withAnalysis } = event;
 
   if (!title || !questions || !Array.isArray(questions) || questions.length === 0) {
     return { success: false, error: 'Missing required fields: title, questions' };
@@ -89,8 +89,24 @@ async function generatePDF(event) {
 
       doc.moveDown(0.5);
 
+      if (withAnalysis) {
+        doc.fontSize(11).font('Helvetica-Bold')
+          .fillColor('#4caf50')
+          .text('参考答案', { indent: 15 });
+        doc.fontSize(11).font('Helvetica')
+          .fillColor('#000000')
+          .text(q.answer || '待补充', { indent: 15, paragraphGap: 4 });
+        doc.fontSize(11).font('Helvetica-Bold')
+          .fillColor('#2196f3')
+          .text('详细解析', { indent: 15 });
+        doc.fontSize(11).font('Helvetica')
+          .fillColor('#000000')
+          .text(q.analysis || 'AI暂未给出解析', { indent: 15, paragraphGap: 4 });
+        doc.moveDown(0.5);
+      }
+
       // Answer area
-      if (q.needsAnswerArea !== false) {
+      if (!withAnalysis && q.needsAnswerArea !== false) {
         const answerStartY = doc.y;
         const answerLines = estimateAnswerLines(q.content);
 

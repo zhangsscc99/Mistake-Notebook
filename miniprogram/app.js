@@ -14,7 +14,8 @@ App({
     this.globalData = {
       userInfo: null,
       recognitionDraft: null,
-      selectedPaperQuestions: []
+      selectedPaperQuestions: [],
+      categoriesMode: null
     };
 
     // 首次启动时初始化云数据库（创建默认分类）

@@ -307,3 +307,37 @@
   width: 160px !important;
   border-radius: 20px !important;
 }
+
+.paper-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 16px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(36, 89, 255, 0.1);
+  border: 1px solid rgba(36, 89, 255, 0.22);
+}
+
+.paper-mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.paper-mode-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #2459ff;
+}
+
+.paper-mode-desc {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.62);
+}
+
+.paper-mode-cancel {
+  font-size: 13px;
+  color: rgba(11, 22, 51, 0.55);
+  padding: 4px 8px;
+}
