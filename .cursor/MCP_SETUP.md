@@ -4,19 +4,39 @@
 
 使用 `npx` 运行，任何装了 Node.js 的机器 git pull 后直接可用。
 
-## wechat-devtools（需要手动调整路径）
+---
 
-在 `mcp.json` 里找到 `wechat-devtools` 条目，修改以下三处：
+## wechat-devtools（需要调整路径）
 
-| 字段 | 说明 | 示例值 |
-|---|---|---|
-| `command` | wechat-devtools-mcp.exe 的完整路径 | `C:\Users\<你的用户名>\.local\bin\wechat-devtools-mcp.exe` |
-| `WECHAT_DEVTOOLS_CLI` | 微信开发者工具 cli.bat 路径（默认安装路径通常一样） | `C:\Program Files (x86)\Tencent\微信web开发者工具\cli.bat` |
-| `WECHAT_PROJECT_PATH` | 本项目在这台电脑上的绝对路径 | `C:\Users\<你的用户名>\Desktop\Mistake-Notebook` |
+| 字段 | 说明 |
+|---|---|
+| `command` | wechat-devtools-mcp.exe 的完整路径，把 `宇庭` 改成这台电脑的用户名 |
+| `WECHAT_DEVTOOLS_CLI` | 微信开发者工具 cli.bat，默认安装路径通常不变 |
+| `WECHAT_PROJECT_PATH` | 本项目在这台电脑上的绝对路径 |
 
-### 安装 wechat-devtools-mcp
-如果另一台电脑还没装，运行：
+安装：`pip install wechat-devtools-mcp`
+
+---
+
+## weixin-devtools-mcp（需要调整路径）
+
+| 字段 | 说明 |
+|---|---|
+| `command` | Node.js 可执行文件路径，通常为 `C:\Program Files\nodejs\node.exe` |
+| `args[0]` | server.js 路径，把 `宇庭` 改成这台电脑的用户名 |
+
+安装：在 Cursor 设置里搜索并安装 `weixin-devtools-mcp`，或：
 ```
-pip install wechat-devtools-mcp
+cd C:\Users\<用户名>\.cursor\mcp-servers\weixin-devtools-mcp
+npm install weixin-devtools-mcp
 ```
-或参考：https://github.com/cso1z/Weixin-MCP-Server
+
+---
+
+## ue-mcp（需要调整路径）
+
+| 字段 | 说明 |
+|---|---|
+| `args[1]` | Unreal 项目的 .uproject 文件路径，改成这台电脑上对应项目的路径 |
+
+安装：`npx ue-mcp` 会自动下载，无需额外安装。

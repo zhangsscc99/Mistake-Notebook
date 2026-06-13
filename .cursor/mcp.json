@@ -14,6 +14,16 @@
         "WECHAT_PROJECT_PATH": "C:\\Users\\宇庭\\Desktop\\Mistake-Notebook",
         "PYTHONIOENCODING": "utf-8"
       }
+    },
+    "weixin-devtools-mcp": {
+      "command": "C:\\Program Files\\nodejs\\node.exe",
+      "args": [
+        "C:\\Users\\宇庭\\.cursor\\mcp-servers\\weixin-devtools-mcp\\node_modules\\weixin-devtools-mcp\\build\\server.js"
+      ]
+    },
+    "ue-mcp": {
+      "command": "npx",
+      "args": ["ue-mcp", "C:/Users/宇庭/Documents/Unreal Projects/我的项目/我的项目.uproject"]
     }
   }
 }
