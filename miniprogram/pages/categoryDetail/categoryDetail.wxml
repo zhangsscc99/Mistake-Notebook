@@ -156,6 +156,47 @@
     </view>
   </view>
 
+  <!-- 题目详情弹窗（对齐 Web 端 viewQuestion dialog） -->
+  <view class="detail-mask" wx:if="{{showDetailModal}}" bindtap="closeDetailModal"></view>
+  <view class="detail-modal" wx:if="{{showDetailModal}}">
+    <view class="detail-modal-header">
+      <text class="detail-modal-title">题目 #{{detailQuestion.id}}</text>
+      <text class="detail-modal-close" bindtap="closeDetailModal">×</text>
+    </view>
+    <scroll-view scroll-y class="detail-modal-body">
+      <image class="detail-img" src="{{detailQuestion.imageUrl}}" mode="widthFix"
+        wx:if="{{detailQuestion.imageUrl}}" bindtap="previewDetailImage" data-url="{{detailQuestion.imageUrl}}"></image>
+
+      <view class="detail-section">
+        <text class="detail-section-title">题目内容</text>
+        <text class="detail-section-body">{{detailQuestion.content}}</text>
+      </view>
+
+      <view class="detail-section">
+        <text class="detail-section-title">参考答案</text>
+        <text class="detail-section-body">{{detailQuestion.aiAnswer}}</text>
+      </view>
+
+      <view class="detail-section">
+        <text class="detail-section-title">解析</text>
+        <text class="detail-section-body">{{detailQuestion.aiAnalysis}}</text>
+      </view>
+
+      <view class="detail-section" wx:if="{{detailQuestion.tags.length > 0}}">
+        <text class="detail-section-title">标签</text>
+        <view class="detail-tags">
+          <text class="custom-tag" wx:for="{{detailQuestion.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+        </view>
+      </view>
+
+      <view class="detail-section">
+        <text class="detail-section-title">添加时间</text>
+        <text class="detail-section-body">{{detailQuestion.formattedDate}}</text>
+      </view>
+    </scroll-view>
+    <button class="detail-modal-confirm" bindtap="closeDetailModal">关闭</button>
+  </view>
+
   <!-- 空状态 -->
   <view class="empty-state" wx:if="{{displayQuestions.length === 0 && knowledgePointGroups.length === 0}}">
     <text class="empty-text" wx:if="{{questions.length === 0}}">当前分类暂无错题</text>

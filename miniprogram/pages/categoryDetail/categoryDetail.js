@@ -23,7 +23,9 @@ Page({
     isAllSelected: false,
     groupByKnowledgePoint: true,
     knowledgePointGroups: [],
-    expandedGroups: {}
+    expandedGroups: {},
+    showDetailModal: false,
+    detailQuestion: null
   },
 
   onLoad(options) {
@@ -254,12 +256,29 @@ Page({
   viewQuestion(e) {
     const item = this.data.displayQuestions[e.currentTarget.dataset.index];
     if (!item) return;
-    const content = (item.content || '暂无内容').substring(0, 120);
-    wx.showModal({
-      title: `题目 #${item.id}`,
-      content: `${content}\n\n难度：${item.difficultyText}\n时间：${item.formattedDate}`,
-      showCancel: false
+    this.setData({
+      showDetailModal: true,
+      detailQuestion: {
+        id: item.id,
+        content: item.content || '暂无内容',
+        imageUrl: item.imageUrl || '',
+        aiAnswer: item.aiAnswer || '待补充',
+        aiAnalysis: item.aiAnalysis || 'AI暂未给出解析',
+        tags: item.tags || [],
+        difficultyText: item.difficultyText,
+        difficultyClass: item.difficultyClass,
+        formattedDate: item.formattedDate
+      }
     });
+  },
+
+  closeDetailModal() {
+    this.setData({ showDetailModal: false });
+  },
+
+  previewDetailImage(e) {
+    const url = e.currentTarget.dataset.url;
+    if (url) wx.previewImage({ urls: [url] });
   },
 
   deleteQuestion(e) {
