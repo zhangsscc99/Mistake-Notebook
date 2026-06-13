@@ -59,8 +59,8 @@
       <!-- 操作按钮 -->
       <view class="action-area">
         <view class="action-buttons">
-          <button class="action-btn action-btn-primary" bindtap="chooseImage">开始拍照</button>
-          <button class="action-btn action-btn-default" bindtap="chooseImage">从相册选择</button>
+          <button class="action-btn action-btn-primary" bindtap="takePhoto">开始拍照</button>
+          <button class="action-btn action-btn-default" bindtap="selectFromGallery">从相册选择</button>
         </view>
         <button class="process-btn" wx:if="{{tempFilePath}}"
           loading="{{uploading}}" disabled="{{uploading}}" bindtap="submitQuestion">
@@ -68,6 +68,31 @@
         </button>
       </view>
 
+    </view>
+  </view>
+
+  <!-- 最近处理 -->
+  <view class="recent-section" wx:if="{{recentRecords.length > 0}}">
+    <view class="recent-divider">
+      <view class="divider-line"></view>
+      <text class="divider-text">最近处理</text>
+      <view class="divider-line"></view>
+    </view>
+    <view class="recent-list">
+      <view
+        class="recent-item"
+        wx:for="{{recentRecords}}"
+        wx:key="id"
+        bindtap="viewRecord"
+        data-categoryid="{{item.categoryId}}"
+        data-categoryname="{{item.categoryName}}"
+      >
+        <view class="recent-info">
+          <text class="recent-title">{{item.title}}</text>
+          <text class="recent-time">{{item.timeText}}</text>
+        </view>
+        <text class="recent-arrow">›</text>
+      </view>
     </view>
   </view>
 </view>

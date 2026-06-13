@@ -24,6 +24,39 @@ Page({
     this.fetchCategories();
   },
 
+  onPullDownRefresh: function () {
+    const that = this;
+    let done = 0;
+    const finish = () => {
+      done++;
+      if (done >= 2) wx.stopPullDownRefresh();
+    };
+    wx.cloud.callFunction({
+      name: 'category',
+      data: { action: 'stats' },
+      success: (res) => {
+        if (res.result && res.result.success) {
+          const data = res.result.data;
+          that.setData({ totalQuestions: data.totalQuestions || 0, todayAdded: data.todayAdded || 0 });
+        }
+        finish();
+      },
+      fail: finish
+    });
+    wx.cloud.callFunction({
+      name: 'category',
+      data: { action: 'list' },
+      success: (res) => {
+        if (res.result && res.result.success) {
+          const cats = res.result.data.map(c => ({ ...c, icon: SYMBOL_MAP[c.name] || '题' }));
+          that.setData({ categories: cats, filteredCategories: cats });
+        }
+        finish();
+      },
+      fail: finish
+    });
+  },
+
   fetchStats: function () {
     wx.cloud.callFunction({
       name: 'category',

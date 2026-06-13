@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "错题分类"
+  "navigationBarTitleText": "错题分类",
+  "enablePullDownRefresh": true,
+  "backgroundTextStyle": "dark"
 }

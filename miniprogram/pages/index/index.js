@@ -1,38 +1,102 @@
 // pages/index/index.js
 const app = getApp();
 
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now - date;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  return Math.floor(diff / 86400000) + '天前';
+}
+
+function buildRecentTitle(question) {
+  const categoryName = question.category || '未分类';
+  const plain = (question.content || '').replace(/\s+/g, ' ').trim();
+  if (!plain) return categoryName + '题';
+  const short = plain.length > 22 ? plain.slice(0, 22) + '...' : plain;
+  return categoryName + '题 - ' + short;
+}
+
 Page({
   data: {
     tempFilePath: '',
-    uploading: false
+    uploading: false,
+    recentRecords: []
   },
 
-  chooseImage: function () {
+  onShow: function () {
+    this.loadRecentRecords();
+  },
+
+  loadRecentRecords: function () {
+    const that = this;
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'list' },
+      success: (res) => {
+        if (res.result && res.result.success && Array.isArray(res.result.data)) {
+          const records = res.result.data.slice(0, 10).map((q) => ({
+            id: q._id || q.id,
+            title: buildRecentTitle(q),
+            timeText: formatTime(q.createdAt),
+            categoryId: q.categoryId || '',
+            categoryName: q.category || ''
+          }));
+          that.setData({ recentRecords: records });
+        }
+      },
+      fail: () => {}
+    });
+  },
+
+  viewRecord: function (e) {
+    const item = e.currentTarget.dataset;
+    const id = item.categoryid || '';
+    const name = item.categoryname || '分类详情';
+    if (id) {
+      wx.navigateTo({ url: `/pages/categoryDetail/categoryDetail?id=${id}&name=${encodeURIComponent(name)}` });
+    } else {
+      wx.showToast({ title: '未找到该题目的分类', icon: 'none' });
+    }
+  },
+
+  takePhoto: function () {
+    this._chooseImageWithSource(['camera']);
+  },
+
+  selectFromGallery: function () {
+    this._chooseImageWithSource(['album']);
+  },
+
+  _chooseImageWithSource: function (sourceType) {
     const that = this;
     if (wx.chooseMedia) {
       wx.chooseMedia({
         count: 1,
         mediaType: ['image'],
-        sourceType: ['album', 'camera'],
+        sourceType: sourceType,
         camera: 'back',
         success: (res) => {
-          that.setData({
-            tempFilePath: res.tempFiles[0].tempFilePath
-          });
+          that.setData({ tempFilePath: res.tempFiles[0].tempFilePath });
         }
       });
     } else {
       wx.chooseImage({
         count: 1,
         sizeType: ['original', 'compressed'],
-        sourceType: ['album', 'camera'],
+        sourceType: sourceType,
         success: (res) => {
-          that.setData({
-            tempFilePath: res.tempFilePaths[0]
-          });
+          that.setData({ tempFilePath: res.tempFilePaths[0] });
         }
       });
     }
+  },
+
+  chooseImage: function () {
+    this._chooseImageWithSource(['album', 'camera']);
   },
 
   resetImage: function () {

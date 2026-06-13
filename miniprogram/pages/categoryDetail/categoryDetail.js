@@ -38,6 +38,15 @@ Page({
     this.fetchQuestions(id, name);
   },
 
+  onPullDownRefresh: function () {
+    const id = this.data.categoryId;
+    const name = this.data.categoryName;
+    if (id) {
+      this.fetchQuestions(id, name);
+    }
+    setTimeout(() => wx.stopPullDownRefresh(), 3000);
+  },
+
   fetchQuestions(categoryId, categoryName) {
     wx.showLoading({ title: '加载中...' });
     wx.cloud.callFunction({
@@ -60,12 +69,14 @@ Page({
           this.refreshTags();
           this.applyFilters();
           this.calcAccuracy();
+          wx.stopPullDownRefresh();
         } else {
           this.useMockQuestions(categoryName);
         }
       },
       fail: () => {
         wx.hideLoading();
+        wx.stopPullDownRefresh();
         this.useMockQuestions(categoryName);
       }
     });
