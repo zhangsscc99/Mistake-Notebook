@@ -26,6 +26,7 @@
           <view class="question-meta">
             <text class="question-index">第{{index + 1}}题</text>
             <text class="question-type" wx:if="{{item.type}}">{{item.type}}</text>
+            <text class="confidence-badge" wx:if="{{item.confidence}}">{{item.confidenceLabel}}</text>
           </view>
           <text class="question-text">{{item.text}}</text>
         </view>
@@ -34,32 +35,71 @@
   </view>
 
   <view class="bottom-bar">
-    <scroll-view class="category-scroll" scroll-x>
-      <view
-        class="category-chip {{selectedCategory === item.name ? 'active' : ''}}"
-        wx:for="{{categories}}"
-        wx:key="_id"
-        bindtap="selectCategory"
-        data-name="{{item.name}}"
-      >
-        {{item.name}}
+    <view class="bottom-bar-header">
+      <view class="bottom-meta">
+        <text class="bottom-category-text">{{selectedCategory}}</text>
+        <text class="bottom-dot">·</text>
+        <text class="bottom-difficulty-text">{{selectedDifficulty}}</text>
       </view>
-    </scroll-view>
-
-    <view class="difficulty-row">
-      <view
-        class="difficulty-chip {{selectedDifficulty === item ? 'active' : ''}}"
-        wx:for="{{difficulties}}"
-        wx:key="*this"
-        bindtap="selectDifficulty"
-        data-value="{{item}}"
-      >
-        {{item}}
-      </view>
+      <text class="modify-btn" bindtap="openCategoryPicker">修改 ›</text>
     </view>
 
     <button class="save-btn" loading="{{saving}}" disabled="{{saving || selectedCount === 0}}" bindtap="saveSelected">
       保存到错题本 ({{selectedCount}})
     </button>
+  </view>
+
+  <!-- 修改分类弹窗 -->
+  <view class="picker-mask" wx:if="{{showPickerModal}}" bindtap="closePickerModal">
+  </view>
+  <view class="picker-modal" wx:if="{{showPickerModal}}">
+    <view class="picker-modal-header">
+      <text class="picker-modal-title">编辑分类信息</text>
+      <text class="picker-modal-close" bindtap="closePickerModal">×</text>
+    </view>
+
+    <view class="picker-section">
+      <view class="picker-section-label">学科分类</view>
+      <scroll-view scroll-x class="picker-chip-scroll">
+        <view
+          class="picker-chip {{tempCategory === item.name ? 'active' : ''}}"
+          wx:for="{{categories}}"
+          wx:key="name"
+          bindtap="onTempCategorySelect"
+          data-name="{{item.name}}"
+        >{{item.name}}</view>
+      </scroll-view>
+    </view>
+
+    <view class="picker-section">
+      <view class="picker-section-label">难度等级</view>
+      <view class="picker-chip-row">
+        <view
+          class="picker-chip {{tempDifficulty === item ? 'active' : ''}}"
+          wx:for="{{difficulties}}"
+          wx:key="*this"
+          bindtap="onTempDifficultySelect"
+          data-value="{{item}}"
+        >{{item}}</view>
+      </view>
+    </view>
+
+    <view class="picker-section">
+      <view class="picker-section-label">学习阶段</view>
+      <view class="picker-chip-row">
+        <view
+          class="picker-chip {{tempPeriod === item ? 'active' : ''}}"
+          wx:for="{{periods}}"
+          wx:key="*this"
+          bindtap="onTempPeriodSelect"
+          data-value="{{item}}"
+        >{{item}}</view>
+      </view>
+    </view>
+
+    <view class="picker-modal-actions">
+      <button class="picker-cancel-btn" bindtap="closePickerModal">取消</button>
+      <button class="picker-confirm-btn" bindtap="confirmPickerModal">确认</button>
+    </view>
   </view>
 </view>

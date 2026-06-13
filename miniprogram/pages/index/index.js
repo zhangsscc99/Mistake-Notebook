@@ -73,6 +73,14 @@ Page({
 
   _chooseImageWithSource: function (sourceType) {
     const that = this;
+    let imageQuality = 'high';
+    try {
+      const settings = wx.getStorageSync('appSettings') || {};
+      imageQuality = settings.imageQuality || 'high';
+    } catch (e) {}
+    // 'high' → original, 'medium'/'low' → compressed
+    const sizeType = imageQuality === 'high' ? ['original'] : ['compressed'];
+
     if (wx.chooseMedia) {
       wx.chooseMedia({
         count: 1,
@@ -80,19 +88,40 @@ Page({
         sourceType: sourceType,
         camera: 'back',
         success: (res) => {
-          that.setData({ tempFilePath: res.tempFiles[0].tempFilePath });
+          const file = res.tempFiles[0];
+          if (imageQuality === 'low' && file.size > 500 * 1024) {
+            that._compressImage(file.tempFilePath, 0.4);
+          } else if (imageQuality === 'medium' && file.size > 1024 * 1024) {
+            that._compressImage(file.tempFilePath, 0.7);
+          } else {
+            that.setData({ tempFilePath: file.tempFilePath });
+          }
         }
       });
     } else {
       wx.chooseImage({
         count: 1,
-        sizeType: ['original', 'compressed'],
+        sizeType: sizeType,
         sourceType: sourceType,
         success: (res) => {
           that.setData({ tempFilePath: res.tempFilePaths[0] });
         }
       });
     }
+  },
+
+  _compressImage: function (filePath, quality) {
+    const that = this;
+    wx.compressImage({
+      src: filePath,
+      quality: Math.round(quality * 100),
+      success: (res) => {
+        that.setData({ tempFilePath: res.tempFilePath });
+      },
+      fail: () => {
+        that.setData({ tempFilePath: filePath });
+      }
+    });
   },
 
   chooseImage: function () {

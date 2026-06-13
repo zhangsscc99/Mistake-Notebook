@@ -6,6 +6,13 @@ function isDifficultQuestion(segment) {
   return type.includes('解答') || confidence < 0.85;
 }
 
+function getConfidenceLabel(confidence) {
+  if (!confidence || confidence === 0) return '';
+  if (confidence >= 0.9) return '简单';
+  if (confidence >= 0.8) return '中等';
+  return '困难';
+}
+
 Page({
   data: {
     imagePath: '',
@@ -14,9 +21,15 @@ Page({
     categories: [],
     selectedCategory: '数学',
     selectedDifficulty: '中等',
+    selectedPeriod: '高中',
     difficulties: ['简单', '中等', '困难'],
+    periods: ['小学', '初中', '高中', '大学'],
     selectedCount: 0,
-    saving: false
+    saving: false,
+    showPickerModal: false,
+    tempCategory: '数学',
+    tempDifficulty: '中等',
+    tempPeriod: '高中'
   },
 
   onLoad: function () {
@@ -27,17 +40,21 @@ Page({
       return;
     }
 
-    const questions = draft.segments.map((segment, index) => ({
-      id: String(index + 1),
-      text: segment.content || segment.text || '',
-      type: segment.type || '',
-      subject: segment.subject || '',
-      confidence: segment.confidence || 0,
-      bounds: segment.bounds || null,
-      selected: segment.isDifficult !== undefined
-        ? !!segment.isDifficult
-        : isDifficultQuestion(segment)
-    })).filter((q) => q.text);
+    const questions = draft.segments.map((segment, index) => {
+      const conf = segment.confidence || 0;
+      return {
+        id: String(index + 1),
+        text: segment.content || segment.text || '',
+        type: segment.type || '',
+        subject: segment.subject || '',
+        confidence: conf,
+        confidenceLabel: getConfidenceLabel(conf),
+        bounds: segment.bounds || null,
+        selected: segment.isDifficult !== undefined
+          ? !!segment.isDifficult
+          : isDifficultQuestion(segment)
+      };
+    }).filter((q) => q.text);
 
     const defaultCategory = questions[0] && questions[0].subject ? questions[0].subject : '数学';
 
@@ -108,6 +125,40 @@ Page({
 
   selectDifficulty: function (e) {
     this.setData({ selectedDifficulty: e.currentTarget.dataset.value });
+  },
+
+  openCategoryPicker: function () {
+    this.setData({
+      showPickerModal: true,
+      tempCategory: this.data.selectedCategory,
+      tempDifficulty: this.data.selectedDifficulty,
+      tempPeriod: this.data.selectedPeriod
+    });
+  },
+
+  closePickerModal: function () {
+    this.setData({ showPickerModal: false });
+  },
+
+  onTempCategorySelect: function (e) {
+    this.setData({ tempCategory: e.currentTarget.dataset.name });
+  },
+
+  onTempDifficultySelect: function (e) {
+    this.setData({ tempDifficulty: e.currentTarget.dataset.value });
+  },
+
+  onTempPeriodSelect: function (e) {
+    this.setData({ tempPeriod: e.currentTarget.dataset.value });
+  },
+
+  confirmPickerModal: function () {
+    this.setData({
+      selectedCategory: this.data.tempCategory,
+      selectedDifficulty: this.data.tempDifficulty,
+      selectedPeriod: this.data.tempPeriod,
+      showPickerModal: false
+    });
   },
 
   saveSelected: function () {
