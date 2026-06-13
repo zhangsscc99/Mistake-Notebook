@@ -20,7 +20,10 @@ Page({
     editMode: false,
     isPaperSelectMode: false,
     selectedCount: 0,
-    isAllSelected: false
+    isAllSelected: false,
+    groupByKnowledgePoint: true,
+    knowledgePointGroups: [],
+    expandedGroups: {}
   },
 
   onLoad(options) {
@@ -112,6 +115,39 @@ Page({
     this.setData({ availableTags: Array.from(tags), tagFilter: 'all' });
   },
 
+  buildKnowledgePointGroups(list) {
+    const groups = new Map();
+    list.forEach((q, listIndex) => {
+      const points = (q.tags && q.tags.length > 0) ? q.tags : ['其他'];
+      const key = points[0];
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key).push({ ...q, _listIndex: listIndex });
+    });
+    const expandedGroups = this.data.expandedGroups;
+    return Array.from(groups.entries()).map(([name, questions]) => ({
+      name,
+      questions,
+      count: questions.length,
+      expanded: expandedGroups[name] !== false
+    }));
+  },
+
+  toggleGroupByKnowledgePoint() {
+    this.setData({ groupByKnowledgePoint: !this.data.groupByKnowledgePoint });
+    this.applyFilters();
+  },
+
+  toggleGroup(e) {
+    const name = e.currentTarget.dataset.name;
+    const expandedGroups = { ...this.data.expandedGroups, [name]: !this.data.expandedGroups[name] };
+    const knowledgePointGroups = this.data.knowledgePointGroups.map((g) =>
+      g.name === name ? { ...g, expanded: expandedGroups[name] !== false } : g
+    );
+    this.setData({ expandedGroups, knowledgePointGroups });
+  },
+
   applyFilters() {
     let list = [...this.data.questions];
     if (this.data.filterBy !== 'all') {
@@ -125,7 +161,8 @@ Page({
     } else if (this.data.sortBy === 'earliest') {
       list.sort((a, b) => (a.formattedDate || '').localeCompare(b.formattedDate || ''));
     }
-    this.setData({ displayQuestions: list });
+    const knowledgePointGroups = this.buildKnowledgePointGroups(list);
+    this.setData({ displayQuestions: list, knowledgePointGroups });
     this.updateSelectionState();
   },
 

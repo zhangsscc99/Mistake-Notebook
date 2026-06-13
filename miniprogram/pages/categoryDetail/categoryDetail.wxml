@@ -28,6 +28,9 @@
 
   <!-- 编辑工具栏（对齐 Web 端导航栏操作） -->
   <view class="edit-toolbar">
+    <text class="edit-action group-toggle-btn" bindtap="toggleGroupByKnowledgePoint">
+      {{groupByKnowledgePoint ? '取消分组' : '按知识点分组'}}
+    </text>
     <text class="edit-action" wx:if="{{editMode}}" bindtap="toggleSelectAll">{{isAllSelected ? '取消全选' : '全选'}}</text>
     <text class="edit-action" bindtap="toggleEditMode">{{editMode ? '完成' : '编辑'}}</text>
   </view>
@@ -46,8 +49,60 @@
     </view>
   </view>
 
-  <!-- 错题卡片列表 -->
-  <view class="questions-section" wx:if="{{displayQuestions.length > 0}}">
+  <!-- 知识点分组（对齐 Web 端 knowledge-points-section） -->
+  <view class="knowledge-points-section" wx:if="{{groupByKnowledgePoint && knowledgePointGroups.length > 0}}">
+    <view class="knowledge-group" wx:for="{{knowledgePointGroups}}" wx:key="name">
+      <view class="group-header" bindtap="toggleGroup" data-name="{{item.name}}">
+        <text class="group-arrow">{{item.expanded ? '▾' : '▸'}}</text>
+        <text class="group-title">{{item.name}}</text>
+        <text class="group-count">{{item.count}}题</text>
+      </view>
+      <view class="group-questions" wx:if="{{item.expanded}}">
+        <checkbox-group bindchange="onCheckboxChange">
+          <view class="question-card {{qitem.selected ? 'selected' : ''}}"
+            wx:for="{{item.questions}}" wx:for-item="qitem" wx:key="id"
+            bindtap="onQuestionTap" data-id="{{qitem.id}}" data-index="{{qitem._displayIndex}}">
+            <view class="question-select-wrap" wx:if="{{editMode}}">
+              <checkbox value="{{qitem.id}}" checked="{{qitem.selected}}" color="#2459ff" />
+            </view>
+            <view class="question-card-body">
+              <image class="question-img" src="{{qitem.imageUrl}}" mode="aspectFit"
+                wx:if="{{qitem.imageUrl}}" catchtap="previewImage" data-url="{{qitem.imageUrl}}"></image>
+              <view class="question-text-wrap">
+                <text class="question-text">{{qitem.content}}</text>
+              </view>
+              <view class="question-tags" wx:if="{{qitem.tags && qitem.tags.length}}">
+                <text class="custom-tag" wx:for="{{qitem.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+              </view>
+              <view class="question-meta">
+                <view class="meta-left">
+                  <text class="badge badge-{{qitem.difficultyClass}}">{{qitem.difficultyText}}</text>
+                  <text class="add-time">{{qitem.formattedDate}}</text>
+                </view>
+                <view class="meta-right" wx:if="{{!editMode}}">
+                  <button class="ai-toggle-btn {{qitem.showAI ? 'active' : ''}}" catchtap="toggleAI" data-index="{{qitem._listIndex}}">
+                    {{qitem.showAI ? '收起解析' : 'AI 智能解析'}}
+                  </button>
+                  <button class="delete-btn" catchtap="deleteQuestion" data-id="{{qitem.id}}" data-index="{{qitem._listIndex}}">删除</button>
+                </view>
+              </view>
+              <view class="ai-box" wx:if="{{qitem.showAI && !editMode}}">
+                <view class="ai-title">AI 标准答案与解析</view>
+                <view class="ai-subtitle">标准答案：</view>
+                <text class="ai-content">{{qitem.aiAnswer || '暂无解答'}}</text>
+                <view class="ai-subtitle ai-subtitle-gap">智能解析：</view>
+                <text class="ai-content">{{qitem.aiAnalysis || '暂无解析'}}</text>
+              </view>
+            </view>
+          </view>
+        </checkbox-group>
+      </view>
+    </view>
+  </view>
+
+  <!-- 平铺列表（非分组模式或无分组时） -->
+  <view class="questions-section" wx:if="{{!groupByKnowledgePoint || knowledgePointGroups.length === 0}}">
+    <view wx:if="{{displayQuestions.length > 0}}">
     <checkbox-group bindchange="onCheckboxChange">
       <view class="question-card {{item.selected ? 'selected' : ''}}" wx:for="{{displayQuestions}}" wx:key="id"
         bindtap="onQuestionTap" data-id="{{item.id}}" data-index="{{index}}">
@@ -89,6 +144,7 @@
         </view>
       </view>
     </checkbox-group>
+    </view>
   </view>
 
   <!-- 批量操作栏（对齐 Web 端 batch-actions） -->
@@ -101,7 +157,7 @@
   </view>
 
   <!-- 空状态 -->
-  <view class="empty-state" wx:if="{{displayQuestions.length === 0}}">
+  <view class="empty-state" wx:if="{{displayQuestions.length === 0 && knowledgePointGroups.length === 0}}">
     <text class="empty-text" wx:if="{{questions.length === 0}}">当前分类暂无错题</text>
     <text class="empty-text" wx:else>没有匹配的题目</text>
     <button class="btn btn-primary go-back-btn" bindtap="goBackToHome">去拍错题</button>
