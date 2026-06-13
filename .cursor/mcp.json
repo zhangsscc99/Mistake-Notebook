@@ -1,0 +1,19 @@
+﻿{
+  "mcpServers": {
+    "cloudbase": {
+      "command": "npx",
+      "args": ["-y", "@cloudbase/cloudbase-mcp@latest"],
+      "env": {
+        "INTEGRATION_IDE": "Cursor"
+      }
+    },
+    "wechat-devtools": {
+      "command": "C:\\Users\\宇庭\\.local\\bin\\wechat-devtools-mcp.exe",
+      "env": {
+        "WECHAT_DEVTOOLS_CLI": "C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat",
+        "WECHAT_PROJECT_PATH": "C:\\Users\\宇庭\\Desktop\\Mistake-Notebook",
+        "PYTHONIOENCODING": "utf-8"
+      }
+    }
+  }
+}
