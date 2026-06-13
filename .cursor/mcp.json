@@ -7,6 +7,17 @@
         "INTEGRATION_IDE": "Cursor"
       }
     },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "browser-use": {
+      "command": "C:\\Users\\宇庭\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\uv.exe",
+      "args": ["tool", "run", "--from", "browser-use[cli]", "browser-use", "--mcp"],
+      "env": {
+        "BROWSER_USE_HEADLESS": "false"
+      }
+    },
     "wechat-devtools": {
       "command": "C:\\Users\\宇庭\\.local\\bin\\wechat-devtools-mcp.exe",
       "env": {
