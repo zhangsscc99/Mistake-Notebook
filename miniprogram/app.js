@@ -3,12 +3,19 @@ App({
   onLaunch: function () {
     if (!wx.cloud) {
       console.error('请使用 2.2.3 或以上的基础库以使用云能力');
-    } else {
-      wx.cloud.init({
-        env: 'cloud1-d4g7l44nyca7c18e6',
-        traceUser: true
-      });
+      return;
     }
+
+    wx.cloud.init({
+      env: 'cloud1-d4g7l44nyca7c18e6',
+      traceUser: true
+    });
+
+    // 刷新登录态，避免 uploadFile 报 access_token missing
+    wx.login({
+      success: () => console.log('[app] 云开发登录态已刷新'),
+      fail: (err) => console.warn('[app] wx.login 失败，上传可能受影响:', err)
+    });
 
     // 全局数据，可用于存放用户信息等
     this.globalData = {

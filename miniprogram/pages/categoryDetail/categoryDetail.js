@@ -1,5 +1,6 @@
 // pages/categoryDetail/categoryDetail.js
 const app = getApp();
+const { savePaperToCloud, promptPaperTitle } = require('../../utils/paper.js');
 const SYMBOL_MAP = {
   '数学': '数', '物理': '物', '化学': '化', '英语': '英',
   '语文': '语', '生物': '生', '历史': '史', '地理': '地'
@@ -448,7 +449,7 @@ Page({
     if (!selected.length) {
       if (!this.data.editMode) {
         this.toggleEditMode();
-        wx.showToast({ title: '勾选题目后点击底部加入组卷', icon: 'none' });
+        wx.showToast({ title: '勾选题目后点击确认组卷', icon: 'none' });
         return;
       }
       wx.showToast({ title: '请先选择题目', icon: 'none' });
@@ -473,19 +474,39 @@ Page({
         merged.push(q);
       }
     });
-    app.globalData.selectedPaperQuestions = merged;
-    app.globalData.categoriesMode = null;
 
-    const questions = this.data.questions.map((q) => ({ ...q, selected: false }));
-    this.setData({ questions, editMode: false });
-    this.applyFilters();
+    const defaultTitle = this.data.categoryName
+      ? `${this.data.categoryName}练习卷`
+      : '练习卷';
 
-    wx.switchTab({
-      url: '/pages/paperBuilder/paperBuilder',
-      success: () => {
-        wx.showToast({ title: `已加入 ${mapped.length} 道题`, icon: 'success' });
-      }
-    });
+    promptPaperTitle(defaultTitle)
+      .then((title) => {
+        wx.showLoading({ title: '保存中...', mask: true });
+        return savePaperToCloud(merged, title);
+      })
+      .then((result) => {
+        wx.hideLoading();
+        app.globalData.selectedPaperQuestions = [];
+        app.globalData.categoriesMode = null;
+
+        const questions = this.data.questions.map((q) => ({ ...q, selected: false }));
+        this.setData({ questions, editMode: false });
+        this.applyFilters();
+
+        wx.switchTab({
+          url: '/pages/paperBuilder/paperBuilder',
+          success: () => {
+            const msg = result.localOnly ? '已本地保存' : '试卷保存成功';
+            wx.showToast({ title: msg, icon: 'success' });
+          }
+        });
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        if (err && err.message === 'cancelled') return;
+        if (err && err.message === 'empty_title') return;
+        wx.showToast({ title: '保存失败', icon: 'none' });
+      });
   },
 
   batchDelete() {

@@ -5,7 +5,7 @@
   <view class="paper-mode-banner" wx:if="{{isPaperBuilderMode}}">
     <view class="paper-mode-text">
       <text class="paper-mode-title">组建新卷</text>
-      <text class="paper-mode-desc">请选择分类，勾选题目后保存为试卷</text>
+      <text class="paper-mode-desc">请选择分类，勾选题目后点击「确认组卷」</text>
     </view>
     <text class="paper-mode-cancel" bindtap="exitPaperBuilderMode">取消</text>
   </view>

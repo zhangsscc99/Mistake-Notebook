@@ -1,5 +1,6 @@
 // pages/index/index.js
 const app = getApp();
+const { ensureCloudSession, isAccessTokenError } = require('../../utils/cloud.js');
 
 function formatTime(dateStr) {
   if (!dateStr) return '';
@@ -175,6 +176,14 @@ Page({
     wx.hideLoading();
     this.setData({ uploading: false });
     const errMsg = (err && err.errMsg) || String(err);
+    if (isAccessTokenError(err)) {
+      wx.showModal({
+        title: '云开发未登录',
+        content: '无法获取云开发凭证（access_token missing）。请依次检查：\n1. 关闭 VPN/系统代理\n2. 微信开发者工具右上角重新扫码登录\n3. 点击「云开发」确认环境 cloud1-d4g7l44nyca7c18e6 已选中\n4. 清缓存后重新编译',
+        showCancel: false
+      });
+      return;
+    }
     if (errMsg.includes('-504003') || errMsg.includes('timed out')) {
       wx.showModal({
         title: `${stepName}超时`,
@@ -208,6 +217,8 @@ Page({
       const cloudPath = 'questions/' + Date.now() + '.jpg';
       const tUpload = Date.now();
       console.log('[Step2] 开始上传 cloudPath:', cloudPath);
+
+      await ensureCloudSession();
 
       const uploadRes = await new Promise((resolve, reject) => {
         const task = wx.cloud.uploadFile({

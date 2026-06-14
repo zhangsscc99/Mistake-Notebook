@@ -18,10 +18,10 @@
         </view>
       </view>
 
-      <!-- 操作按钮：Web 端顺序是 "开始练习" + "加入组卷" -->
+      <!-- 操作按钮 -->
       <view class="action-buttons-row">
-        <button class="btn btn-primary action-btn" size="small" bindtap="startPractice">开始练习</button>
-        <button class="btn btn-secondary action-btn" size="small" bindtap="addToExam">加入组卷</button>
+        <button class="btn btn-primary action-btn" size="small" bindtap="startPractice" wx:if="{{!isPaperSelectMode}}">开始练习</button>
+        <button class="btn {{isPaperSelectMode ? 'btn-primary' : 'btn-secondary'}} action-btn" size="small" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '加入组卷'}}</button>
       </view>
     </view>
   </view>
@@ -151,7 +151,7 @@
   <view class="batch-actions" wx:if="{{editMode && selectedCount > 0}}">
     <text class="batch-info">已选择 {{selectedCount}} 道题</text>
     <view class="batch-buttons">
-      <button class="btn btn-primary batch-btn" size="mini" bindtap="addToExam">加入组卷</button>
+      <button class="btn btn-primary batch-btn" size="mini" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '加入组卷'}}</button>
       <button class="btn btn-danger batch-btn" size="mini" bindtap="batchDelete">删除</button>
     </view>
   </view>
