@@ -8,7 +8,7 @@ const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/co
 function callDashScopeVL(messages, temperature = 0.3) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
-      model: 'qwen3-vl-plus',
+      model: 'qwen3-vl-flash',
       messages,
       stream: false,
       temperature

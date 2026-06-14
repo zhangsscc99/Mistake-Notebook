@@ -149,13 +149,24 @@ Page({
     wx.showLoading({ title, mask: true });
   },
 
-  callCloud: function (name, data) {
+  callCloud: function (name, data, options) {
+    const timeout = (options && options.timeout) || 60000;
     return new Promise((resolve, reject) => {
+      const t0 = Date.now();
       wx.cloud.callFunction({
         name,
         data,
-        success: (res) => resolve(res.result || {}),
-        fail: reject
+        config: { timeout },
+        success: (res) => {
+          const ms = Date.now() - t0;
+          console.log(`[callCloud:${name}] 耗时 ${ms}ms`);
+          resolve(res.result || {});
+        },
+        fail: (err) => {
+          const ms = Date.now() - t0;
+          console.error(`[callCloud:${name}] 失败 耗时 ${ms}ms`, err && err.errMsg);
+          reject(err);
+        }
       });
     });
   },
@@ -185,25 +196,53 @@ Page({
   runRecognitionPipeline: async function () {
     const that = this;
     let fileID = '';
+    const tPipeline = Date.now();
 
     try {
+      // Step 1: validate file
+      const filePath = that.data.tempFilePath;
+      console.log('[Step1] filePath:', filePath);
+      if (!filePath) throw new Error('filePath 为空，无法上传');
+
       that.showLoading('上传图片中...');
       const cloudPath = 'questions/' + Date.now() + '.jpg';
+      const tUpload = Date.now();
+      console.log('[Step2] 开始上传 cloudPath:', cloudPath);
+
       const uploadRes = await new Promise((resolve, reject) => {
-        wx.cloud.uploadFile({
+        const task = wx.cloud.uploadFile({
           cloudPath,
-          filePath: that.data.tempFilePath,
-          success: resolve,
-          fail: reject
+          filePath,
+          config: { timeout: 60000 },
+          success: (res) => {
+            const ms = Date.now() - tUpload;
+            console.log(`[Step2] 上传成功 耗时 ${ms}ms fileID:`, res.fileID);
+            resolve(res);
+          },
+          fail: (err) => {
+            const ms = Date.now() - tUpload;
+            console.error(`[Step2] 上传失败 耗时 ${ms}ms errMsg:`, err && err.errMsg, 'full:', JSON.stringify(err));
+            reject(err);
+          }
         });
+        if (task && task.onProgressUpdate) {
+          task.onProgressUpdate((p) => {
+            console.log('[Step2] 上传进度:', p.progress + '%', '已传:', p.totalBytesSent, '总:', p.totalBytesExpectedToSend);
+          });
+        }
       });
       fileID = uploadRes.fileID;
+      const uploadMs = Date.now() - tUpload;
 
       that.showLoading('AI识别中...');
+      const tSegment = Date.now();
+      console.log('[Step3] 调用 segment 云函数 fileID:', fileID);
       const segmentRes = await that.callCloud('segment', {
         action: 'segment',
         fileID
-      });
+      }, { timeout: 120000 });
+      const segmentMs = Date.now() - tSegment;
+      console.log(`[Step3] segment 返回 耗时 ${segmentMs}ms:`, JSON.stringify(segmentRes).slice(0, 200));
       if (!segmentRes.success) {
         throw new Error(segmentRes.error || 'AI识别失败');
       }
@@ -211,8 +250,12 @@ Page({
       if (!segments.length) {
         throw new Error('未识别到题目');
       }
+      console.log('[Step3] 识别题目数:', segments.length);
 
-      const localImagePath = that.data.tempFilePath;
+      const totalMs = Date.now() - tPipeline;
+      console.log(`[识图流程] 总耗时 ${totalMs}ms（上传 ${uploadMs}ms + segment ${segmentMs}ms）`);
+
+      const localImagePath = filePath;
       wx.hideLoading();
       that.setData({ uploading: false, tempFilePath: '' });
 
@@ -224,7 +267,8 @@ Page({
 
       wx.navigateTo({ url: '/pages/questionPicker/questionPicker' });
     } catch (err) {
-      console.error('识图流程失败:', err);
+      const totalMs = Date.now() - tPipeline;
+      console.error(`[识图流程失败] 总耗时 ${totalMs}ms`, err && err.errMsg || err);
       const step = fileID ? '云函数' : '上传';
       that.handleCloudError(err, step);
     }
