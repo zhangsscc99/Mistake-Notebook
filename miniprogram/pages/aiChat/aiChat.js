@@ -84,6 +84,23 @@ Page({
   },
 
   onUnload() {
+    // Save session memory before leaving
+    const messages = this.data.messages
+      .filter(m => (m.role === 'user' || m.role === 'assistant') && m.content)
+      .map(m => ({ role: m.role, content: m.content }));
+
+    if (messages.length >= 2) {
+      wx.cloud.callFunction({
+        name: 'answer',
+        config: { timeout: 60000 },
+        data: {
+          action: 'summarize',
+          messages,
+          questionContext: this.data.questionContextRaw
+        }
+      });
+    }
+
     if (app.globalData) app.globalData.aiChatContext = '';
   },
 
