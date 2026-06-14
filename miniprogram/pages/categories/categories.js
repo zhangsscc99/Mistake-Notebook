@@ -7,6 +7,25 @@ const SYMBOL_MAP = {
   '政治': '政', '体育': '体'
 };
 
+function formatRelativeTime(ts) {
+  if (!ts) return '未知';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '未知';
+  const diff = Date.now() - d.getTime();
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  return Math.floor(diff / 86400000) + '天前';
+}
+
+function mapCategory(c) {
+  return {
+    ...c,
+    icon: SYMBOL_MAP[c.name] || '题',
+    formattedUpdatedAt: formatRelativeTime(c.updatedAt || c.lastUpdated || c.createdAt)
+  };
+}
+
 Page({
   data: {
     totalQuestions: 0,
@@ -48,7 +67,7 @@ Page({
       data: { action: 'list' },
       success: (res) => {
         if (res.result && res.result.success) {
-          const cats = res.result.data.map(c => ({ ...c, icon: SYMBOL_MAP[c.name] || '题' }));
+          const cats = res.result.data.map(mapCategory);
           that.setData({ categories: cats, filteredCategories: cats });
         }
         finish();
@@ -68,13 +87,9 @@ Page({
             totalQuestions: data.totalQuestions || 0,
             todayAdded: data.todayAdded || 0
           });
-        } else {
-          this.setData({ totalQuestions: 42, todayAdded: 3 });
         }
       },
-      fail: () => {
-        this.setData({ totalQuestions: 42, todayAdded: 3 });
-      }
+      fail: () => {}
     });
   },
 
@@ -84,17 +99,14 @@ Page({
       data: { action: 'list' },
       success: (res) => {
         if (res.result && res.result.success) {
-          const categories = res.result.data.map(c => ({
-            ...c,
-            icon: SYMBOL_MAP[c.name] || '题'
-          }));
+          const categories = res.result.data.map(mapCategory);
           this.setData({ categories, filteredCategories: categories });
         } else {
-          this.setMockCategories();
+          this.setData({ categories: [], filteredCategories: [] });
         }
       },
       fail: () => {
-        this.setMockCategories();
+        this.setData({ categories: [], filteredCategories: [] });
       }
     });
   },
@@ -126,9 +138,13 @@ Page({
       this.setData({ filteredCategories: this.data.categories });
       return;
     }
-    const filtered = this.data.categories.filter(c =>
-      c.name.includes(keyword) || (c.description && c.description.includes(keyword))
-    );
+    const kw = keyword.toLowerCase();
+    const filtered = this.data.categories.filter(c => {
+      if (c.name && c.name.toLowerCase().includes(kw)) return true;
+      if (c.description && c.description.toLowerCase().includes(kw)) return true;
+      if (Array.isArray(c.tags) && c.tags.some(t => t.toLowerCase().includes(kw))) return true;
+      return false;
+    });
     this.setData({ filteredCategories: filtered });
   },
 

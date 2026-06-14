@@ -16,7 +16,8 @@ Page({
   data: {
     savedPapers: [],
     pendingQuestions: [],
-    pendingCount: 0
+    pendingCount: 0,
+    totalQuestionCount: 0
   },
 
   onShow: function () {
@@ -92,7 +93,7 @@ Page({
           const papers = papersJson ? JSON.parse(papersJson) : [];
           papers.unshift(paper);
           wx.setStorageSync('savedPapers', JSON.stringify(papers));
-          this.setData({ savedPapers: papers });
+          this.setSavedPapers(papers);
         };
 
         wx.cloud.callFunction({
@@ -147,7 +148,7 @@ Page({
           } catch (e) {
             // ignore cache errors
           }
-          that.setData({ savedPapers: papers });
+          that.setSavedPapers(papers);
           return;
         }
         that.loadLocalPapers();
@@ -166,10 +167,16 @@ Page({
         ...p,
         questions: (p.questions || []).map(normalizePaperQuestion)
       }));
-      this.setData({ savedPapers: papers });
+      this.setSavedPapers(papers);
     } catch (e) {
-      this.setData({ savedPapers: [] });
+      this.setSavedPapers([]);
     }
+  },
+
+  setSavedPapers: function (papers) {
+    const list = papers || [];
+    const totalQuestionCount = list.reduce((sum, p) => sum + (p.questionCount || (p.questions ? p.questions.length : 0)), 0);
+    this.setData({ savedPapers: list, totalQuestionCount });
   },
 
   createNewPaper: function () {

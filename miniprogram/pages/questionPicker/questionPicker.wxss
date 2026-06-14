@@ -58,7 +58,7 @@
   border-radius: 999rpx;
   font-size: 22rpx;
   color: #fff;
-  background: #2459ff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff, #b6a6ff);
 }
 
 .questions-section {
@@ -221,7 +221,7 @@
 
 .picker-chip.active {
   color: #fff;
-  background: #2459ff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff, #b6a6ff);
 }
 
 .picker-modal-actions {
@@ -244,6 +244,7 @@
   border-radius: 999rpx;
   font-size: 28rpx;
   color: #fff;
-  background: #2459ff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff, #b6a6ff);
   border: none;
+  box-shadow: 0 4px 16px rgba(31, 91, 255, 0.25);
 }

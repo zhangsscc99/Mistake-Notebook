@@ -90,7 +90,7 @@
           <van-empty v-if="!loading && filteredCategories.length === 0" 
                      description="暂无分类数据"
                      image="search">
-            <van-button type="primary" @click="$router.push('/camera')">
+            <van-button type="primary" @click="$router.push('/homepage')">
               去拍照录入
             </van-button>
           </van-empty>
@@ -105,6 +105,7 @@
       <van-tabbar-item icon="home-o" to="/homepage">首页</van-tabbar-item>
       <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
       <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
+      <van-tabbar-item icon="setting-o" to="/settings">设置</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -221,8 +222,13 @@ export default {
             icon: cat.icon || 'apps-o',
             color: cat.color || '#2459ff',
             count: cat.questionCount || 0,
-            tags: [],
-            lastUpdated: Date.now() // 暂时使用当前时间
+            tags: (() => {
+              if (!cat.tags) return []
+              if (Array.isArray(cat.tags)) return cat.tags
+              if (typeof cat.tags === 'string') return cat.tags.split(',').map(t => t.trim()).filter(Boolean)
+              return []
+            })(),
+            lastUpdated: cat.updatedAt || cat.lastUpdated || cat.createdAt || Date.now()
           }))
           
           categories.splice(0, categories.length, ...apiCategories)

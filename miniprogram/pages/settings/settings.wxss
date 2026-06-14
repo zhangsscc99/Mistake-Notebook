@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   padding: 32rpx 28rpx 28rpx;
-  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
   gap: 20rpx;
 }
 

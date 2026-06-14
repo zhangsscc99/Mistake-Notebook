@@ -24,7 +24,7 @@
   <!-- 统计卡片 -->
   <view class="stats-section">
     <view class="stats-card">
-      <view class="stats-decoration"></view>
+
       <view class="stat-item">
         <text class="stat-number">{{totalQuestions}}</text>
         <text class="stat-label">总题数</text>
@@ -69,7 +69,7 @@
       </view>
 
       <view class="category-footer">
-        <text class="last-updated">最近更新: 刚刚</text>
+        <text class="last-updated">最近更新: {{item.formattedUpdatedAt || '未知'}}</text>
         <text class="footer-arrow">›</text>
       </view>
     </view>

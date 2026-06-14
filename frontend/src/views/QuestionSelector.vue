@@ -157,6 +157,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showToast } from 'vant'
 import { imageRecognitionAPI } from '../api/recognition'
+import categoryAPI from '../api/category'
 
 export default {
   name: 'QuestionSelector',
@@ -170,19 +171,9 @@ export default {
     const saving = ref(false)
     const showCategoryModal = ref(false)
     
-    // 分类相关
-    const categories = reactive([
-      { id: 'math', name: '数学' },
-      { id: 'chinese', name: '语文' },
-      { id: 'english', name: '英语' },
-      { id: 'physics', name: '物理' },
-      { id: 'chemistry', name: '化学' },
-      { id: 'biology', name: '生物' },
-      { id: 'history', name: '历史' },
-      { id: 'geography', name: '地理' }
-    ])
-
-    const selectedCategory = ref('math')
+    // 分类相关（从 API 动态加载）
+    const categories = reactive([])
+    const selectedCategory = ref('')
     const selectedDifficulty = ref('中等')
     const selectedPeriod = ref('高中')
 
@@ -389,8 +380,36 @@ export default {
       return category ? category.name : '数学'
     }
 
+    // 加载分类列表
+    const loadCategories = async () => {
+      try {
+        const response = await categoryAPI.getCategories()
+        if (response.success && response.data && response.data.data) {
+          const list = response.data.data.map(cat => ({ id: cat.id, name: cat.name }))
+          categories.splice(0, categories.length, ...list)
+          if (!selectedCategory.value && list.length > 0) {
+            selectedCategory.value = list[0].id
+            tempCategory.value = list[0].id
+          }
+        }
+      } catch (e) {
+        // 降级：用常见学科
+        const fallback = [
+          { id: 'math', name: '数学' }, { id: 'chinese', name: '语文' },
+          { id: 'english', name: '英语' }, { id: 'physics', name: '物理' },
+          { id: 'chemistry', name: '化学' }, { id: 'biology', name: '生物' }
+        ]
+        categories.splice(0, categories.length, ...fallback)
+        if (!selectedCategory.value) {
+          selectedCategory.value = 'math'
+          tempCategory.value = 'math'
+        }
+      }
+    }
+
     // 生命周期
     onMounted(() => {
+      loadCategories()
       initializeData()
     })
 

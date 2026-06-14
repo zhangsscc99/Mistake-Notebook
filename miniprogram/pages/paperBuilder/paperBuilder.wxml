@@ -1,31 +1,46 @@
 <!--pages/paperBuilder/paperBuilder.wxml-->
 <view class="paper-builder-page">
 
-  <!-- 页面顶部 Header -->
-  <view class="page-header">
-    <view class="page-title-row">
-      <text class="page-title">智能组卷</text>
+  <!-- ── 统计卡片（对齐分类页 stats-card） ── -->
+  <view class="stats-section">
+    <view class="stats-card">
+      <view class="stat-item">
+        <text class="stat-number">{{savedPapers.length}}</text>
+        <text class="stat-label">试卷数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{totalQuestionCount}}</text>
+        <text class="stat-label">总题数</text>
+      </view>
+      <view class="stat-item">
+        <text class="stat-number">{{pendingCount}}</text>
+        <text class="stat-label">草稿题</text>
+      </view>
     </view>
-    <button class="btn btn-primary create-btn" bindtap="createNewPaper">组建新卷</button>
   </view>
 
-  <!-- 当前组卷草稿（对齐 Web 端从分类页带入的题目） -->
+  <!-- ── 组建新卷入口 ── -->
+  <view class="create-section">
+    <button class="btn create-btn" bindtap="createNewPaper">＋ 组建新卷</button>
+  </view>
+
+  <!-- ── 当前组卷草稿 ── -->
   <view class="draft-section" wx:if="{{pendingCount > 0}}">
-    <view class="section-header draft-header">
-      <text class="section-title">当前组卷</text>
+    <view class="section-header">
+      <text class="section-label">当前组卷</text>
       <text class="draft-clear" bindtap="clearPendingDraft">清空</text>
     </view>
     <view class="draft-card">
       <text class="draft-count">已选 {{pendingCount}} 道题</text>
       <text class="draft-hint">来自分类页「加入组卷」，保存后可在下方「我的试卷」中查看</text>
-      <button class="btn btn-primary draft-save-btn" bindtap="savePendingAsPaper">保存为试卷</button>
+      <button class="btn draft-save-btn" bindtap="savePendingAsPaper">保存为试卷</button>
     </view>
   </view>
 
-  <!-- 已保存的试卷列表 -->
+  <!-- ── 已保存的试卷列表 ── -->
   <view class="saved-papers-section" wx:if="{{savedPapers.length > 0}}">
     <view class="section-header">
-      <text class="section-title">我的试卷</text>
+      <text class="section-label">我的试卷</text>
     </view>
 
     <view class="paper-card"
@@ -36,7 +51,9 @@
       <view class="paper-left-accent"></view>
       <view class="paper-body">
         <view class="paper-header-row">
-          <text class="paper-icon-text">卷</text>
+          <view class="paper-icon-circle">
+            <text class="paper-icon-text">卷</text>
+          </view>
           <view class="paper-info">
             <text class="paper-title-text">{{item.title}}</text>
             <text class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}}</text>
@@ -46,15 +63,20 @@
         <view class="paper-stats-row">
           <text class="stat-badge">{{item.questionCount}} 题</text>
           <text class="stat-badge">{{item.duration || 90}} 分钟</text>
+          <text class="stat-badge" wx:if="{{item.totalScore}}">{{item.totalScore}} 分</text>
         </view>
       </view>
     </view>
   </view>
 
-  <!-- 空状态 -->
-  <view class="empty-state" wx:if="{{savedPapers.length === 0}}">
-    <text class="empty-desc-text">还没有组建试卷</text>
-    <button class="empty-action-btn" bindtap="createNewPaper">立即组建新卷</button>
+  <!-- ── 空状态 ── -->
+  <view class="empty-state" wx:if="{{savedPapers.length === 0 && pendingCount === 0}}">
+    <view class="empty-illustration">
+      <text class="empty-emoji">📝</text>
+    </view>
+    <text class="empty-title">还没有试卷</text>
+    <text class="empty-desc-text">从错题本里选题，一键组建属于你的试卷</text>
+    <button class="btn empty-action-btn" bindtap="createNewPaper">立即组建新卷</button>
   </view>
 
 </view>

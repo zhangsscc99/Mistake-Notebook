@@ -548,20 +548,34 @@ export default {
 
     // 加入组卷
     const addToExam = () => {
-      const selectedCount = selectedQuestions.value.length
-      if (selectedCount === 0) {
+      if (selectedQuestions.value.length === 0) {
         showToast('请先选择题目')
         return
       }
-      
-      // 跳转到组卷页面，携带选中的题目
-      router.push({
-        path: '/paper-builder',
-        query: {
-          questions: selectedQuestions.value.map(q => q.id).join(','),
-          category: categoryId
-        }
+
+      // 把选中题目的完整数据写入 sessionStorage，由 PaperBuilder 读取合并
+      const incoming = selectedQuestions.value.map(q => ({
+        id: q.id,
+        content: q.recognizedText || q.content || '',
+        answer: q.aiAnswer || '待补充',
+        analysis: q.aiAnalysis || 'AI暂未给出解析',
+        categoryId: categoryId,
+        categoryName: categoryInfo.name,
+        difficulty: q.difficulty || 'medium',
+        tags: q.tags || []
+      }))
+      const existing = JSON.parse(sessionStorage.getItem('pendingPaperQuestions') || '[]')
+      const merged = [...existing]
+      incoming.forEach(q => {
+        if (!merged.find(e => e.id === q.id)) merged.push(q)
       })
+      sessionStorage.setItem('pendingPaperQuestions', JSON.stringify(merged))
+
+      // 退出编辑模式后跳转
+      editMode.value = false
+      questions.forEach(q => (q.selected = false))
+      showToast({ message: `已加入组卷 ${merged.length} 道`, type: 'success' })
+      setTimeout(() => router.push('/paper-builder'), 800)
     }
 
     // 批量加入组卷
@@ -734,29 +748,17 @@ export default {
     // 加载分类信息
     const loadCategoryInfo = async () => {
       try {
-        console.log('开始加载分类信息，categoryId:', categoryId)
-        // 调用API获取所有分类，然后找到当前分类
-        const response = await categoryAPI.getCategories()
-        console.log('分类API响应:', response)
-        
+        const response = await categoryAPI.getCategoryDetail(categoryId)
         if (response.success && response.data && response.data.data) {
-          const category = response.data.data.find(cat => cat.id == categoryId)
-          if (category) {
-            const categoryData = {
-              id: category.id,
-              name: category.name || '未知分类',
-              description: category.description || '暂无描述',
-              icon: category.icon || 'apps-o',
-              color: category.color || '#2459ff'
-            }
-            Object.assign(categoryInfo, categoryData)
-            console.log('成功加载分类信息:', categoryData)
-          } else {
-            console.error('未找到指定分类:', categoryId)
-            showToast('分类不存在')
-          }
+          const category = response.data.data
+          Object.assign(categoryInfo, {
+            id: category.id,
+            name: category.name || '未知分类',
+            description: category.description || '暂无描述',
+            icon: category.icon || 'apps-o',
+            color: category.color || '#2459ff'
+          })
         } else {
-          console.error('获取分类信息失败:', response)
           showToast('获取分类信息失败')
         }
       } catch (error) {
@@ -793,7 +795,7 @@ export default {
             difficulty: question.difficulty || 'medium',
             confidence: question.aiConfidence || 0.85,
             createdAt: new Date(question.createdAt).getTime(),
-            isCorrect: false, // 默认值，如果需要可以从API获取
+            isCorrect: question.isCorrect || false,
             selected: false
           }))
           

@@ -78,11 +78,17 @@ Page({
           this.applyFilters();
           this.calcAccuracy();
         } else {
-          this.useMockQuestions(categoryName);
+          this.setData({ questions: [] });
+          this.refreshTags();
+          this.applyFilters();
+          this.calcAccuracy();
         }
       },
       fail: () => {
-        this.useMockQuestions(categoryName);
+        this.setData({ questions: [] });
+        this.refreshTags();
+        this.applyFilters();
+        this.calcAccuracy();
       },
       complete: () => {
         wx.hideLoading();
@@ -171,6 +177,11 @@ Page({
       list.sort((a, b) => (b.formattedDate || '').localeCompare(a.formattedDate || ''));
     } else if (this.data.sortBy === 'earliest') {
       list.sort((a, b) => (a.formattedDate || '').localeCompare(b.formattedDate || ''));
+    } else if (this.data.sortBy === 'difficulty') {
+      const ORDER = { hard: 3, HARD: 3, medium: 2, MEDIUM: 2, easy: 1, EASY: 1 };
+      list.sort((a, b) => (ORDER[b.difficulty] || 2) - (ORDER[a.difficulty] || 2));
+    } else if (this.data.sortBy === 'confidence') {
+      list.sort((a, b) => (b.aiConfidence || b.confidence || 0) - (a.aiConfidence || a.confidence || 0));
     }
     const knowledgePointGroups = this.buildKnowledgePointGroups(list);
     this.setData({ displayQuestions: list, knowledgePointGroups });
@@ -410,16 +421,11 @@ Page({
   },
 
   addToExam() {
-    if (this.data.isPaperSelectMode) {
-      this.savePaper();
-      return;
-    }
-
     const selected = this.getSelectedQuestions();
     if (!selected.length) {
       if (!this.data.editMode) {
         this.toggleEditMode();
-        wx.showToast({ title: '请勾选要加入的题目', icon: 'none' });
+        wx.showToast({ title: '勾选题目后点击底部加入组卷', icon: 'none' });
         return;
       }
       wx.showToast({ title: '请先选择题目', icon: 'none' });
@@ -445,6 +451,7 @@ Page({
       }
     });
     app.globalData.selectedPaperQuestions = merged;
+    app.globalData.categoriesMode = null;
 
     const questions = this.data.questions.map((q) => ({ ...q, selected: false }));
     this.setData({ questions, editMode: false });
@@ -456,102 +463,6 @@ Page({
         wx.showToast({ title: `已加入 ${mapped.length} 道题`, icon: 'success' });
       }
     });
-  },
-
-  savePaper() {
-    const selected = this.getSelectedQuestions();
-    if (!selected.length) {
-      wx.showToast({ title: '请先选择题目', icon: 'none' });
-      return;
-    }
-
-    wx.showModal({
-      title: '保存试卷',
-      editable: true,
-      placeholderText: '例如：数学第一次月考',
-      content: `${this.data.categoryName}练习卷`,
-      confirmText: '保存',
-      success: (res) => {
-        if (!res.confirm) return;
-        const title = (res.content || '').trim();
-        if (!title) {
-          wx.showToast({ title: '请输入试卷名称', icon: 'none' });
-          return;
-        }
-
-        const paper = {
-          id: Date.now(),
-          title,
-          questionCount: selected.length,
-          questions: selected.map(q => ({
-            id: q.id,
-            content: q.content,
-            answer: q.aiAnswer || '待补充',
-            analysis: q.aiAnalysis || 'AI暂未给出解析',
-            categoryId: this.data.categoryId,
-            categoryName: this.data.categoryName,
-            tags: q.tags || [],
-            difficulty: q.difficultyText || q.difficulty
-          })),
-          duration: 90,
-          totalScore: selected.length * 5,
-          createdAt: new Date().toLocaleDateString()
-        };
-
-        const persistLocal = () => {
-          const papersJson = wx.getStorageSync('savedPapers');
-          const papers = papersJson ? JSON.parse(papersJson) : [];
-          papers.unshift(paper);
-          wx.setStorageSync('savedPapers', JSON.stringify(papers));
-        };
-
-        wx.cloud.callFunction({
-          name: 'paper',
-          data: { action: 'save', paper },
-          success: (cloudRes) => {
-            if (cloudRes.result && cloudRes.result.success && cloudRes.result.data) {
-              const cloudPaper = cloudRes.result.data;
-              paper.id = cloudPaper.id || cloudPaper._id || paper.id;
-            }
-            try {
-              persistLocal();
-            } catch (e) {
-              wx.showToast({ title: '本地保存失败', icon: 'none' });
-              return;
-            }
-            this.afterPaperSaved();
-          },
-          fail: () => {
-            try {
-              persistLocal();
-              wx.showToast({ title: '已本地保存', icon: 'none' });
-            } catch (e) {
-              wx.showToast({ title: '保存失败', icon: 'none' });
-              return;
-            }
-            this.afterPaperSaved();
-          }
-        });
-      }
-    });
-  },
-
-  afterPaperSaved: function () {
-    wx.showToast({ title: '试卷保存成功', icon: 'success' });
-
-    if (this.data.isPaperSelectMode) {
-      app.globalData.categoriesMode = null;
-      setTimeout(() => {
-        wx.switchTab({ url: '/pages/paperBuilder/paperBuilder' });
-      }, 800);
-    } else {
-      setTimeout(() => {
-        wx.showToast({ title: '可到组卷页面查看试卷', icon: 'none' });
-      }, 1600);
-      const questions = this.data.questions.map(q => ({ ...q, selected: false }));
-      this.setData({ questions, editMode: false });
-      this.applyFilters();
-    }
   },
 
   batchDelete() {

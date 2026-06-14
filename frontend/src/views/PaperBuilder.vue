@@ -14,6 +14,35 @@
       </van-button>
     </div>
 
+    <!-- 当前组卷草稿 -->
+    <div class="pending-section" v-if="pendingQuestions.length > 0">
+      <div class="section-header">
+        <h3>当前组卷 <span class="pending-count">{{ pendingQuestions.length }}题</span></h3>
+        <div class="pending-actions">
+          <van-button size="mini" type="danger" plain @click="clearPending">清空</van-button>
+          <van-button size="mini" type="primary" @click="savePendingAsPaper">保存为试卷</van-button>
+        </div>
+      </div>
+      <div class="pending-question-list">
+        <div
+          v-for="(q, idx) in pendingQuestions"
+          :key="q.id"
+          class="pending-question-item"
+        >
+          <span class="pq-index">{{ idx + 1 }}</span>
+          <span class="pq-content">{{ q.content || '（无内容）' }}</span>
+          <van-icon name="cross" class="pq-remove" @click="removePending(q)" />
+        </div>
+      </div>
+      <van-button
+        type="default"
+        size="small"
+        block
+        class="add-more-btn"
+        @click="createNewPaper"
+      >继续添加题目</van-button>
+    </div>
+
     <!-- 已保存的试卷列表 -->
     <div class="saved-papers-section" v-if="savedPapers.length > 0">
       <div class="section-header">
@@ -59,6 +88,7 @@
       <van-tabbar-item icon="home-o" to="/homepage">首页</van-tabbar-item>
       <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
       <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
+      <van-tabbar-item icon="setting-o" to="/settings">设置</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -556,44 +586,106 @@ export default {
       }
     }
 
-    // 处理URL查询参数
-    const handleQueryParams = () => {
-      const { questions, category } = route.query
-      
-      if (questions && category) {
-        // 从分类详情页面带来的选中题目
-        const questionIds = questions.split(',').map(id => parseInt(id))
-        
-        // 这里应该根据questionIds加载具体的题目信息
-        // 暂时使用模拟数据
-        const mockQuestions = questionIds.map((id, index) => ({
-          id: id,
-          categoryId: parseInt(category),
-          categoryName: '数学-二次函数',
-          recognizedText: `题目 ${id} 的内容...`,
-          difficulty: ['easy', 'medium', 'hard'][index % 3],
-          score: 5
-        }))
-        
-        allSelectedQuestions.splice(0, allSelectedQuestions.length, ...mockQuestions)
-        
-        // 更新分类选择状态
-        const targetCategory = availableCategories.find(cat => cat.id === parseInt(category))
-        if (targetCategory && !selectedCategories.find(cat => cat.id === targetCategory.id)) {
-          selectedCategories.push({
-            ...targetCategory,
-            selectedCount: mockQuestions.length,
-            selectedQuestions: mockQuestions
-          })
+    // 当前草稿题目（从分类详情页「加入组卷」带来）
+    const pendingQuestions = reactive([])
+
+    // 加载草稿题目（从 sessionStorage）
+    const loadPendingQuestions = () => {
+      const json = sessionStorage.getItem('pendingPaperQuestions')
+      if (json) {
+        try {
+          const list = JSON.parse(json)
+          pendingQuestions.splice(0, pendingQuestions.length, ...list.map(q => ({ ...q, score: q.score || 5 })))
+        } catch (e) {
+          console.error('解析草稿题目失败:', e)
         }
       }
+    }
+
+    // 清空草稿
+    const clearPending = async () => {
+      try {
+        await showConfirmDialog({ title: '确认清空', message: '确定要清空当前组卷的所有题目吗？' })
+        pendingQuestions.splice(0)
+        sessionStorage.removeItem('pendingPaperQuestions')
+        showToast({ message: '已清空', type: 'success' })
+      } catch (e) { /* 取消 */ }
+    }
+
+    // 从草稿中移除单题
+    const removePending = (question) => {
+      const idx = pendingQuestions.findIndex(q => q.id === question.id)
+      if (idx > -1) {
+        pendingQuestions.splice(idx, 1)
+        sessionStorage.setItem('pendingPaperQuestions', JSON.stringify(pendingQuestions))
+      }
+    }
+
+    // 将草稿保存为试卷
+    const savePendingAsPaper = () => {
+      if (pendingQuestions.length === 0) {
+        showToast('当前组卷没有题目')
+        return
+      }
+      let inputValue = '数学练习卷'
+      showConfirmDialog({
+        title: '保存试卷',
+        message: `
+          <div style="text-align:left;padding:20px 0;">
+            <div style="margin-bottom:8px;color:var(--text-secondary);font-size:14px;">请输入试卷名称</div>
+            <input id="pending-paper-title" type="text" value="数学练习卷"
+              style="width:100%;padding:12px;border:1px solid rgba(31,91,255,0.3);border-radius:8px;
+                     font-size:14px;background:rgba(255,255,255,0.05);color:var(--text-primary);
+                     outline:none;box-sizing:border-box;" />
+          </div>`,
+        allowHtml: true,
+        confirmButtonText: '保存',
+        cancelButtonText: '取消',
+        beforeClose: (action) => {
+          if (action === 'confirm') {
+            const input = document.getElementById('pending-paper-title')
+            inputValue = input ? input.value : '数学练习卷'
+          }
+          return true
+        }
+      }).then(() => {
+        if (!inputValue || !inputValue.trim()) { showToast('请输入试卷名称'); return }
+        const paper = {
+          id: Date.now(),
+          title: inputValue.trim(),
+          questionCount: pendingQuestions.length,
+          questions: pendingQuestions.map(q => ({
+            id: q.id,
+            content: q.content || '',
+            answer: q.answer || '待补充',
+            analysis: q.analysis || 'AI暂未给出解析',
+            categoryId: q.categoryId,
+            categoryName: q.categoryName
+          })),
+          duration: 90,
+          totalScore: pendingQuestions.reduce((s, q) => s + (q.score || 5), 0),
+          createdAt: new Date().toLocaleDateString()
+        }
+        const papersJson = localStorage.getItem('savedPapers')
+        const papers = papersJson ? JSON.parse(papersJson) : []
+        papers.unshift(paper)
+        localStorage.setItem('savedPapers', JSON.stringify(papers))
+        savedPapers.splice(0, savedPapers.length, ...papers)
+        pendingQuestions.splice(0)
+        sessionStorage.removeItem('pendingPaperQuestions')
+        showToast({ message: '试卷保存成功', type: 'success' })
+      }).catch(() => {})
+      setTimeout(() => {
+        const input = document.getElementById('pending-paper-title')
+        if (input) { input.focus(); input.select() }
+      }, 100)
     }
 
     // 组件挂载
     onMounted(async () => {
       await loadAvailableCategories()
       loadSavedPapers()
-      handleQueryParams()
+      loadPendingQuestions()
     })
 
     return {
@@ -602,6 +694,7 @@ export default {
       allSelectedQuestions,
       availableCategories,
       savedPapers,
+      pendingQuestions,
       showDurationPicker,
       showScorePicker,
       showCategorySelector,
@@ -618,6 +711,9 @@ export default {
       selectQuestions,
       removeQuestion,
       clearAllQuestions,
+      clearPending,
+      removePending,
+      savePendingAsPaper,
       editQuestionScore,
       onDurationConfirm,
       onScoreConfirm,
@@ -638,6 +734,88 @@ export default {
   background: var(--bg-primary);
   padding-bottom: 60px;
   position: relative;
+}
+
+/* 当前组卷草稿区 */
+.pending-section {
+  padding: 20px 20px 8px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.pending-count {
+  font-size: 13px;
+  color: var(--text-accent);
+  margin-left: 6px;
+}
+
+.pending-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pending-question-list {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.pending-question-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  gap: 10px;
+}
+
+.pending-question-item:last-child {
+  border-bottom: none;
+}
+
+.pq-index {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-accent);
+  min-width: 22px;
+}
+
+.pq-content {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pq-remove {
+  font-size: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.pq-remove:hover {
+  color: #ff4d4f;
+}
+
+.add-more-btn {
+  border-color: var(--border-glow) !important;
+  color: var(--text-accent) !important;
 }
 
 /* 🌟 页面背景光效 */

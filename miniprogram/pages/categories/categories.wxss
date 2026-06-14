@@ -93,22 +93,6 @@
   pointer-events: none;
 }
 
-.stats-decoration {
-  position: absolute;
-  left: 20px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 60px;
-  height: 60px;
-  background: linear-gradient(135deg, #2459ff, #52b7ff);
-  border-radius: 50%;
-  backdrop-filter: blur(8px);
-  border: 2px solid rgba(255, 255, 255, 0.30);
-  box-shadow:
-    0 8px 32px rgba(31, 91, 255, 0.40),
-    0 4px 16px rgba(0, 0, 0, 0.20),
-    inset 0 2px 0 rgba(255, 255, 255, 0.40);
-}
 
 .stat-item {
   text-align: center;
@@ -159,7 +143,7 @@
   left: 0;
   width: 4px;
   height: 100%;
-  background: linear-gradient(180deg, #2459ff, #52b7ff);
+  background: linear-gradient(180deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
   border-radius: 16px 0 0 16px;
   box-shadow: 0 0 8px rgba(31, 91, 255, 0.50);
 }
