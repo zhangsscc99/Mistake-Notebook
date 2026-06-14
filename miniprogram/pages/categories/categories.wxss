@@ -196,11 +196,6 @@
   background-clip: text;
 }
 
-.category-description {
-  font-size: 13px;
-  color: rgba(11, 22, 51, 0.62);
-  line-height: 1.4;
-}
 
 .category-count {
   text-align: center;

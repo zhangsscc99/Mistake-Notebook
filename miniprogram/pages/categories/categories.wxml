@@ -55,7 +55,6 @@
         </view>
         <view class="category-info">
           <text class="category-title">{{item.name}}</text>
-          <text class="category-description">{{item.description || '暂无描述'}}</text>
         </view>
         <view class="category-count">
           <text class="count-number">{{item.questionCount || 0}}</text>

@@ -59,11 +59,16 @@
       </view>
       <view class="group-questions" wx:if="{{item.expanded}}">
         <view class="question-card {{qitem.selected ? 'selected' : ''}}"
-          wx:for="{{item.questions}}" wx:for-item="qitem" wx:key="id"
+          wx:for="{{item.questions}}" wx:for-item="qitem" wx:for-index="qIndex" wx:key="id"
           bindtap="onQuestionTap" data-id="{{qitem.id}}" data-index="{{qitem._displayIndex}}">
+          <view class="q-index-tag">{{qIndex + 1}}</view>
           <view class="question-card-body">
-            <image class="question-img" src="{{qitem.imageUrl}}" mode="aspectFit"
-              wx:if="{{qitem.imageUrl}}" catchtap="previewImage" data-url="{{qitem.imageUrl}}"></image>
+            <view class="question-img-frame" wx:if="{{qitem.imageUrl}}"
+              catchtap="previewImage" data-url="{{qitem.imageUrl}}">
+              <image class="question-img" src="{{qitem.imageUrl}}" mode="aspectFill" lazy-load
+                binderror="onQuestionImgError" data-id="{{qitem.id}}"></image>
+              <view class="img-zoom-pill">查看原图</view>
+            </view>
             <view class="question-text-wrap">
               <text class="question-text">{{qitem.content}}</text>
             </view>
@@ -80,13 +85,10 @@
                   <text class="select-check" wx:if="{{qitem.selected}}">✓</text>
                 </view>
               </view>
-              <view class="meta-right" wx:if="{{!editMode}}">
-                <button class="ai-toggle-btn {{qitem.showAI ? 'active' : ''}}" catchtap="toggleAI" data-index="{{qitem._listIndex}}">
-                  {{qitem.showAI ? '收起解析' : 'AI 智能解析'}}
-                </button>
-                <button class="delete-btn" catchtap="deleteQuestion" data-id="{{qitem.id}}" data-index="{{qitem._listIndex}}">删除</button>
-              </view>
             </view>
+            <button class="ai-toggle-btn {{qitem.showAI ? 'active' : ''}}" wx:if="{{!editMode}}" catchtap="toggleAI" data-index="{{qitem._listIndex}}">
+              {{qitem.showAI ? '收起解析 ▲' : 'AI 智能解析'}}
+            </button>
             <view class="ai-box" wx:if="{{qitem.showAI && !editMode}}">
               <view class="ai-title">AI 标准答案与解析</view>
               <view class="ai-subtitle">标准答案：</view>
@@ -105,9 +107,14 @@
     <view wx:if="{{displayQuestions.length > 0}}">
       <view class="question-card {{item.selected ? 'selected' : ''}}" wx:for="{{displayQuestions}}" wx:key="id"
         bindtap="onQuestionTap" data-id="{{item.id}}" data-index="{{index}}">
+        <view class="q-index-tag">{{index + 1}}</view>
         <view class="question-card-body">
-          <image class="question-img" src="{{item.imageUrl}}" mode="aspectFit"
-            wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}"></image>
+          <view class="question-img-frame" wx:if="{{item.imageUrl}}"
+            catchtap="previewImage" data-url="{{item.imageUrl}}">
+            <image class="question-img" src="{{item.imageUrl}}" mode="aspectFill" lazy-load
+              binderror="onQuestionImgError" data-id="{{item.id}}"></image>
+            <view class="img-zoom-pill">查看原图</view>
+          </view>
 
           <view class="question-text-wrap">
             <text class="question-text">{{item.content}}</text>
@@ -127,13 +134,10 @@
                 <text class="select-check" wx:if="{{item.selected}}">✓</text>
               </view>
             </view>
-            <view class="meta-right" wx:if="{{!editMode}}">
-              <button class="ai-toggle-btn {{item.showAI ? 'active' : ''}}" catchtap="toggleAI" data-index="{{index}}">
-                {{item.showAI ? '收起解析' : 'AI 智能解析'}}
-              </button>
-              <button class="delete-btn" catchtap="deleteQuestion" data-id="{{item.id}}" data-index="{{index}}">删除</button>
-            </view>
           </view>
+          <button class="ai-toggle-btn {{item.showAI ? 'active' : ''}}" wx:if="{{!editMode}}" catchtap="toggleAI" data-index="{{index}}">
+            {{item.showAI ? '收起解析 ▲' : 'AI 智能解析'}}
+          </button>
 
           <view class="ai-box" wx:if="{{item.showAI && !editMode}}">
             <view class="ai-title">AI 标准答案与解析</view>

@@ -354,6 +354,15 @@ Page({
     wx.previewImage({ urls: [e.currentTarget.dataset.url] });
   },
 
+  onQuestionImgError(e) {
+    const id = e.currentTarget.dataset.id;
+    const questions = this.data.questions.map((q) => (
+      String(q.id) === String(id) ? { ...q, imageUrl: '' } : q
+    ));
+    this.setData({ questions });
+    this.applyFilters();
+  },
+
   viewQuestion(e) {
     const item = this.data.displayQuestions[e.currentTarget.dataset.index];
     if (!item) return;
