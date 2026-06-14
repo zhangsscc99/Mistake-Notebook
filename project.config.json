@@ -37,7 +37,7 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "3.3.4",
+  "libVersion": "3.16.1",
   "appid": "wxf6aa093e17de41a7",
   "projectname": "mistake-notebook",
   "condition": {},

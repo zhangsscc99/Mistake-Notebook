@@ -43,3 +43,6 @@ frontend/images/
 # WeChat Mini Program private config
 project.private.config.json
 
+# PDF cloud function font (run cloudfunctions/pdf/prepare-font.sh locally)
+cloudfunctions/pdf/ArialUnicode.ttf
+

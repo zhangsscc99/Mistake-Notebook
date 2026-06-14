@@ -25,7 +25,8 @@ Page({
     knowledgePointGroups: [],
     expandedGroups: {},
     showDetailModal: false,
-    detailQuestion: null
+    detailQuestion: null,
+    loading: false
   },
 
   onLoad(options) {
@@ -53,36 +54,40 @@ Page({
   },
 
   fetchQuestions(categoryId, categoryName) {
+    this.setData({ loading: true });
     wx.showLoading({ title: '加载中...' });
     wx.cloud.callFunction({
       name: 'question',
       data: { action: 'byCategory', categoryId: categoryId, categoryName: categoryName },
       success: (res) => {
-        wx.hideLoading();
         if (res.result && res.result.success) {
-          const processed = res.result.data.map(q => ({
+          const list = Array.isArray(res.result.data) ? res.result.data : [];
+          const processed = list.map(q => ({
             ...q,
+            content: q.content || q.recognizedText || '',
             difficultyClass: (q.difficulty || 'medium').toLowerCase(),
             difficultyText: q.difficulty === 'EASY' || q.difficulty === 'easy' ? '简单'
               : q.difficulty === 'HARD' || q.difficulty === 'hard' ? '困难' : '中等',
-            formattedDate: q.createdAt ? q.createdAt.split('T')[0] : '2026-05-30',
+            formattedDate: q.createdAt ? String(q.createdAt).split('T')[0] : '2026-05-30',
             showAI: false,
             isCorrect: q.isCorrect || false,
             selected: false
           }));
-          this.setData({ questions: processed });
+          this.setData({ questions: processed, loading: false });
           this.refreshTags();
           this.applyFilters();
           this.calcAccuracy();
-          wx.stopPullDownRefresh();
         } else {
           this.useMockQuestions(categoryName);
         }
       },
       fail: () => {
+        this.useMockQuestions(categoryName);
+      },
+      complete: () => {
         wx.hideLoading();
         wx.stopPullDownRefresh();
-        this.useMockQuestions(categoryName);
+        this.setData({ loading: false });
       }
     });
   },
@@ -125,7 +130,11 @@ Page({
       if (!groups.has(key)) {
         groups.set(key, []);
       }
-      groups.get(key).push({ ...q, _listIndex: listIndex });
+      groups.get(key).push({
+        ...q,
+        _listIndex: this.data.questions.findIndex((item) => item.id === q.id),
+        _displayIndex: listIndex
+      });
     });
     const expandedGroups = this.data.expandedGroups;
     return Array.from(groups.entries()).map(([name, questions]) => ({
@@ -175,8 +184,11 @@ Page({
   },
 
   updateSelectionState() {
-    const selectedCount = this.data.questions.filter(q => q.selected).length;
-    const isAllSelected = this.data.questions.length > 0 && selectedCount === this.data.questions.length;
+    const visibleIds = this.getVisibleQuestionIds();
+    const visibleQuestions = this.data.questions.filter((q) => visibleIds.has(String(q.id)));
+    const selectedCount = this.data.questions.filter((q) => q.selected).length;
+    const isAllSelected = visibleQuestions.length > 0
+      && visibleQuestions.every((q) => q.selected);
     this.setData({ selectedCount, isAllSelected });
   },
 
@@ -201,37 +213,28 @@ Page({
 
   toggleEditMode() {
     const editMode = !this.data.editMode;
-    const questions = this.data.questions.map(q => ({ ...q, selected: editMode ? q.selected : false }));
-    this.setData({ editMode, questions });
+    let expandedGroups = { ...this.data.expandedGroups };
+    let questions;
+
+    if (editMode) {
+      this.data.knowledgePointGroups.forEach((g) => {
+        expandedGroups[g.name] = true;
+      });
+      questions = this.data.questions.map((q) => ({ ...q }));
+    } else {
+      questions = this.data.questions.map((q) => ({ ...q, selected: false }));
+    }
+
+    this.setData({ editMode, questions, expandedGroups });
     this.applyFilters();
   },
 
   toggleSelectAll() {
+    const visibleIds = this.getVisibleQuestionIds();
     const target = !this.data.isAllSelected;
-    const questions = this.data.questions.map(q => ({ ...q, selected: target }));
-    this.setData({ questions });
-    this.applyFilters();
-  },
-
-  onQuestionTap(e) {
-    if (!this.data.editMode) {
-      this.viewQuestion(e);
-      return;
-    }
-    const id = e.currentTarget.dataset.id;
-    const questions = this.data.questions.map(q => (
-      q.id === id ? { ...q, selected: !q.selected } : q
-    ));
-    this.setData({ questions });
-    this.applyFilters();
-  },
-
-  onCheckboxChange(e) {
-    const selectedIds = new Set((e.detail.value || []).map(String));
-    const displayIds = new Set(this.data.displayQuestions.map(q => String(q.id)));
-    const questions = this.data.questions.map(q => {
-      if (displayIds.has(String(q.id))) {
-        return { ...q, selected: selectedIds.has(String(q.id)) };
+    const questions = this.data.questions.map((q) => {
+      if (visibleIds.has(String(q.id))) {
+        return { ...q, selected: target };
       }
       return q;
     });
@@ -239,14 +242,101 @@ Page({
     this.applyFilters();
   },
 
+  getVisibleQuestionIds() {
+    const ids = new Set();
+    if (this.data.groupByKnowledgePoint && this.data.knowledgePointGroups.length > 0) {
+      this.data.knowledgePointGroups.forEach((group) => {
+        if (group.expanded) {
+          group.questions.forEach((q) => ids.add(String(q.id)));
+        }
+      });
+    } else {
+      this.data.displayQuestions.forEach((q) => ids.add(String(q.id)));
+    }
+    return ids;
+  },
+
+  onQuestionTap(e) {
+    if (!this.data.editMode) {
+      this.viewQuestion(e);
+      return;
+    }
+    const id = String(e.currentTarget.dataset.id);
+    const questions = this.data.questions.map((q) => (
+      String(q.id) === id ? { ...q, selected: !q.selected } : q
+    ));
+    this.setData({ questions });
+    this.applyFilters();
+  },
+
   toggleAI(e) {
     const index = e.currentTarget.dataset.index;
     const qList = [...this.data.questions];
-    qList[index].showAI = !qList[index].showAI;
-    const dList = [...this.data.displayQuestions];
-    const dIdx = dList.findIndex(q => q.id === qList[index].id);
-    if (dIdx >= 0) dList[dIdx].showAI = qList[index].showAI;
-    this.setData({ questions: qList, displayQuestions: dList });
+    const question = qList[index];
+    if (!question) return;
+
+    const willShow = !question.showAI;
+    const hasAnalysis = question.aiAnalysis && question.aiAnalysis !== 'AI暂未给出解析';
+
+    const applyAI = (answer, analysis) => {
+      qList[index] = {
+        ...qList[index],
+        showAI: true,
+        aiAnswer: answer || qList[index].aiAnswer || '待补充',
+        aiAnalysis: analysis || qList[index].aiAnalysis || 'AI暂未给出解析'
+      };
+      const dList = [...this.data.displayQuestions];
+      const dIdx = dList.findIndex((q) => q.id === qList[index].id);
+      if (dIdx >= 0) dList[dIdx] = { ...qList[index] };
+      this.setData({ questions: qList, displayQuestions: dList });
+    };
+
+    if (!willShow) {
+      qList[index].showAI = false;
+      const dList = [...this.data.displayQuestions];
+      const dIdx = dList.findIndex((q) => q.id === qList[index].id);
+      if (dIdx >= 0) dList[dIdx].showAI = false;
+      this.setData({ questions: qList, displayQuestions: dList });
+      return;
+    }
+
+    if (hasAnalysis) {
+      applyAI(question.aiAnswer, question.aiAnalysis);
+      return;
+    }
+
+    wx.showLoading({ title: 'AI解析中...', mask: true });
+    wx.cloud.callFunction({
+      name: 'answer',
+      config: { timeout: 60000 },
+      data: { action: 'generate', text: question.content },
+      success: (res) => {
+        wx.hideLoading();
+        const data = res.result && res.result.data;
+        if (!res.result || !res.result.success || !data) {
+          wx.showToast({ title: '解析生成失败', icon: 'none' });
+          applyAI(question.aiAnswer, question.aiAnalysis);
+          return;
+        }
+        applyAI(data.answer, data.analysis);
+        if (question.id) {
+          wx.cloud.callFunction({
+            name: 'question',
+            data: {
+              action: 'update',
+              id: question.id,
+              aiAnswer: data.answer || '',
+              aiAnalysis: data.analysis || ''
+            }
+          });
+        }
+      },
+      fail: () => {
+        wx.hideLoading();
+        wx.showToast({ title: '解析生成失败', icon: 'none' });
+        applyAI(question.aiAnswer, question.aiAnalysis);
+      }
+    });
   },
 
   previewImage(e) {
@@ -320,17 +410,52 @@ Page({
   },
 
   addToExam() {
+    if (this.data.isPaperSelectMode) {
+      this.savePaper();
+      return;
+    }
+
     const selected = this.getSelectedQuestions();
     if (!selected.length) {
       if (!this.data.editMode) {
-        this.setData({ editMode: true });
+        this.toggleEditMode();
         wx.showToast({ title: '请勾选要加入的题目', icon: 'none' });
         return;
       }
       wx.showToast({ title: '请先选择题目', icon: 'none' });
       return;
     }
-    this.savePaper();
+
+    const mapped = selected.map((q) => ({
+      id: q.id,
+      content: q.content,
+      answer: q.aiAnswer || '待补充',
+      analysis: q.aiAnalysis || 'AI暂未给出解析',
+      categoryId: this.data.categoryId,
+      categoryName: this.data.categoryName,
+      tags: q.tags || [],
+      difficulty: q.difficultyText || q.difficulty
+    }));
+
+    const existing = app.globalData.selectedPaperQuestions || [];
+    const merged = [...existing];
+    mapped.forEach((q) => {
+      if (!merged.some((item) => String(item.id) === String(q.id))) {
+        merged.push(q);
+      }
+    });
+    app.globalData.selectedPaperQuestions = merged;
+
+    const questions = this.data.questions.map((q) => ({ ...q, selected: false }));
+    this.setData({ questions, editMode: false });
+    this.applyFilters();
+
+    wx.switchTab({
+      url: '/pages/paperBuilder/paperBuilder',
+      success: () => {
+        wx.showToast({ title: `已加入 ${mapped.length} 道题`, icon: 'success' });
+      }
+    });
   },
 
   savePaper() {
@@ -420,6 +545,9 @@ Page({
         wx.switchTab({ url: '/pages/paperBuilder/paperBuilder' });
       }, 800);
     } else {
+      setTimeout(() => {
+        wx.showToast({ title: '可到组卷页面查看试卷', icon: 'none' });
+      }, 1600);
       const questions = this.data.questions.map(q => ({ ...q, selected: false }));
       this.setData({ questions, editMode: false });
       this.applyFilters();

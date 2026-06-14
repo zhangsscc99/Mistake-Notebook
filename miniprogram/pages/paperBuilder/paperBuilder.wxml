@@ -9,6 +9,19 @@
     <button class="btn btn-primary create-btn" bindtap="createNewPaper">组建新卷</button>
   </view>
 
+  <!-- 当前组卷草稿（对齐 Web 端从分类页带入的题目） -->
+  <view class="draft-section" wx:if="{{pendingCount > 0}}">
+    <view class="section-header draft-header">
+      <text class="section-title">当前组卷</text>
+      <text class="draft-clear" bindtap="clearPendingDraft">清空</text>
+    </view>
+    <view class="draft-card">
+      <text class="draft-count">已选 {{pendingCount}} 道题</text>
+      <text class="draft-hint">来自分类页「加入组卷」，保存后可在下方「我的试卷」中查看</text>
+      <button class="btn btn-primary draft-save-btn" bindtap="savePendingAsPaper">保存为试卷</button>
+    </view>
+  </view>
+
   <!-- 已保存的试卷列表 -->
   <view class="saved-papers-section" wx:if="{{savedPapers.length > 0}}">
     <view class="section-header">

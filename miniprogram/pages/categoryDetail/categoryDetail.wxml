@@ -58,44 +58,44 @@
         <text class="group-count">{{item.count}}题</text>
       </view>
       <view class="group-questions" wx:if="{{item.expanded}}">
-        <checkbox-group bindchange="onCheckboxChange">
-          <view class="question-card {{qitem.selected ? 'selected' : ''}}"
-            wx:for="{{item.questions}}" wx:for-item="qitem" wx:key="id"
-            bindtap="onQuestionTap" data-id="{{qitem.id}}" data-index="{{qitem._displayIndex}}">
-            <view class="question-select-wrap" wx:if="{{editMode}}">
-              <checkbox value="{{qitem.id}}" checked="{{qitem.selected}}" color="#2459ff" />
+        <view class="question-card {{qitem.selected ? 'selected' : ''}}"
+          wx:for="{{item.questions}}" wx:for-item="qitem" wx:key="id"
+          bindtap="onQuestionTap" data-id="{{qitem.id}}" data-index="{{qitem._displayIndex}}">
+          <view class="question-card-body">
+            <image class="question-img" src="{{qitem.imageUrl}}" mode="aspectFit"
+              wx:if="{{qitem.imageUrl}}" catchtap="previewImage" data-url="{{qitem.imageUrl}}"></image>
+            <view class="question-text-wrap">
+              <text class="question-text">{{qitem.content}}</text>
             </view>
-            <view class="question-card-body">
-              <image class="question-img" src="{{qitem.imageUrl}}" mode="aspectFit"
-                wx:if="{{qitem.imageUrl}}" catchtap="previewImage" data-url="{{qitem.imageUrl}}"></image>
-              <view class="question-text-wrap">
-                <text class="question-text">{{qitem.content}}</text>
+            <view class="question-tags" wx:if="{{qitem.tags && qitem.tags.length}}">
+              <text class="custom-tag" wx:for="{{qitem.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
+            </view>
+            <view class="question-meta">
+              <view class="meta-left">
+                <text class="badge badge-{{qitem.difficultyClass}}">{{qitem.difficultyText}}</text>
+                <text class="add-time">{{qitem.formattedDate}}</text>
               </view>
-              <view class="question-tags" wx:if="{{qitem.tags && qitem.tags.length}}">
-                <text class="custom-tag" wx:for="{{qitem.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
-              </view>
-              <view class="question-meta">
-                <view class="meta-left">
-                  <text class="badge badge-{{qitem.difficultyClass}}">{{qitem.difficultyText}}</text>
-                  <text class="add-time">{{qitem.formattedDate}}</text>
-                </view>
-                <view class="meta-right" wx:if="{{!editMode}}">
-                  <button class="ai-toggle-btn {{qitem.showAI ? 'active' : ''}}" catchtap="toggleAI" data-index="{{qitem._listIndex}}">
-                    {{qitem.showAI ? '收起解析' : 'AI 智能解析'}}
-                  </button>
-                  <button class="delete-btn" catchtap="deleteQuestion" data-id="{{qitem.id}}" data-index="{{qitem._listIndex}}">删除</button>
+              <view class="meta-right" wx:if="{{editMode}}">
+                <view class="select-box {{qitem.selected ? 'checked' : ''}}">
+                  <text class="select-check" wx:if="{{qitem.selected}}">✓</text>
                 </view>
               </view>
-              <view class="ai-box" wx:if="{{qitem.showAI && !editMode}}">
-                <view class="ai-title">AI 标准答案与解析</view>
-                <view class="ai-subtitle">标准答案：</view>
-                <text class="ai-content">{{qitem.aiAnswer || '暂无解答'}}</text>
-                <view class="ai-subtitle ai-subtitle-gap">智能解析：</view>
-                <text class="ai-content">{{qitem.aiAnalysis || '暂无解析'}}</text>
+              <view class="meta-right" wx:if="{{!editMode}}">
+                <button class="ai-toggle-btn {{qitem.showAI ? 'active' : ''}}" catchtap="toggleAI" data-index="{{qitem._listIndex}}">
+                  {{qitem.showAI ? '收起解析' : 'AI 智能解析'}}
+                </button>
+                <button class="delete-btn" catchtap="deleteQuestion" data-id="{{qitem.id}}" data-index="{{qitem._listIndex}}">删除</button>
               </view>
+            </view>
+            <view class="ai-box" wx:if="{{qitem.showAI && !editMode}}">
+              <view class="ai-title">AI 标准答案与解析</view>
+              <view class="ai-subtitle">标准答案：</view>
+              <text class="ai-content">{{qitem.aiAnswer || '暂无解答'}}</text>
+              <view class="ai-subtitle ai-subtitle-gap">智能解析：</view>
+              <text class="ai-content">{{qitem.aiAnalysis || '暂无解析'}}</text>
             </view>
           </view>
-        </checkbox-group>
+        </view>
       </view>
     </view>
   </view>
@@ -103,12 +103,8 @@
   <!-- 平铺列表（非分组模式或无分组时） -->
   <view class="questions-section" wx:if="{{!groupByKnowledgePoint || knowledgePointGroups.length === 0}}">
     <view wx:if="{{displayQuestions.length > 0}}">
-    <checkbox-group bindchange="onCheckboxChange">
       <view class="question-card {{item.selected ? 'selected' : ''}}" wx:for="{{displayQuestions}}" wx:key="id"
         bindtap="onQuestionTap" data-id="{{item.id}}" data-index="{{index}}">
-        <view class="question-select-wrap" wx:if="{{editMode}}">
-          <checkbox value="{{item.id}}" checked="{{item.selected}}" color="#2459ff" />
-        </view>
         <view class="question-card-body">
           <image class="question-img" src="{{item.imageUrl}}" mode="aspectFit"
             wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}"></image>
@@ -125,6 +121,11 @@
             <view class="meta-left">
               <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
               <text class="add-time">{{item.formattedDate}}</text>
+            </view>
+            <view class="meta-right" wx:if="{{editMode}}">
+              <view class="select-box {{item.selected ? 'checked' : ''}}">
+                <text class="select-check" wx:if="{{item.selected}}">✓</text>
+              </view>
             </view>
             <view class="meta-right" wx:if="{{!editMode}}">
               <button class="ai-toggle-btn {{item.showAI ? 'active' : ''}}" catchtap="toggleAI" data-index="{{index}}">
@@ -143,7 +144,6 @@
           </view>
         </view>
       </view>
-    </checkbox-group>
     </view>
   </view>
 
@@ -182,7 +182,7 @@
         <text class="detail-section-body">{{detailQuestion.aiAnalysis}}</text>
       </view>
 
-      <view class="detail-section" wx:if="{{detailQuestion.tags.length > 0}}">
+      <view class="detail-section" wx:if="{{detailQuestion.tags && detailQuestion.tags.length > 0}}">
         <text class="detail-section-title">标签</text>
         <view class="detail-tags">
           <text class="custom-tag" wx:for="{{detailQuestion.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>

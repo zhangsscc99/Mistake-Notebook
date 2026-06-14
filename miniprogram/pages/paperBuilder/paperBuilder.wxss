@@ -41,6 +41,60 @@
   border: none !important;
 }
 
+/* 当前组卷草稿 */
+.draft-section {
+  padding: 16px 16px 0;
+}
+
+.draft-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.draft-clear {
+  font-size: 13px;
+  color: #2459ff;
+}
+
+.draft-card {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(47, 107, 255, 0.18);
+  box-shadow: 0 8px 24px rgba(31, 91, 255, 0.08);
+}
+
+.draft-count {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0b1633;
+  margin-bottom: 6px;
+}
+
+.draft-hint {
+  display: block;
+  font-size: 12px;
+  color: #5b6b8d;
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.draft-save-btn {
+  width: 100% !important;
+  height: 40px !important;
+  line-height: 40px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.draft-save-btn::after {
+  border: none !important;
+}
+
 /* 试卷列表 */
 .saved-papers-section {
   padding: 20px 16px;

@@ -10,31 +10,6 @@
     "playwright": {
       "command": "npx",
       "args": ["-y", "@playwright/mcp@latest"]
-    },
-    "browser-use": {
-      "command": "C:\\Users\\宇庭\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\uv.exe",
-      "args": ["tool", "run", "--from", "browser-use[cli]", "browser-use", "--mcp"],
-      "env": {
-        "BROWSER_USE_HEADLESS": "false"
-      }
-    },
-    "wechat-devtools": {
-      "command": "C:\\Users\\宇庭\\.local\\bin\\wechat-devtools-mcp.exe",
-      "env": {
-        "WECHAT_DEVTOOLS_CLI": "C:\\Program Files (x86)\\Tencent\\微信web开发者工具\\cli.bat",
-        "WECHAT_PROJECT_PATH": "C:\\Users\\宇庭\\Desktop\\Mistake-Notebook",
-        "PYTHONIOENCODING": "utf-8"
-      }
-    },
-    "weixin-devtools-mcp": {
-      "command": "C:\\Program Files\\nodejs\\node.exe",
-      "args": [
-        "C:\\Users\\宇庭\\.cursor\\mcp-servers\\weixin-devtools-mcp\\node_modules\\weixin-devtools-mcp\\build\\server.js"
-      ]
-    },
-    "ue-mcp": {
-      "command": "npx",
-      "args": ["ue-mcp", "C:/Users/宇庭/Documents/Unreal Projects/我的项目/我的项目.uproject"]
     }
   }
 }

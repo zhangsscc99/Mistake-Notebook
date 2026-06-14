@@ -1,6 +1,8 @@
 # MCP 配置说明
 
-以下 MCP 配置需根据另一台电脑的路径做相应调整。
+本仓库 `.cursor/mcp.json` 只保留跨平台可用的 MCP（`cloudbase`、`playwright`）。
+
+机器相关路径（微信开发者工具、`browser-use`、`ue-mcp` 等）请写在 **全局配置** `~/.cursor/mcp.json`（Mac/Linux）或 `%USERPROFILE%\.cursor\mcp.json`（Windows），避免 `git pull` 互相覆盖。项目级同名 MCP 会覆盖全局配置。
 
 ---
 
