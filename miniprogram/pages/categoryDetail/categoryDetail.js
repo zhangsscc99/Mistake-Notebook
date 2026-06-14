@@ -62,17 +62,21 @@ Page({
       success: (res) => {
         if (res.result && res.result.success) {
           const list = Array.isArray(res.result.data) ? res.result.data : [];
-          const processed = list.map(q => ({
-            ...q,
-            content: q.content || q.recognizedText || '',
-            difficultyClass: (q.difficulty || 'medium').toLowerCase(),
-            difficultyText: q.difficulty === 'EASY' || q.difficulty === 'easy' ? '简单'
-              : q.difficulty === 'HARD' || q.difficulty === 'hard' ? '困难' : '中等',
-            formattedDate: q.createdAt ? String(q.createdAt).split('T')[0] : '2026-05-30',
-            showAI: false,
-            isCorrect: q.isCorrect || false,
-            selected: false
-          }));
+          const processed = list.map(q => {
+            const fullContent = q.content || q.recognizedText || '';
+            return {
+              ...q,
+              content: fullContent,
+              displayContent: fullContent.length > 200 ? fullContent.slice(0, 200) + '…' : fullContent,
+              difficultyClass: (q.difficulty || 'medium').toLowerCase(),
+              difficultyText: q.difficulty === 'EASY' || q.difficulty === 'easy' ? '简单'
+                : q.difficulty === 'HARD' || q.difficulty === 'hard' ? '困难' : '中等',
+              formattedDate: q.createdAt ? String(q.createdAt).split('T')[0] : '2026-05-30',
+              showAI: false,
+              isCorrect: q.isCorrect || false,
+              selected: false
+            };
+          });
           this.setData({ questions: processed, loading: false });
           this.refreshTags();
           this.applyFilters();
@@ -114,7 +118,11 @@ Page({
         { id: 999, content: `这是 ${categoryName} 的示例错题。`, difficulty: 'easy', difficultyClass: 'easy', difficultyText: '简单', formattedDate: '2026-05-30', tags: ['示例'], showAI: false, isCorrect: true, selected: false, aiAnswer: '答案', aiAnalysis: '解析' }
       ];
     }
-    this.setData({ questions: mockList });
+    const processedMock = mockList.map(q => ({
+      ...q,
+      displayContent: q.content && q.content.length > 200 ? q.content.slice(0, 200) + '…' : (q.content || '')
+    }));
+    this.setData({ questions: processedMock });
     this.refreshTags();
     this.applyFilters();
     this.calcAccuracy();

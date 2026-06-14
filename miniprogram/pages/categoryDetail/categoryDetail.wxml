@@ -70,7 +70,7 @@
               <view class="img-zoom-pill">查看原图</view>
             </view>
             <view class="question-text-wrap">
-              <text class="question-text">{{qitem.content}}</text>
+              <text class="question-text">{{qitem.displayContent || qitem.content}}</text>
             </view>
             <view class="question-tags" wx:if="{{qitem.tags && qitem.tags.length}}">
               <text class="custom-tag" wx:for="{{qitem.tags}}" wx:for-item="tag" wx:key="*this">{{tag}}</text>
@@ -115,7 +115,7 @@
           </view>
 
           <view class="question-text-wrap">
-            <text class="question-text">{{item.content}}</text>
+            <text class="question-text">{{item.displayContent || item.content}}</text>
           </view>
 
           <view class="question-tags" wx:if="{{item.tags && item.tags.length}}">
