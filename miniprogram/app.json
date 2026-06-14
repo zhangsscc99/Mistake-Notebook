@@ -6,7 +6,8 @@
     "pages/paperBuilder/paperBuilder",
     "pages/questionPicker/questionPicker",
     "pages/questionSelector/questionSelector",
-    "pages/settings/settings"
+    "pages/settings/settings",
+    "pages/aiChat/aiChat"
   ],
   "window": {
     "backgroundTextStyle": "dark",

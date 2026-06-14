@@ -15,7 +15,8 @@ App({
       userInfo: null,
       recognitionDraft: null,
       selectedPaperQuestions: [],
-      categoriesMode: null
+      categoriesMode: null,
+      aiChatContext: ''
     };
 
     // 首次启动时初始化云数据库（创建默认分类）

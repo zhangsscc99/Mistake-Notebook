@@ -86,9 +86,7 @@
                 </view>
               </view>
             </view>
-            <button class="ai-toggle-btn {{qitem.showAI ? 'active' : ''}}" wx:if="{{!editMode}}" catchtap="toggleAI" data-index="{{qitem._listIndex}}">
-              {{qitem.showAI ? '收起解析 ▲' : 'AI 智能解析'}}
-            </button>
+            <button class="ai-toggle-btn" wx:if="{{!editMode}}" catchtap="openAIChat" data-content="{{qitem.content}}">AI答疑</button>
             <view class="ai-box" wx:if="{{qitem.showAI && !editMode}}">
               <view class="ai-title">AI 标准答案与解析</view>
               <view class="ai-subtitle">标准答案：</view>
@@ -135,9 +133,7 @@
               </view>
             </view>
           </view>
-          <button class="ai-toggle-btn {{item.showAI ? 'active' : ''}}" wx:if="{{!editMode}}" catchtap="toggleAI" data-index="{{index}}">
-            {{item.showAI ? '收起解析 ▲' : 'AI 智能解析'}}
-          </button>
+          <button class="ai-toggle-btn" wx:if="{{!editMode}}" catchtap="openAIChat" data-content="{{item.content}}">AI答疑</button>
 
           <view class="ai-box" wx:if="{{item.showAI && !editMode}}">
             <view class="ai-title">AI 标准答案与解析</view>

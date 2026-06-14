@@ -1,0 +1,83 @@
+<!--pages/aiChat/aiChat.wxml-->
+<view class="ai-chat-page">
+
+  <!-- 题目上下文条（点击弹出完整题目浮窗） -->
+  <view class="context-bar" wx:if="{{questionContext}}" bindtap="showContext">
+    <view class="context-icon">题</view>
+    <view class="context-body">
+      <text class="context-label">正在答疑</text>
+      <text class="context-text">{{questionPreview}}</text>
+    </view>
+    <view class="context-chevron">查看</view>
+  </view>
+
+  <!-- 题目详情浮窗 -->
+  <view class="context-modal {{contextVisible ? 'show' : ''}}" wx:if="{{questionContext}}" catchtap="hideContext">
+    <view class="context-modal-card" catchtap="noop">
+      <view class="modal-card-header">
+        <view class="modal-card-badge">题</view>
+        <text class="modal-card-title">题目详情</text>
+        <view class="modal-card-close" catchtap="hideContext">✕</view>
+      </view>
+      <scroll-view class="modal-card-scroll" scroll-y>
+        <view class="modal-card-inner">
+          <view class="q-para {{para.sub ? 'q-para-sub' : 'q-para-stem'}}" wx:for="{{questionParas}}" wx:for-item="para" wx:key="index">
+            <view class="q-para-label" wx:if="{{para.sub}}">{{para.label}}</view>
+            <text class="q-para-text" decode>{{para.text}}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <scroll-view
+    class="msg-scroll"
+    scroll-y
+    scroll-into-view="{{scrollToId}}"
+    scroll-with-animation
+    enhanced
+    show-scrollbar="{{false}}">
+    <view class="msg-list">
+      <view
+        wx:for="{{messages}}"
+        wx:key="id"
+        id="msg-{{item.id}}"
+        class="msg-row {{item.role === 'user' ? 'msg-row-user' : 'msg-row-ai'}}">
+
+        <view class="msg-avatar msg-avatar-ai" wx:if="{{item.role === 'assistant'}}">AI</view>
+
+        <view class="msg-bubble {{item.role === 'user' ? 'bubble-user' : 'bubble-ai'}}">
+          <view class="typing" wx:if="{{item.typing}}">
+            <view class="dot"></view>
+            <view class="dot"></view>
+            <view class="dot"></view>
+          </view>
+          <text wx:else class="msg-text" decode>{{item.display || item.content}}</text>
+        </view>
+
+        <view class="msg-avatar msg-avatar-user" wx:if="{{item.role === 'user'}}">我</view>
+      </view>
+    </view>
+    <view class="scroll-pad" style="height: {{inputBottom}}px;"></view>
+  </scroll-view>
+
+  <!-- 底部输入栏 -->
+  <view class="input-bar" style="transform: translateY({{inputBottom > 0 ? -inputBottom : 0}}px);">
+    <input
+      class="chat-input"
+      value="{{inputValue}}"
+      placeholder="输入你的问题…"
+      placeholder-class="input-placeholder"
+      confirm-type="send"
+      cursor-spacing="12"
+      bindinput="onInput"
+      bindfocus="onFocus"
+      bindblur="onBlur"
+      bindconfirm="sendMessage" />
+    <button
+      class="send-btn {{inputValue && !sending ? 'send-btn-active' : ''}}"
+      bindtap="sendMessage"
+      disabled="{{!inputValue || sending}}">发送</button>
+  </view>
+
+</view>

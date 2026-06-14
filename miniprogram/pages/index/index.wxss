@@ -13,7 +13,7 @@
 .top-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 16rpx 28rpx 8rpx;
   position: relative;
   z-index: 10;

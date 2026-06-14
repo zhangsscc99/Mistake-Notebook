@@ -350,6 +350,12 @@ Page({
     });
   },
 
+  openAIChat(e) {
+    const content = e.currentTarget.dataset.content || '';
+    app.globalData.aiChatContext = content;
+    wx.navigateTo({ url: '/pages/aiChat/aiChat' });
+  },
+
   previewImage(e) {
     wx.previewImage({ urls: [e.currentTarget.dataset.url] });
   },

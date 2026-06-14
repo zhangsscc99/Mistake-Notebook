@@ -8,7 +8,6 @@
 
   <!-- 顶部导航栏 -->
   <view class="top-bar">
-    <view class="top-bar-title">错题本</view>
     <navigator url="/pages/settings/settings" class="top-bar-settings">⚙️</navigator>
   </view>
 

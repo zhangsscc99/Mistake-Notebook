@@ -51,6 +51,8 @@ exports.main = async (event, context) => {
     switch (action) {
       case 'generate':
         return await generateAnswer(event);
+      case 'chat':
+        return await chatReply(event);
       default:
         return { success: false, error: `Unknown action: ${action}` };
     }
@@ -59,6 +61,34 @@ exports.main = async (event, context) => {
     return { success: false, error: err.message };
   }
 };
+
+async function chatReply(event) {
+  const { messages, questionContext } = event;
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return { success: false, error: 'Missing messages' };
+  }
+
+  const systemPrompt = questionContext
+    ? `你是一位耐心、专业的学习辅导老师，正在帮学生答疑。当前讨论的题目是：\n\n${questionContext}\n\n请结合这道题，用清晰、循序渐进的方式解答学生的追问。可以使用分步骤说明，必要时给出关键公式与思路，语言简洁友好，不要使用 markdown 代码块。`
+    : '你是一位耐心、专业的学习辅导老师，正在帮学生答疑。请用清晰、循序渐进的方式回答问题，语言简洁友好，不要使用 markdown 代码块。';
+
+  const chatMessages = [
+    { role: 'system', content: systemPrompt },
+    ...messages
+      .filter((m) => m && m.content && (m.role === 'user' || m.role === 'assistant'))
+      .slice(-20)
+      .map((m) => ({ role: m.role, content: String(m.content) }))
+  ];
+
+  const response = await callDashScope(chatMessages, 0.6);
+
+  if (!response.choices || response.choices.length === 0) {
+    return { success: false, error: 'Chat failed: ' + JSON.stringify(response) };
+  }
+
+  return { success: true, data: { reply: response.choices[0].message.content } };
+}
 
 async function generateAnswer(event) {
   const { text } = event;

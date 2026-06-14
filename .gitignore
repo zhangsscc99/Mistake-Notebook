@@ -46,3 +46,5 @@ project.private.config.json
 # PDF cloud function font (run cloudfunctions/pdf/prepare-font.sh locally)
 cloudfunctions/pdf/ArialUnicode.ttf
 
+.tools/
+wechat-login-qr.png
