@@ -7,7 +7,7 @@ App({
     }
 
     wx.cloud.init({
-      env: 'cloud1-d4g7l44nyca7c18e6',
+      env: 'ai-mistake-notebook-d6byf98c0b95',
       traceUser: true
     });
 

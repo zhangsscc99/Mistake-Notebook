@@ -27,24 +27,32 @@
     },
     "compileWorklet": false,
     "uglifyFileName": false,
-    "uploadWithSourceMap": true,
+    "uploadWithSourceMap": false,
     "packNpmManually": false,
     "packNpmRelationList": [],
     "localPlugins": false,
     "disableUseStrict": false,
-    "condition": false,
+    "condition": true,
     "swc": false,
     "disableSWC": true
   },
   "compileType": "miniprogram",
   "libVersion": "3.16.1",
-  "appid": "wxf6aa093e17de41a7",
+  "appid": "wxdc442fcf6f850924",
   "projectname": "mistake-notebook",
   "condition": {},
-  "simulatorPluginLibVersion": {},
+  "simulatorPluginLibVersion": {
+    "wxext14566970e7e9f62": "2.27.3"
+  },
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "file",
+        "value": "miniprogram/README.md"
+      }
+    ],
     "include": []
   },
-  "editorSetting": {}
+  "editorSetting": {},
+  "projectArchitecture": "multiPlatform"
 }

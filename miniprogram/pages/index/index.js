@@ -179,7 +179,7 @@ Page({
     if (isAccessTokenError(err)) {
       wx.showModal({
         title: '云开发未登录',
-        content: '无法获取云开发凭证（access_token missing）。请依次检查：\n1. 关闭 VPN/系统代理\n2. 微信开发者工具右上角重新扫码登录\n3. 点击「云开发」确认环境 cloud1-d4g7l44nyca7c18e6 已选中\n4. 清缓存后重新编译',
+        content: '无法获取云开发凭证（access_token missing）。请依次检查：\n1. 关闭 VPN/系统代理\n2. 微信开发者工具右上角重新扫码登录\n3. 点击「云开发」确认环境 ai-mistake-notebook-d6byf98c0b95 已选中\n4. 清缓存后重新编译',
         showCancel: false
       });
       return;

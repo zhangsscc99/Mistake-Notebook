@@ -6,7 +6,7 @@ const PDFDocument = require('pdfkit');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
-const DASHSCOPE_API_KEY = 'sk-b2ccb84e15b544bc84e9a8a02cb4e168';
+const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
 const FONT_REGULAR = path.join(__dirname, 'ArialUnicode.ttf');
