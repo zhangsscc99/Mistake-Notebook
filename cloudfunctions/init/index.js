@@ -15,6 +15,22 @@ const DEFAULT_CATEGORIES = [
   { name: '政治', description: '政治相关题目', color: '#C471ED' }
 ];
 
+const MEMORY_COLLECTION = 'chat_memories';
+
+async function ensureMemoryCollection() {
+  try {
+    await db.createCollection(MEMORY_COLLECTION);
+    return { created: true };
+  } catch (e) {
+    const msg = e.message || e.errMsg || String(e);
+    if (/already exists|已存在|ResourceExist|Duplicate|DATABASE_COLLECTION_ALREADY_EXIST/i.test(msg)) {
+      return { created: false, existed: true };
+    }
+    console.warn('ensureMemoryCollection failed:', msg);
+    return { created: false, error: msg };
+  }
+}
+
 exports.main = async (event) => {
   const { action, force } = event;
 
@@ -22,6 +38,8 @@ exports.main = async (event) => {
     switch (action) {
       case 'seed':
         return await seedCategories(force);
+      case 'ensureMemory':
+        return await ensureMemoryCollectionStatus();
       case 'status':
         return await getInitStatus();
       default:
@@ -32,6 +50,11 @@ exports.main = async (event) => {
     return { success: false, error: err.message };
   }
 };
+
+async function ensureMemoryCollectionStatus() {
+  const result = await ensureMemoryCollection();
+  return { success: true, data: result };
+}
 
 async function getInitStatus() {
   const categoriesCount = await db.collection('categories').count();
@@ -48,12 +71,13 @@ async function getInitStatus() {
 }
 
 async function seedCategories(force) {
+  const memoryCollection = await ensureMemoryCollection();
   const existing = await db.collection('categories').count();
   if (existing.total > 0 && !force) {
     return {
       success: true,
       message: '数据库已初始化，无需重复创建',
-      data: { created: 0, total: existing.total }
+      data: { created: 0, total: existing.total, memoryCollection }
     };
   }
 
@@ -83,6 +107,6 @@ async function seedCategories(force) {
   return {
     success: true,
     message: `已创建 ${created} 个分类`,
-    data: { created, total: total.total }
+    data: { created, total: total.total, memoryCollection }
   };
 }

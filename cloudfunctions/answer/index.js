@@ -8,6 +8,15 @@ const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/co
 const MEMORY_COLLECTION = 'chat_memories';
 const MAX_SUMMARY_LEN = 400;
 const MAX_TOPICS = 20;
+const MAX_LAST_QUESTIONS = 5;
+const MAX_QUESTION_LEN = 150;
+const MAX_CONTEXT_LEN = 300;
+const MAX_RECENT_SESSIONS = 3;
+
+function getCallerOpenId(context) {
+  const wxContext = cloud.getWXContext();
+  return wxContext.OPENID || wxContext.FROM_OPENID || (context && context.OPENID) || '';
+}
 
 // ─── DashScope helper ────────────────────────────────────────────────────────
 
@@ -49,6 +58,67 @@ function callDashScope(messages, temperature = 0.2) {
 
 // ─── Memory helpers ───────────────────────────────────────────────────────────
 
+function collectUserQuestions(messages, limit = MAX_LAST_QUESTIONS, maxLen = MAX_QUESTION_LEN) {
+  return (messages || [])
+    .filter((m) => m.role === 'user' && m.content)
+    .map((m) => String(m.content).trim().slice(0, maxLen))
+    .filter(Boolean)
+    .slice(-limit);
+}
+
+function truncateContext(text, maxLen = MAX_CONTEXT_LEN) {
+  if (!text) return '';
+  const trimmed = String(text).trim();
+  return trimmed.length > maxLen ? trimmed.slice(0, maxLen) + '…' : trimmed;
+}
+
+function normalizeMemory(doc) {
+  if (!doc) {
+    return {
+      summary: '',
+      topics: [],
+      lastQuestions: [],
+      lastQuestionContext: '',
+      recentSessions: [],
+      sessionCount: 0,
+      error: null
+    };
+  }
+  return {
+    summary: doc.summary || '',
+    topics: Array.isArray(doc.topics) ? doc.topics : [],
+    lastQuestions: Array.isArray(doc.lastQuestions) ? doc.lastQuestions : [],
+    lastQuestionContext: doc.lastQuestionContext || '',
+    recentSessions: Array.isArray(doc.recentSessions) ? doc.recentSessions : [],
+    sessionCount: doc.sessionCount || 0,
+    error: null
+  };
+}
+
+function hasRecallableMemory(memory) {
+  return !!(
+    memory.summary
+    || (memory.lastQuestions && memory.lastQuestions.length > 0)
+    || memory.lastQuestionContext
+  );
+}
+
+function buildRecentSessionSnapshot(messages, questionContext) {
+  return {
+    at: new Date().toISOString(),
+    questionContext: truncateContext(questionContext),
+    questions: collectUserQuestions(messages)
+  };
+}
+
+function mergeRecentSessions(existing, snapshot) {
+  const sessions = Array.isArray(existing) ? [...existing] : [];
+  if (snapshot && snapshot.questions && snapshot.questions.length > 0) {
+    sessions.push(snapshot);
+  }
+  return sessions.slice(-MAX_RECENT_SESSIONS);
+}
+
 async function getMemory(db, openid) {
   try {
     const res = await db.collection(MEMORY_COLLECTION)
@@ -56,25 +126,26 @@ async function getMemory(db, openid) {
       .limit(1)
       .get();
     if (res.data && res.data.length > 0) {
-      const doc = res.data[0];
-      return {
-        summary: doc.summary || '',
-        topics: Array.isArray(doc.topics) ? doc.topics : [],
-        sessionCount: doc.sessionCount || 0
-      };
+      return normalizeMemory(res.data[0]);
     }
+    return normalizeMemory(null);
   } catch (e) {
     console.warn('getMemory failed:', e.message);
+    return { ...normalizeMemory(null), error: e.message };
   }
-  return { summary: '', topics: [], sessionCount: 0 };
 }
 
-async function upsertMemory(db, openid, summary, topics, sessionCount) {
+async function upsertMemory(db, openid, memoryData) {
   const payload = {
     openid,
-    summary: String(summary).slice(0, MAX_SUMMARY_LEN),
-    topics: (Array.isArray(topics) ? topics : []).slice(0, MAX_TOPICS),
-    sessionCount: sessionCount || 0,
+    summary: String(memoryData.summary || '').slice(0, MAX_SUMMARY_LEN),
+    topics: (Array.isArray(memoryData.topics) ? memoryData.topics : []).slice(0, MAX_TOPICS),
+    lastQuestions: (Array.isArray(memoryData.lastQuestions) ? memoryData.lastQuestions : [])
+      .slice(-MAX_LAST_QUESTIONS),
+    lastQuestionContext: truncateContext(memoryData.lastQuestionContext || ''),
+    recentSessions: (Array.isArray(memoryData.recentSessions) ? memoryData.recentSessions : [])
+      .slice(-MAX_RECENT_SESSIONS),
+    sessionCount: memoryData.sessionCount || 0,
     updatedAt: new Date().toISOString()
   };
   try {
@@ -89,8 +160,10 @@ async function upsertMemory(db, openid, summary, topics, sessionCount) {
     } else {
       await db.collection(MEMORY_COLLECTION).add({ data: payload });
     }
+    return { ok: true, error: null };
   } catch (e) {
     console.warn('upsertMemory failed:', e.message);
+    return { ok: false, error: e.message };
   }
 }
 
@@ -138,6 +211,75 @@ topics 为本次涉及的知识点标签，最多5个，简短（2-6字）。`;
   return null;
 }
 
+function buildMemoryInstruction(memory) {
+  const hasRecall = hasRecallableMemory(memory);
+  if (hasRecall) {
+    return `你拥有该学生的跨会话学习档案（见下方各段记录）。当学生询问「上次问了什么」「记得吗」「我们之前聊过什么」时，必须优先引用【历史上问过的问题（原文）】中的原话作答；若该段为空，再参考学习情况摘要。不要编造未出现在档案中的问题，不要声称「没有记忆功能」或「无法回溯对话」。
+`;
+  }
+  return `该学生暂无历史学习档案（可能是首次使用或档案尚未生成）。当学生询问你是否记得之前聊过什么时，可说明当前还没有可引用的历史档案，但不要声称系统本身不具备跨会话记忆能力。
+`;
+}
+
+function buildMemoryBlock(memory) {
+  if (!hasRecallableMemory(memory)) return '';
+
+  const parts = [];
+
+  if (memory.lastQuestions && memory.lastQuestions.length > 0) {
+    const numbered = memory.lastQuestions
+      .map((q, i) => `${i + 1}. ${q}`)
+      .join('\n');
+    parts.push(`【历史上问过的问题（原文，按时间从旧到新）】：\n${numbered}`);
+  }
+
+  if (memory.lastQuestionContext) {
+    parts.push(`【最近一次答疑的题目背景】：\n${memory.lastQuestionContext}`);
+  }
+
+  if (memory.summary) {
+    parts.push(`【学习情况摘要】：${memory.summary}`);
+  }
+
+  if (memory.topics && memory.topics.length > 0) {
+    parts.push(`【已涉及知识点】：${memory.topics.join('、')}`);
+  }
+
+  return parts.join('\n\n') + '\n\n';
+}
+
+async function persistMemoryFromMessages(db, openid, memory, messages, questionContext, incrementSession) {
+  const sessionQuestions = collectUserQuestions(messages);
+  const sessionContext = truncateContext(questionContext);
+  const sessionSnapshot = buildRecentSessionSnapshot(messages, questionContext);
+
+  const extracted = await extractMemory(memory.summary, messages, questionContext);
+
+  const mergedTopics = extracted
+    ? Array.from(new Set([...memory.topics, ...extracted.topics]))
+    : memory.topics;
+
+  const sessionCount = incrementSession
+    ? (memory.sessionCount || 0) + 1
+    : (memory.sessionCount || 0);
+
+  const memoryData = {
+    summary: extracted ? extracted.summary : memory.summary,
+    topics: mergedTopics,
+    lastQuestions: sessionQuestions.length > 0 ? sessionQuestions : memory.lastQuestions,
+    lastQuestionContext: sessionContext || memory.lastQuestionContext,
+    recentSessions: mergeRecentSessions(memory.recentSessions, sessionSnapshot),
+    sessionCount
+  };
+
+  const writeResult = await upsertMemory(db, openid, memoryData);
+  return {
+    updated: writeResult.ok,
+    memoryError: writeResult.error,
+    lastQuestions: memoryData.lastQuestions
+  };
+}
+
 // ─── Main handler ─────────────────────────────────────────────────────────────
 
 exports.main = async (event, context) => {
@@ -151,6 +293,8 @@ exports.main = async (event, context) => {
         return await chatReply(event, context);
       case 'summarize':
         return await summarizeSession(event, context);
+      case 'getMemoryStatus':
+        return await getMemoryStatus(event, context);
       default:
         return { success: false, error: `Unknown action: ${action}` };
     }
@@ -160,11 +304,34 @@ exports.main = async (event, context) => {
   }
 };
 
+// ─── Memory status (for greeting / debug) ───────────────────────────────────
+
+async function getMemoryStatus(event, context) {
+  const openid = getCallerOpenId(context);
+  if (!openid) {
+    return { success: false, error: 'No openid' };
+  }
+  const db = cloud.database();
+  const memory = await getMemory(db, openid);
+  return {
+    success: true,
+    data: {
+      hasMemory: hasRecallableMemory(memory),
+      memoryLoaded: hasRecallableMemory(memory),
+      topics: memory.topics,
+      lastQuestions: memory.lastQuestions,
+      lastQuestionContext: memory.lastQuestionContext,
+      sessionCount: memory.sessionCount,
+      memoryError: memory.error
+    }
+  };
+}
+
 // ─── Chat with memory injection ───────────────────────────────────────────────
 
 async function chatReply(event, context) {
   const { messages, questionContext } = event;
-  const openid = context && context.OPENID;
+  const openid = getCallerOpenId(context);
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return { success: false, error: 'Missing messages' };
@@ -172,20 +339,18 @@ async function chatReply(event, context) {
 
   const db = cloud.database();
 
-  // 1. Load long-term memory
-  const memory = openid ? await getMemory(db, openid) : { summary: '', topics: [], sessionCount: 0 };
+  const memory = openid
+    ? await getMemory(db, openid)
+    : normalizeMemory(null);
 
-  // 2. Build system prompt with memory injection
-  const memoryBlock = memory.summary
-    ? `【学生历史学习记录】：${memory.summary}\n【已涉及知识点】：${memory.topics.join('、') || '暂无'}\n\n`
-    : '';
+  const memoryBlock = buildMemoryBlock(memory);
 
   const contextBlock = questionContext
     ? `【当前题目】：\n${questionContext}\n\n请结合这道题，用清晰、循序渐进的方式解答学生的追问。`
     : '请用清晰、循序渐进的方式回答学生的问题。';
 
   const systemPrompt = `你是一位耐心、专业的学习辅导老师，正在帮一位学生答疑。
-${memoryBlock}${contextBlock}
+${buildMemoryInstruction(memory)}${memoryBlock}${contextBlock}
 可以使用分步骤说明，必要时给出关键公式与思路，语言简洁友好，不要使用 markdown 代码块。
 如果你在历史记录中发现学生的薄弱点与当前题目相关，请有针对性地加以提示。`;
 
@@ -205,43 +370,53 @@ ${memoryBlock}${contextBlock}
 
   const reply = response.choices[0].message.content;
 
-  // 3. Async memory extraction every 3 user turns (don't block reply)
+  let memoryPersist = { updated: false, memoryError: null };
   const userTurns = messages.filter(m => m.role === 'user').length;
   if (openid && userTurns > 0 && userTurns % 3 === 0) {
-    extractMemory(memory.summary, messages, questionContext)
-      .then(extracted => {
-        if (extracted) {
-          const mergedTopics = Array.from(new Set([...memory.topics, ...extracted.topics]));
-          upsertMemory(db, openid, extracted.summary, mergedTopics, memory.sessionCount);
-        }
-      })
-      .catch(e => console.warn('async memory extract error:', e.message));
+    memoryPersist = await persistMemoryFromMessages(
+      db, openid, memory, messages, questionContext, false
+    );
   }
 
-  return { success: true, data: { reply, hasMemory: !!memory.summary } };
+  return {
+    success: true,
+    data: {
+      reply,
+      hasMemory: hasRecallableMemory(memory),
+      memoryLoaded: hasRecallableMemory(memory),
+      topics: memory.topics,
+      lastQuestions: memory.lastQuestions,
+      memoryError: memory.error || memoryPersist.memoryError
+    }
+  };
 }
 
-// ─── Summarize session (called on page unload) ────────────────────────────────
+// ─── Summarize session (called on page hide/unload) ───────────────────────────
 
 async function summarizeSession(event, context) {
   const { messages, questionContext } = event;
-  const openid = context && context.OPENID;
+  const openid = getCallerOpenId(context);
 
   if (!openid) return { success: false, error: 'No openid' };
-  if (!Array.isArray(messages) || messages.length < 2) {
+
+  const userMsgs = (messages || []).filter((m) => m.role === 'user' && m.content);
+  if (userMsgs.length === 0) {
     return { success: true, data: { skipped: true } };
   }
 
   const db = cloud.database();
   const memory = await getMemory(db, openid);
+  const persistResult = await persistMemoryFromMessages(
+    db, openid, memory, messages, questionContext, true
+  );
 
-  const extracted = await extractMemory(memory.summary, messages, questionContext);
-  if (extracted) {
-    const mergedTopics = Array.from(new Set([...memory.topics, ...extracted.topics]));
-    await upsertMemory(db, openid, extracted.summary, mergedTopics, memory.sessionCount + 1);
-  }
-
-  return { success: true, data: { updated: !!extracted } };
+  return {
+    success: true,
+    data: {
+      updated: persistResult.updated,
+      memoryError: memory.error || persistResult.memoryError
+    }
+  };
 }
 
 // ─── Generate answer (unchanged) ─────────────────────────────────────────────
