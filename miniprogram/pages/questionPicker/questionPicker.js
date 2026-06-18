@@ -161,6 +161,18 @@ Page({
     });
   },
 
+  callQuestion: function (action, payload, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      wx.cloud.callFunction({
+        name: 'question',
+        config: { timeout: timeoutMs || 60000 },
+        data: { action, ...payload },
+        success: (res) => resolve(res.result || {}),
+        fail: reject
+      });
+    });
+  },
+
   saveSelected: function () {
     const selectedQuestions = this.data.questions.filter((q) => q.selected);
     if (!selectedQuestions.length) {
@@ -171,42 +183,55 @@ Page({
     this.setData({ saving: true });
     wx.showLoading({ title: '正在保存...', mask: true });
 
-    wx.cloud.callFunction({
-      name: 'question',
-      data: {
-        action: 'batchSave',
-        questions: selectedQuestions,
-        category: this.data.selectedCategory,
-        difficulty: this.data.selectedDifficulty,
-        imageUrl: this.data.fileID
-      },
-      success: (res) => {
-        wx.hideLoading();
-        this.setData({ saving: false });
-        if (res.result && res.result.success) {
-          app.globalData.recognitionDraft = null;
-          const count = res.result.data.savedCount || selectedQuestions.length;
-          wx.showToast({ title: `已保存${count}道题`, icon: 'success' });
-          setTimeout(() => {
-            wx.switchTab({ url: '/pages/categories/categories' });
-          }, 1000);
-        } else {
-          wx.showModal({
-            title: '保存失败',
-            content: (res.result && res.result.error) || '请稍后重试',
-            showCancel: false
-          });
-        }
-      },
-      fail: (err) => {
-        wx.hideLoading();
-        this.setData({ saving: false });
-        wx.showModal({
-          title: '保存失败',
-          content: (err && err.errMsg) || '云函数调用失败',
-          showCancel: false
-        });
+    this.callQuestion('batchSave', {
+      questions: selectedQuestions,
+      category: this.data.selectedCategory,
+      difficulty: this.data.selectedDifficulty,
+      imageUrl: this.data.fileID
+    }, 20000).then((saveRes) => {
+      if (!saveRes.success) {
+        throw new Error(saveRes.error || '保存失败');
       }
+
+      const saved = saveRes.data.questions || [];
+      if (!saved.length) {
+        throw new Error('没有成功保存的题目');
+      }
+
+      let chain = Promise.resolve();
+      saved.forEach((q, index) => {
+        chain = chain.then(() => {
+          const id = q.id || q._id;
+          if (!id) return Promise.resolve();
+          wx.showLoading({
+            title: `正在生成解析 (${index + 1}/${saved.length})...`,
+            mask: true
+          });
+          return this.callQuestion('generateAnswer', { id }, 60000).catch((err) => {
+            console.warn('generateAnswer failed:', id, err);
+            return null;
+          });
+        });
+      });
+
+      return chain.then(() => saveRes);
+    }).then((saveRes) => {
+      wx.hideLoading();
+      this.setData({ saving: false });
+      app.globalData.recognitionDraft = null;
+      const count = saveRes.data.savedCount || selectedQuestions.length;
+      wx.showToast({ title: `已保存${count}道题`, icon: 'success' });
+      setTimeout(() => {
+        wx.switchTab({ url: '/pages/categories/categories' });
+      }, 1000);
+    }).catch((err) => {
+      wx.hideLoading();
+      this.setData({ saving: false });
+      wx.showModal({
+        title: '保存失败',
+        content: (err && err.message) || (err && err.errMsg) || '请稍后重试',
+        showCancel: false
+      });
     });
   }
 });

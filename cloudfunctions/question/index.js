@@ -1,4 +1,5 @@
 const cloud = require('wx-server-sdk');
+const https = require('https');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 const _ = db.command;
@@ -38,8 +39,8 @@ exports.main = async (event, context) => {
         return await statsByDifficulty();
       case 'batchSave':
         return await batchSaveQuestions(event);
-      case 'generateAnswerAsync':
-        return await generateAnswerAsync(event);
+      case 'generateAnswer':
+        return await generateAnswerForQuestion(event);
       default:
         return { success: false, error: `Unknown action: ${action}` };
     }
@@ -354,57 +355,184 @@ async function invokeFunction(name, data) {
   return res.result || {};
 }
 
-function scheduleAnswerGeneration(id, text) {
-  cloud.callFunction({
-    name: 'question',
-    data: { action: 'generateAnswerAsync', id, text }
-  }).catch((err) => {
-    console.warn('scheduleAnswerGeneration failed:', id, err.message);
+const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
+const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+const DASHSCOPE_MODEL = 'qwen3-vl-flash';
+
+function callDashScope(messages, temperature = 0.2) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify({
+      model: DASHSCOPE_MODEL,
+      messages,
+      stream: false,
+      temperature
+    });
+
+    const url = new URL(DASHSCOPE_URL);
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname + url.search,
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${DASHSCOPE_API_KEY}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', (chunk) => { body += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(body)); }
+        catch (e) { reject(new Error(`Failed to parse DashScope response: ${e.message}`)); }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(data);
+    req.end();
   });
 }
 
-async function generateAnswerAsync(event) {
-  const { id, text } = event;
-  if (!id || !text) {
-    return { success: false, error: 'Missing id or text' };
-  }
+async function generateAnswerForText(text) {
+  const results = await generateAnswersForTexts([text]);
+  return results[0] || { answer: '', analysis: '', confidence: 0 };
+}
 
+function parseAnswerResult(content) {
+  let result = { answer: '', analysis: '', confidence: 0 };
   try {
-    const existing = await db.collection('questions').doc(String(id)).get();
-    const doc = existing.data;
-    if (doc && doc.aiStatus === 'ready' && doc.aiAnalysis) {
-      return { success: true, data: { skipped: true } };
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      result = { ...result, ...JSON.parse(jsonMatch[0]) };
     }
   } catch (e) {
-    console.warn('generateAnswerAsync precheck failed:', e.message);
+    console.warn('Failed to parse answer JSON, returning raw text', e.message);
+    result.answer = content;
+  }
+  return result;
+}
+
+async function generateAnswersForTexts(texts) {
+  const cleaned = (texts || []).map((t) => String(t || '').trim()).filter(Boolean);
+  if (!cleaned.length) return [];
+
+  if (cleaned.length === 1) {
+    const prompt = `请解答以下题目，给出解题步骤和最终答案。解析控制在 800 字以内。
+
+题目内容：
+${cleaned[0]}
+
+请以JSON格式返回（不要包含markdown代码块标记）：
+{
+  "answer": "最终的答案",
+  "analysis": "详细的解题步骤和分析过程",
+  "confidence": 0.0-1.0
+}`;
+    const response = await callDashScope([{ role: 'user', content: prompt }], 0.2);
+    if (!response.choices || response.choices.length === 0) {
+      throw new Error('Answer generation failed');
+    }
+    return [parseAnswerResult(response.choices[0].message.content)];
   }
 
-  const now = new Date().toISOString();
-  await db.collection('questions').doc(String(id)).update({
-    data: { aiStatus: 'pending', updatedAt: now }
-  });
+  const numbered = cleaned.map((text, i) => `【第${i + 1}题】\n${text}`).join('\n\n---\n\n');
+  const prompt = `请依次解答以下 ${cleaned.length} 道题目，给出每道题的最终答案和详细解析。
 
+${numbered}
+
+请以 JSON 数组格式返回（不要包含 markdown 代码块标记），数组长度必须为 ${cleaned.length}，顺序与题目一致：
+[
+  {
+    "answer": "第1题的最终答案",
+    "analysis": "第1题的详细解题步骤和分析过程",
+    "confidence": 0.0-1.0
+  }
+]`;
+
+  const response = await callDashScope([{ role: 'user', content: prompt }], 0.2);
+  if (!response.choices || response.choices.length === 0) {
+    throw new Error('Batch answer generation failed');
+  }
+
+  const content = response.choices[0].message.content;
   try {
-    const answerRes = await invokeFunction('answer', { action: 'generate', text });
-    if (answerRes.success && answerRes.data) {
-      await db.collection('questions').doc(String(id)).update({
-        data: {
-          aiAnswer: answerRes.data.answer || '',
-          aiAnalysis: answerRes.data.analysis || '',
-          aiStatus: 'ready',
-          updatedAt: new Date().toISOString()
-        }
-      });
-      return { success: true, data: { updated: true } };
+    const arrayMatch = content.match(/\[[\s\S]*\]/);
+    if (arrayMatch) {
+      const parsed = JSON.parse(arrayMatch[0]);
+      if (Array.isArray(parsed)) {
+        return cleaned.map((_, i) => ({
+          answer: parsed[i]?.answer || '',
+          analysis: parsed[i]?.analysis || '',
+          confidence: parsed[i]?.confidence || 0
+        }));
+      }
     }
   } catch (e) {
-    console.warn('generateAnswerAsync answer failed:', e.message);
+    console.warn('Batch parse failed, falling back to per-question generation', e.message);
+  }
+
+  const fallback = [];
+  for (const text of cleaned) {
+    try {
+      fallback.push(await generateAnswerForText(text));
+    } catch (err) {
+      console.warn('Fallback answer generation failed', err.message);
+      fallback.push({ answer: '', analysis: '', confidence: 0 });
+    }
+  }
+  return fallback;
+}
+
+async function generateAnswerForQuestion(event) {
+  const { id } = event;
+  if (!id) {
+    return { success: false, error: 'Missing question id' };
+  }
+
+  const existing = await db.collection('questions').doc(String(id)).get();
+  const doc = existing.data;
+  if (!doc || doc.isDeleted) {
+    return { success: false, error: 'Question not found' };
+  }
+  if (doc.aiStatus === 'ready' && doc.aiAnalysis) {
+    return { success: true, data: { skipped: true } };
+  }
+
+  const text = (doc.content || '').trim();
+  if (!text) {
+    return { success: false, error: 'Missing question content' };
+  }
+
+  let aiAnswer = '';
+  let aiAnalysis = '';
+  let aiStatus = 'failed';
+
+  try {
+    const answerData = await generateAnswerForText(text);
+    aiAnswer = answerData.answer || '';
+    aiAnalysis = answerData.analysis || '';
+    if (aiAnswer || aiAnalysis) {
+      aiStatus = 'ready';
+    }
+  } catch (e) {
+    console.warn('generateAnswerForQuestion failed:', id, e.message);
   }
 
   await db.collection('questions').doc(String(id)).update({
-    data: { aiStatus: 'failed', updatedAt: new Date().toISOString() }
+    data: {
+      aiAnswer,
+      aiAnalysis,
+      aiStatus,
+      updatedAt: new Date().toISOString()
+    }
   });
-  return { success: false, error: 'Answer generation failed' };
+
+  return {
+    success: aiStatus === 'ready',
+    data: { id, aiStatus, aiAnswer, aiAnalysis }
+  };
 }
 
 async function batchSaveQuestions(event) {
@@ -416,17 +544,20 @@ async function batchSaveQuestions(event) {
 
   const baseDifficulty = DIFFICULTY_MAP[difficulty] || 'MEDIUM';
 
-  const saved = await Promise.all(
-    questions.map(async (item) => {
+  const prepared = questions
+    .map((item) => {
       const text = (item.text || item.content || '').trim();
       if (!text) return null;
+      return { item, text };
+    })
+    .filter(Boolean);
 
+  const saved = await Promise.all(
+    prepared.map(async ({ item, text }) => {
       let finalCategory = category || item.subject || '';
       let finalDifficulty = baseDifficulty;
       let tags = [];
       let aiConfidence = item.confidence || 0;
-      let aiAnswer = '';
-      let aiAnalysis = '';
 
       if (item.type) tags.push(item.type);
       if (item.subject && item.subject !== finalCategory) tags.push(item.subject);
@@ -444,22 +575,6 @@ async function batchSaveQuestions(event) {
           }
           aiConfidence = classifyRes.data.confidence || aiConfidence;
         }
-
-        try {
-          const answerRes = await invokeFunction('answer', {
-            action: 'generate',
-            text
-          });
-          if (answerRes.success && answerRes.data) {
-            aiAnswer = answerRes.data.answer || '';
-            aiAnalysis = answerRes.data.analysis || '';
-            if (answerRes.data.confidence) {
-              aiConfidence = Math.max(aiConfidence, answerRes.data.confidence);
-            }
-          }
-        } catch (e) {
-          console.warn('Answer generation skipped for one question', e);
-        }
       }
 
       const createRes = await createQuestion({
@@ -469,16 +584,11 @@ async function batchSaveQuestions(event) {
         difficulty: finalDifficulty,
         tags,
         aiConfidence,
-        aiAnswer,
-        aiAnalysis,
-        aiStatus: (aiAnswer || aiAnalysis) ? 'ready' : 'pending',
+        aiAnswer: '',
+        aiAnalysis: '',
+        aiStatus: 'pending',
         ocrConfidence: item.confidence || 0.85
       });
-
-      if (createRes.success && createRes.data && !aiAnswer && !aiAnalysis) {
-        const qid = createRes.data.id || createRes.data._id;
-        if (qid) scheduleAnswerGeneration(qid, text);
-      }
 
       return createRes.success ? createRes.data : null;
     })

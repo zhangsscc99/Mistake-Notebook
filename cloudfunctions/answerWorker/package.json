@@ -1,0 +1,9 @@
+{
+  "name": "answerWorker",
+  "version": "1.0.0",
+  "description": "Database trigger worker for async AI answer generation",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

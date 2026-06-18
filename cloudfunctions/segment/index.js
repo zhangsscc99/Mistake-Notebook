@@ -5,10 +5,12 @@ const https = require('https');
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
+const DASHSCOPE_MODEL = 'qwen3-vl-flash';
+
 function callDashScopeVL(messages, temperature = 0.3) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
-      model: 'qwen3-vl-plus',
+      model: DASHSCOPE_MODEL,
       messages,
       stream: false,
       temperature

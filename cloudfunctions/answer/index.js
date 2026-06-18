@@ -20,10 +20,12 @@ function getCallerOpenId(context) {
 
 // ─── DashScope helper ────────────────────────────────────────────────────────
 
+const DASHSCOPE_MODEL = 'qwen3-vl-flash';
+
 function callDashScope(messages, temperature = 0.2) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
-      model: 'qwen-plus',
+      model: DASHSCOPE_MODEL,
       messages,
       stream: false,
       temperature

@@ -21,6 +21,12 @@
       "runtime": "Nodejs16.13"
     },
     {
+      "name": "answerWorker",
+      "timeout": 120,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
       "name": "upload",
       "timeout": 60,
       "memorySize": 512,
@@ -34,7 +40,7 @@
     },
     {
       "name": "question",
-      "timeout": 60,
+      "timeout": 120,
       "memorySize": 256,
       "runtime": "Nodejs16.13"
     },

@@ -97,7 +97,7 @@ function applyRecordFields(q, record) {
   if (isMissingAnalysis(q.analysis) && hasUsableText(record.aiAnalysis, '')) {
     q.analysis = record.aiAnalysis;
   }
-  if (record.aiStatus === 'pending' && isMissingAnswer(q.answer) && isMissingAnalysis(q.analysis)) {
+  if ((record.aiStatus === 'pending' || record.aiStatus === 'processing') && isMissingAnswer(q.answer) && isMissingAnalysis(q.analysis)) {
     q.answer = PENDING_ANSWER;
     q.analysis = PENDING_ANALYSIS;
   }

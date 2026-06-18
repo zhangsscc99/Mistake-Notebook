@@ -63,7 +63,7 @@ function buildAiDisplayText(value, pending, emptyFallback, pendingFallback) {
 }
 
 function buildDetailQuestion(item, index) {
-  const pending = item.aiStatus === 'pending';
+  const pending = item.aiStatus === 'pending' || item.aiStatus === 'processing';
   const hasAiAnswer = !!(item.aiAnswer && String(item.aiAnswer).trim());
   const hasAiAnalysis = !!(item.aiAnalysis && String(item.aiAnalysis).trim());
   const rawContent = item.content || '暂无内容';

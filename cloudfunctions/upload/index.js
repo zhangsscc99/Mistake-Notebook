@@ -6,10 +6,12 @@ const https = require('https');
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
-function callDashScope(model, messages, temperature = 0.2) {
+const DASHSCOPE_MODEL = 'qwen3-vl-flash';
+
+function callDashScope(messages, temperature = 0.2) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
-      model,
+      model: DASHSCOPE_MODEL,
       messages,
       stream: false,
       temperature
@@ -76,7 +78,7 @@ async function processQuestionPipeline(event) {
   const base64Image = buffer.toString('base64');
 
   // Step 2: OCR - recognize text from image using VL model
-  const ocrResponse = await callDashScope('qwen3-vl-plus', [
+  const ocrResponse = await callDashScope([
     {
       role: 'user',
       content: [
@@ -115,7 +117,7 @@ async function processQuestionPipeline(event) {
 题目内容：
 ${recognizedText}`;
 
-  const classifyResponse = await callDashScope('qwen-turbo', [
+  const classifyResponse = await callDashScope([
     { role: 'user', content: classifyPrompt }
   ], 0.2);
 
@@ -145,7 +147,7 @@ ${recognizedText}
   "confidence": 0.0-1.0
 }`;
 
-  const answerResponse = await callDashScope('qwen-plus', [
+  const answerResponse = await callDashScope([
     { role: 'user', content: answerPrompt }
   ], 0.2);
 
