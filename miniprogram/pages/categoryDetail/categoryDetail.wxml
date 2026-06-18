@@ -160,24 +160,29 @@
   <view class="detail-mask" wx:if="{{showDetailModal}}" bindtap="closeDetailModal"></view>
   <view class="detail-modal" wx:if="{{showDetailModal}}">
     <view class="detail-modal-header">
-      <text class="detail-modal-title">题目 #{{detailQuestion.id}}</text>
+      <text class="detail-modal-title">题目 #{{detailQuestion.displayIndex}}</text>
       <text class="detail-modal-close" bindtap="closeDetailModal">×</text>
     </view>
-    <scroll-view scroll-y class="detail-modal-body">
+    <scroll-view scroll-y class="detail-modal-body" enhanced show-scrollbar="{{false}}">
       <image class="detail-img" src="{{detailQuestion.imageUrl}}" mode="widthFix"
         wx:if="{{detailQuestion.imageUrl}}" bindtap="previewDetailImage" data-url="{{detailQuestion.imageUrl}}"></image>
 
       <view class="detail-section">
         <text class="detail-section-title">题目内容</text>
-        <text class="detail-section-body">{{detailQuestion.content}}</text>
+        <view class="detail-para" wx:for="{{detailQuestion.contentParas}}" wx:for-item="para" wx:key="index">
+          <view class="detail-sub-head" wx:if="{{para.sub}}">
+            <text class="detail-para-label">（{{para.label}}）</text>
+          </view>
+          <text class="detail-section-body {{para.sub ? 'detail-sub-body' : ''}}">{{para.text}}</text>
+        </view>
       </view>
 
-      <view class="detail-section">
+      <view class="detail-section" wx:if="{{detailQuestion.aiAnswer && detailQuestion.aiAnswer !== '待补充'}}">
         <text class="detail-section-title">参考答案</text>
         <text class="detail-section-body">{{detailQuestion.aiAnswer}}</text>
       </view>
 
-      <view class="detail-section">
+      <view class="detail-section" wx:if="{{detailQuestion.aiAnalysis && detailQuestion.aiAnalysis !== 'AI暂未给出解析'}}">
         <text class="detail-section-title">解析</text>
         <text class="detail-section-body">{{detailQuestion.aiAnalysis}}</text>
       </view>

@@ -115,7 +115,7 @@ async function processQuestionPipeline(event) {
 题目内容：
 ${recognizedText}`;
 
-  const classifyResponse = await callDashScope('qwen-plus', [
+  const classifyResponse = await callDashScope('qwen-turbo', [
     { role: 'user', content: classifyPrompt }
   ], 0.2);
 

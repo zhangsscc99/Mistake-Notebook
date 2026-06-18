@@ -1,13 +1,9 @@
 const cloud = require('wx-server-sdk');
 const path = require('path');
 const fs = require('fs');
-const https = require('https');
 const PDFDocument = require('pdfkit');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-
-const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
-const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
 const FONT_REGULAR = path.join(__dirname, 'ArialUnicode.ttf');
 
@@ -43,6 +39,8 @@ function sanitizeText(text) {
 
 const PLACEHOLDER_ANALYSIS = 'AI暂未给出解析';
 const PLACEHOLDER_ANSWER = '待补充';
+const PENDING_ANALYSIS = '解析生成中，请稍后重新导出';
+const PENDING_ANSWER = '答案生成中，请稍后重新导出';
 
 function normalizeQuestionFields(q) {
   q.content = q.content || q.recognizedText || '';
@@ -59,6 +57,10 @@ function isMissingAnswer(text) {
   return !text || text === PLACEHOLDER_ANSWER;
 }
 
+function hasUsableText(text, placeholder) {
+  return text && text !== placeholder;
+}
+
 async function fetchQuestionFromDb(id) {
   if (!id) return null;
   try {
@@ -71,98 +73,45 @@ async function fetchQuestionFromDb(id) {
   }
 }
 
-function callDashScope(messages, temperature = 0.2) {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify({
-      model: 'qwen-plus',
-      messages,
-      stream: false,
-      temperature
-    });
-
-    const url = new URL(DASHSCOPE_URL);
-    const options = {
-      hostname: url.hostname,
-      path: url.pathname + url.search,
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(data)
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let body = '';
-      res.on('data', (chunk) => { body += chunk; });
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(body));
-        } catch (e) {
-          reject(new Error(`Failed to parse DashScope response: ${e.message}`));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.write(data);
-    req.end();
-  });
-}
-
-async function generateAnswerInline(text) {
-  if (!text) return null;
-
-  const prompt = `请解答以下题目，给出详细的解题步骤和最终答案。
-
-题目内容：
-${text}
-
-请以JSON格式返回（不要包含markdown代码块标记）：
-{
-  "answer": "最终的答案",
-  "analysis": "详细的解题步骤和分析过程",
-  "confidence": 0.0-1.0
-}`;
-
-  const response = await callDashScope([{ role: 'user', content: prompt }], 0.2);
-  if (!response.choices || response.choices.length === 0) {
-    console.warn('DashScope answer failed:', JSON.stringify(response).slice(0, 300));
-    return null;
-  }
-
-  const content = response.choices[0].message.content;
-  let result = { answer: '', analysis: '', confidence: 0 };
-
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      result = { ...result, ...JSON.parse(jsonMatch[0]) };
-    } else {
-      result.answer = content;
-    }
-  } catch (e) {
-    console.warn('Failed to parse answer JSON:', e.message);
-    result.answer = content;
-  }
-
-  return result;
-}
-
-async function persistAnswerToDb(id, answer, analysis) {
-  if (!id) return;
+async function lookupQuestionByContent(content) {
+  if (!content) return null;
   try {
     const db = cloud.database();
-    await db.collection('questions').doc(String(id)).update({
-      data: {
-        aiAnswer: answer || '',
-        aiAnalysis: analysis || '',
-        updatedAt: new Date().toISOString()
-      }
-    });
+    const lookup = await db.collection('questions')
+      .where({ content, isDeleted: false })
+      .limit(1)
+      .get();
+    return (lookup.data && lookup.data[0]) || null;
   } catch (err) {
-    console.warn('persistAnswerToDb failed:', id, err.message);
+    console.warn('lookupQuestionByContent failed:', err.message);
+    return null;
   }
+}
+
+function applyRecordFields(q, record) {
+  if (!record) return;
+  q.id = q.id || record._id;
+  if (isMissingAnswer(q.answer) && hasUsableText(record.aiAnswer, '')) {
+    q.answer = record.aiAnswer;
+  }
+  if (isMissingAnalysis(q.analysis) && hasUsableText(record.aiAnalysis, '')) {
+    q.analysis = record.aiAnalysis;
+  }
+  if (record.aiStatus === 'pending') {
+    if (isMissingAnswer(q.answer)) q.answer = PENDING_ANSWER;
+    if (isMissingAnalysis(q.analysis)) q.analysis = PENDING_ANALYSIS;
+  }
+}
+
+async function hydrateQuestionFromDb(q) {
+  if (q.id) {
+    applyRecordFields(q, await fetchQuestionFromDb(q.id));
+  }
+  if ((isMissingAnalysis(q.analysis) || isMissingAnswer(q.answer)) && q.content) {
+    applyRecordFields(q, await lookupQuestionByContent(q.content));
+  }
+  if (isMissingAnswer(q.answer)) q.answer = PENDING_ANSWER;
+  if (isMissingAnalysis(q.analysis)) q.analysis = PENDING_ANALYSIS;
 }
 
 exports.main = async (event, context) => {
@@ -184,73 +133,12 @@ exports.main = async (event, context) => {
 async function fillMissingAnalysis(questions) {
   questions.forEach(normalizeQuestionFields);
 
-  const indices = questions.reduce((acc, q, i) => {
-    if (isMissingAnalysis(q.analysis) || isMissingAnswer(q.answer)) {
-      acc.push(i);
-    }
-    return acc;
-  }, []);
+  const needsHydrate = questions.filter(
+    (q) => isMissingAnalysis(q.analysis) || isMissingAnswer(q.answer)
+  );
+  if (needsHydrate.length === 0) return;
 
-  if (indices.length === 0) return;
-
-  for (const i of indices) {
-    const q = questions[i];
-
-    if (q.id && (isMissingAnalysis(q.analysis) || isMissingAnswer(q.answer))) {
-      const record = await fetchQuestionFromDb(q.id);
-      if (record) {
-        if (isMissingAnswer(q.answer) && record.aiAnswer) {
-          q.answer = record.aiAnswer;
-        }
-        if (isMissingAnalysis(q.analysis) && record.aiAnalysis) {
-          q.analysis = record.aiAnalysis;
-        }
-      }
-    }
-
-    // 试卷里没存 id 时，用题目内容回查题库
-    if ((isMissingAnalysis(q.analysis) || isMissingAnswer(q.answer)) && q.content) {
-      try {
-        const db = cloud.database();
-        const lookup = await db.collection('questions')
-          .where({ content: q.content, isDeleted: false })
-          .limit(1)
-          .get();
-        const record = lookup.data && lookup.data[0];
-        if (record) {
-          q.id = q.id || record._id;
-          if (isMissingAnswer(q.answer) && record.aiAnswer) {
-            q.answer = record.aiAnswer;
-          }
-          if (isMissingAnalysis(q.analysis) && record.aiAnalysis) {
-            q.analysis = record.aiAnalysis;
-          }
-        }
-      } catch (err) {
-        console.warn('lookupQuestionByContent failed:', err.message);
-      }
-    }
-
-    if (!isMissingAnalysis(q.analysis) && !isMissingAnswer(q.answer)) {
-      continue;
-    }
-
-    try {
-      const generated = await generateAnswerInline(q.content);
-      if (!generated) continue;
-      if (isMissingAnswer(q.answer) && generated.answer) {
-        q.answer = generated.answer;
-      }
-      if (isMissingAnalysis(q.analysis) && generated.analysis) {
-        q.analysis = generated.analysis;
-      }
-      if (q.id && (generated.answer || generated.analysis)) {
-        await persistAnswerToDb(q.id, q.answer, q.analysis);
-      }
-    } catch (err) {
-      console.warn('generateAnswerInline failed:', err.message);
-    }
-  }
+  await Promise.all(needsHydrate.map((q) => hydrateQuestionFromDb(q)));
 }
 
 async function generatePDF(event) {
@@ -302,8 +190,8 @@ async function generatePDF(event) {
     questions.forEach((q, index) => {
       const questionNumber = index + 1;
       const content = sanitizeText(q.content);
-      const answer = sanitizeText(q.answer || '待补充');
-      const analysis = sanitizeText(q.analysis || 'AI暂未给出解析');
+      const answer = sanitizeText(q.answer || PENDING_ANSWER);
+      const analysis = sanitizeText(q.analysis || PENDING_ANALYSIS);
 
       if (doc.y > 700) {
         doc.addPage();

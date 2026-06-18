@@ -1,10 +1,59 @@
 // pages/categoryDetail/categoryDetail.js
 const app = getApp();
 const { savePaperToCloud, promptPaperTitle } = require('../../utils/paper.js');
+const { formatLatex } = require('../../utils/latex');
+
 const SYMBOL_MAP = {
   '数学': '数', '物理': '物', '化学': '化', '英语': '英',
   '语文': '语', '生物': '生', '历史': '史', '地理': '地'
 };
+
+function parseQuestionParas(text) {
+  if (!text) return [];
+  const normalized = String(text).replace(/\r\n/g, '\n').trim();
+  const lines = normalized.split('\n');
+  const paras = [];
+  let stemBuffer = '';
+  let curLabel = '';
+  let subBuffer = '';
+
+  const flushStem = () => {
+    const content = stemBuffer.trim();
+    if (content) paras.push({ label: '', text: content, sub: false });
+    stemBuffer = '';
+  };
+
+  const flushSub = () => {
+    const content = subBuffer.trim();
+    if (curLabel && content) paras.push({ label: curLabel, text: content, sub: true });
+    curLabel = '';
+    subBuffer = '';
+  };
+
+  lines.forEach((rawLine) => {
+    const line = rawLine.trim();
+    const m = line.match(/^[（(]\s*(\d+)\s*[)）]\s*(.*)$/);
+    if (m) {
+      flushStem();
+      flushSub();
+      curLabel = m[1];
+      subBuffer = m[2];
+    } else if (curLabel) {
+      if (line) subBuffer += (subBuffer ? '\n' : '') + line;
+    } else if (!line) {
+      flushStem();
+    } else {
+      stemBuffer += (stemBuffer ? '\n' : '') + line;
+    }
+  });
+  flushStem();
+  flushSub();
+  return paras;
+}
+
+function formatQuestionText(raw) {
+  return formatLatex(raw || '');
+}
 
 Page({
   data: {
@@ -65,10 +114,11 @@ Page({
           const list = Array.isArray(res.result.data) ? res.result.data : [];
           const processed = list.map(q => {
             const fullContent = q.content || q.recognizedText || '';
+            const formatted = formatQuestionText(fullContent);
             return {
               ...q,
               content: fullContent,
-              displayContent: fullContent.length > 200 ? fullContent.slice(0, 200) + '…' : fullContent,
+              displayContent: formatted.length > 200 ? formatted.slice(0, 200) + '…' : formatted,
               difficultyClass: (q.difficulty || 'medium').toLowerCase(),
               difficultyText: q.difficulty === 'EASY' || q.difficulty === 'easy' ? '简单'
                 : q.difficulty === 'HARD' || q.difficulty === 'hard' ? '困难' : '中等',
@@ -289,76 +339,6 @@ Page({
     this.applyFilters();
   },
 
-  toggleAI(e) {
-    const index = e.currentTarget.dataset.index;
-    const qList = [...this.data.questions];
-    const question = qList[index];
-    if (!question) return;
-
-    const willShow = !question.showAI;
-    const hasAnalysis = question.aiAnalysis && question.aiAnalysis !== 'AI暂未给出解析';
-
-    const applyAI = (answer, analysis) => {
-      qList[index] = {
-        ...qList[index],
-        showAI: true,
-        aiAnswer: answer || qList[index].aiAnswer || '待补充',
-        aiAnalysis: analysis || qList[index].aiAnalysis || 'AI暂未给出解析'
-      };
-      const dList = [...this.data.displayQuestions];
-      const dIdx = dList.findIndex((q) => q.id === qList[index].id);
-      if (dIdx >= 0) dList[dIdx] = { ...qList[index] };
-      this.setData({ questions: qList, displayQuestions: dList });
-    };
-
-    if (!willShow) {
-      qList[index].showAI = false;
-      const dList = [...this.data.displayQuestions];
-      const dIdx = dList.findIndex((q) => q.id === qList[index].id);
-      if (dIdx >= 0) dList[dIdx].showAI = false;
-      this.setData({ questions: qList, displayQuestions: dList });
-      return;
-    }
-
-    if (hasAnalysis) {
-      applyAI(question.aiAnswer, question.aiAnalysis);
-      return;
-    }
-
-    wx.showLoading({ title: 'AI解析中...', mask: true });
-    wx.cloud.callFunction({
-      name: 'answer',
-      config: { timeout: 60000 },
-      data: { action: 'generate', text: question.content },
-      success: (res) => {
-        wx.hideLoading();
-        const data = res.result && res.result.data;
-        if (!res.result || !res.result.success || !data) {
-          wx.showToast({ title: '解析生成失败', icon: 'none' });
-          applyAI(question.aiAnswer, question.aiAnalysis);
-          return;
-        }
-        applyAI(data.answer, data.analysis);
-        if (question.id) {
-          wx.cloud.callFunction({
-            name: 'question',
-            data: {
-              action: 'update',
-              id: question.id,
-              aiAnswer: data.answer || '',
-              aiAnalysis: data.analysis || ''
-            }
-          });
-        }
-      },
-      fail: () => {
-        wx.hideLoading();
-        wx.showToast({ title: '解析生成失败', icon: 'none' });
-        applyAI(question.aiAnswer, question.aiAnalysis);
-      }
-    });
-  },
-
   openAIChat(e) {
     const content = e.currentTarget.dataset.content || '';
     app.globalData.aiChatContext = content;
@@ -379,16 +359,23 @@ Page({
   },
 
   viewQuestion(e) {
-    const item = this.data.displayQuestions[e.currentTarget.dataset.index];
+    const index = e.currentTarget.dataset.index;
+    const item = this.data.displayQuestions[index];
     if (!item) return;
+    const pending = item.aiStatus === 'pending';
+    const rawContent = item.content || '暂无内容';
+    const formattedContent = formatQuestionText(rawContent);
+    const contentParas = parseQuestionParas(formattedContent);
     this.setData({
       showDetailModal: true,
       detailQuestion: {
         id: item.id,
-        content: item.content || '暂无内容',
+        displayIndex: index + 1,
+        content: formattedContent,
+        contentParas: contentParas.length ? contentParas : [{ label: '', text: formattedContent, sub: false }],
         imageUrl: item.imageUrl || '',
-        aiAnswer: item.aiAnswer || '待补充',
-        aiAnalysis: item.aiAnalysis || 'AI暂未给出解析',
+        aiAnswer: formatQuestionText(item.aiAnswer || (pending ? '答案生成中…' : '待补充')),
+        aiAnalysis: formatQuestionText(item.aiAnalysis || (pending ? '解析生成中…' : 'AI暂未给出解析')),
         tags: item.tags || [],
         difficultyText: item.difficultyText,
         difficultyClass: item.difficultyClass,

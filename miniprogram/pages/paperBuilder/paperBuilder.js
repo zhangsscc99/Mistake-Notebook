@@ -104,7 +104,7 @@ Page({
 
   generatePDF: function (paper, withAnalysis) {
     wx.showLoading({
-      title: withAnalysis ? '正在生成解析...' : '正在生成PDF...',
+      title: '正在生成PDF...',
       mask: true
     });
     wx.cloud.callFunction({

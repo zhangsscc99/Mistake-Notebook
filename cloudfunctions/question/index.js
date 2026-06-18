@@ -64,6 +64,7 @@ async function createQuestion(event) {
   }
 
   const now = new Date().toISOString();
+  const hasAiContent = !!(aiAnswer || aiAnalysis);
   const questionData = {
     content: content || '',
     imageUrl: imageUrl || '',
@@ -74,6 +75,7 @@ async function createQuestion(event) {
     aiConfidence: event.aiConfidence || 0,
     aiAnswer: aiAnswer || '',
     aiAnalysis: aiAnalysis || '',
+    aiStatus: event.aiStatus || (hasAiContent ? 'ready' : ''),
     ocrConfidence: event.ocrConfidence || 0,
     isDeleted: false,
     createdAt: now,
@@ -195,7 +197,7 @@ async function updateQuestion(event) {
   }
 
   const updateFields = {};
-  const allowedFields = ['content', 'imageUrl', 'categoryId', 'category', 'difficulty', 'tags', 'aiAnswer', 'aiAnalysis', 'aiConfidence', 'ocrConfidence'];
+  const allowedFields = ['content', 'imageUrl', 'categoryId', 'category', 'difficulty', 'tags', 'aiAnswer', 'aiAnalysis', 'aiStatus', 'aiConfidence', 'ocrConfidence'];
 
   allowedFields.forEach(field => {
     if (event[field] !== undefined) {
@@ -351,77 +353,84 @@ async function invokeFunction(name, data) {
 }
 
 async function batchSaveQuestions(event) {
-  const { questions, category, difficulty, imageUrl } = event;
+  const { questions, category, difficulty, imageUrl, generateAi = false } = event;
 
   if (!questions || !Array.isArray(questions) || questions.length === 0) {
     return { success: false, error: 'Missing questions array' };
   }
 
-  const saved = [];
   const baseDifficulty = DIFFICULTY_MAP[difficulty] || 'MEDIUM';
 
-  for (const item of questions) {
-    const text = (item.text || item.content || '').trim();
-    if (!text) continue;
+  const saved = await Promise.all(
+    questions.map(async (item) => {
+      const text = (item.text || item.content || '').trim();
+      if (!text) return null;
 
-    let finalCategory = category || item.subject || '';
-    let finalDifficulty = baseDifficulty;
-    let tags = [];
-    let aiConfidence = item.confidence || 0;
-    let aiAnswer = '';
-    let aiAnalysis = '';
+      let finalCategory = category || item.subject || '';
+      let finalDifficulty = baseDifficulty;
+      let tags = [];
+      let aiConfidence = item.confidence || 0;
+      let aiAnswer = '';
+      let aiAnalysis = '';
 
-    const classifyRes = await invokeFunction('classify', {
-      action: 'classify',
-      text
-    });
-    if (classifyRes.success && classifyRes.data) {
-      finalCategory = classifyRes.data.category || finalCategory;
-      tags = classifyRes.data.tags || [];
-      if (classifyRes.data.difficulty) {
-        finalDifficulty = classifyRes.data.difficulty;
-      }
-      aiConfidence = classifyRes.data.confidence || aiConfidence;
-    }
+      if (item.type) tags.push(item.type);
+      if (item.subject && item.subject !== finalCategory) tags.push(item.subject);
 
-    try {
-      const answerRes = await invokeFunction('answer', {
-        action: 'generate',
-        text
-      });
-      if (answerRes.success && answerRes.data) {
-        aiAnswer = answerRes.data.answer || '';
-        aiAnalysis = answerRes.data.analysis || '';
-        if (answerRes.data.confidence) {
-          aiConfidence = Math.max(aiConfidence, answerRes.data.confidence);
+      if (generateAi) {
+        const classifyRes = await invokeFunction('classify', {
+          action: 'classify',
+          text
+        });
+        if (classifyRes.success && classifyRes.data) {
+          finalCategory = classifyRes.data.category || finalCategory;
+          tags = Array.from(new Set([...(classifyRes.data.tags || []), ...tags]));
+          if (classifyRes.data.difficulty) {
+            finalDifficulty = classifyRes.data.difficulty;
+          }
+          aiConfidence = classifyRes.data.confidence || aiConfidence;
+        }
+
+        try {
+          const answerRes = await invokeFunction('answer', {
+            action: 'generate',
+            text
+          });
+          if (answerRes.success && answerRes.data) {
+            aiAnswer = answerRes.data.answer || '';
+            aiAnalysis = answerRes.data.analysis || '';
+            if (answerRes.data.confidence) {
+              aiConfidence = Math.max(aiConfidence, answerRes.data.confidence);
+            }
+          }
+        } catch (e) {
+          console.warn('Answer generation skipped for one question', e);
         }
       }
-    } catch (e) {
-      console.warn('Answer generation skipped for one question', e);
-    }
 
-    const createRes = await createQuestion({
-      content: text,
-      imageUrl: imageUrl || '',
-      category: finalCategory,
-      difficulty: finalDifficulty,
-      tags,
-      aiConfidence,
-      aiAnswer,
-      aiAnalysis,
-      ocrConfidence: item.confidence || 0.85
-    });
+      const createRes = await createQuestion({
+        content: text,
+        imageUrl: imageUrl || '',
+        category: finalCategory,
+        difficulty: finalDifficulty,
+        tags,
+        aiConfidence,
+        aiAnswer,
+        aiAnalysis,
+        aiStatus: (aiAnswer || aiAnalysis) ? 'ready' : 'pending',
+        ocrConfidence: item.confidence || 0.85
+      });
 
-    if (createRes.success) {
-      saved.push(createRes.data);
-    }
-  }
+      return createRes.success ? createRes.data : null;
+    })
+  );
+
+  const savedQuestions = saved.filter(Boolean);
 
   return {
     success: true,
     data: {
-      savedCount: saved.length,
-      questions: saved
+      savedCount: savedQuestions.length,
+      questions: savedQuestions
     }
   };
 }

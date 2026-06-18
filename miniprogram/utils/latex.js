@@ -51,10 +51,15 @@ function convertMath(seg) {
   let t = seg;
 
   t = t.replace(/\\mathbb\s*\{R\}/g, 'ℝ')
+    .replace(/\\mathbb\s*R\b/g, 'ℝ')
     .replace(/\\mathbb\s*\{N\}/g, 'ℕ')
+    .replace(/\\mathbb\s*N\b/g, 'ℕ')
     .replace(/\\mathbb\s*\{Z\}/g, 'ℤ')
+    .replace(/\\mathbb\s*Z\b/g, 'ℤ')
     .replace(/\\mathbb\s*\{Q\}/g, 'ℚ')
-    .replace(/\\mathbb\s*\{C\}/g, 'ℂ');
+    .replace(/\\mathbb\s*Q\b/g, 'ℚ')
+    .replace(/\\mathbb\s*\{C\}/g, 'ℂ')
+    .replace(/\\mathbb\s*C\b/g, 'ℂ');
 
   // \frac{a}{b} -> (a)/(b)
   t = t.replace(/\\d?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, '($1)/($2)');

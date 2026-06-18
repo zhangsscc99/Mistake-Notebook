@@ -618,7 +618,34 @@
 
 .detail-modal-body {
   flex: 1;
+  height: 0;
+  min-height: 200px;
+  max-height: 58vh;
   padding: 16px 18px;
+  box-sizing: border-box;
+}
+
+.detail-para {
+  margin-bottom: 12px;
+}
+
+.detail-para:last-child {
+  margin-bottom: 0;
+}
+
+.detail-sub-head {
+  margin-bottom: 4px;
+}
+
+.detail-para-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2459ff;
+}
+
+.detail-sub-body {
+  padding-left: 8px;
+  border-left: 3px solid rgba(36, 89, 255, 0.2);
 }
 
 .detail-img {
