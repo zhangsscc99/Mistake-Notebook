@@ -103,6 +103,51 @@ Page({
   },
 
   generatePDF: function (paper, withAnalysis) {
+    if (withAnalysis) {
+      const ids = (paper.questions || [])
+        .map((q) => normalizePaperQuestion(q).id)
+        .filter(Boolean);
+      if (ids.length) {
+        wx.showLoading({ title: '正在同步解析...', mask: true });
+        wx.cloud.callFunction({
+          name: 'question',
+          data: { action: 'batch', ids },
+          success: (res) => {
+            const freshMap = {};
+            if (res.result && res.result.success && Array.isArray(res.result.data)) {
+              res.result.data.forEach((q) => {
+                freshMap[q.id || q._id] = q;
+              });
+            }
+            const mergedPaper = {
+              ...paper,
+              questions: (paper.questions || []).map((q) => {
+                const normalized = normalizePaperQuestion(q);
+                const fresh = freshMap[normalized.id];
+                if (!fresh) return normalized;
+                return {
+                  ...normalized,
+                  answer: fresh.aiAnswer || normalized.answer,
+                  analysis: fresh.aiAnalysis || normalized.analysis,
+                  aiAnswer: fresh.aiAnswer || normalized.aiAnswer,
+                  aiAnalysis: fresh.aiAnalysis || normalized.aiAnalysis,
+                  aiStatus: fresh.aiStatus || normalized.aiStatus
+                };
+              })
+            };
+            this.callPdfGenerate(mergedPaper, withAnalysis);
+          },
+          fail: () => {
+            this.callPdfGenerate(paper, withAnalysis);
+          }
+        });
+        return;
+      }
+    }
+    this.callPdfGenerate(paper, withAnalysis);
+  },
+
+  callPdfGenerate: function (paper, withAnalysis) {
     wx.showLoading({
       title: '正在生成PDF...',
       mask: true

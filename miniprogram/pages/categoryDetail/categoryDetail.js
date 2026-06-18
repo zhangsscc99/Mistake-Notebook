@@ -55,6 +55,38 @@ function formatQuestionText(raw) {
   return formatLatex(raw || '');
 }
 
+function buildAiDisplayText(value, pending, emptyFallback, pendingFallback) {
+  const raw = (value || '').trim();
+  if (raw) return formatQuestionText(raw);
+  if (pending) return pendingFallback;
+  return emptyFallback;
+}
+
+function buildDetailQuestion(item, index) {
+  const pending = item.aiStatus === 'pending';
+  const hasAiAnswer = !!(item.aiAnswer && String(item.aiAnswer).trim());
+  const hasAiAnalysis = !!(item.aiAnalysis && String(item.aiAnalysis).trim());
+  const rawContent = item.content || '暂无内容';
+  const formattedContent = formatQuestionText(rawContent);
+  const contentParas = parseQuestionParas(formattedContent);
+  return {
+    id: item.id,
+    displayIndex: index + 1,
+    content: formattedContent,
+    contentParas: contentParas.length ? contentParas : [{ label: '', text: formattedContent, sub: false }],
+    imageUrl: item.imageUrl || '',
+    hasAiAnswer,
+    hasAiAnalysis,
+    aiAnswer: buildAiDisplayText(item.aiAnswer, pending, '暂无 AI 答案', 'AI 答案生成中…'),
+    aiAnalysis: buildAiDisplayText(item.aiAnalysis, pending, '暂无 AI 解析', 'AI 解析生成中…'),
+    aiStatus: item.aiStatus || '',
+    tags: item.tags || [],
+    difficultyText: item.difficultyText,
+    difficultyClass: item.difficultyClass,
+    formattedDate: item.formattedDate
+  };
+}
+
 Page({
   data: {
     categoryId: null,
@@ -362,24 +394,38 @@ Page({
     const index = e.currentTarget.dataset.index;
     const item = this.data.displayQuestions[index];
     if (!item) return;
-    const pending = item.aiStatus === 'pending';
-    const rawContent = item.content || '暂无内容';
-    const formattedContent = formatQuestionText(rawContent);
-    const contentParas = parseQuestionParas(formattedContent);
+
     this.setData({
       showDetailModal: true,
-      detailQuestion: {
-        id: item.id,
-        displayIndex: index + 1,
-        content: formattedContent,
-        contentParas: contentParas.length ? contentParas : [{ label: '', text: formattedContent, sub: false }],
-        imageUrl: item.imageUrl || '',
-        aiAnswer: formatQuestionText(item.aiAnswer || (pending ? '答案生成中…' : '待补充')),
-        aiAnalysis: formatQuestionText(item.aiAnalysis || (pending ? '解析生成中…' : 'AI暂未给出解析')),
-        tags: item.tags || [],
-        difficultyText: item.difficultyText,
-        difficultyClass: item.difficultyClass,
-        formattedDate: item.formattedDate
+      detailQuestion: buildDetailQuestion(item, index)
+    });
+
+    if (!item.id) return;
+
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'get', id: item.id },
+      success: (res) => {
+        const fresh = res.result && res.result.data;
+        if (!res.result || !res.result.success || !fresh) return;
+
+        const merged = {
+          ...item,
+          aiAnswer: fresh.aiAnswer || item.aiAnswer || '',
+          aiAnalysis: fresh.aiAnalysis || item.aiAnalysis || '',
+          aiStatus: fresh.aiStatus || item.aiStatus || '',
+          content: fresh.content || item.content,
+          tags: fresh.tags || item.tags
+        };
+
+        const questions = this.data.questions.map((q) => (
+          String(q.id) === String(item.id) ? { ...q, ...merged } : q
+        ));
+        this.setData({
+          questions,
+          detailQuestion: buildDetailQuestion(merged, index)
+        });
+        this.applyFilters();
       }
     });
   },

@@ -38,6 +38,8 @@ exports.main = async (event, context) => {
         return await statsByDifficulty();
       case 'batchSave':
         return await batchSaveQuestions(event);
+      case 'generateAnswerAsync':
+        return await generateAnswerAsync(event);
       default:
         return { success: false, error: `Unknown action: ${action}` };
     }
@@ -352,6 +354,59 @@ async function invokeFunction(name, data) {
   return res.result || {};
 }
 
+function scheduleAnswerGeneration(id, text) {
+  cloud.callFunction({
+    name: 'question',
+    data: { action: 'generateAnswerAsync', id, text }
+  }).catch((err) => {
+    console.warn('scheduleAnswerGeneration failed:', id, err.message);
+  });
+}
+
+async function generateAnswerAsync(event) {
+  const { id, text } = event;
+  if (!id || !text) {
+    return { success: false, error: 'Missing id or text' };
+  }
+
+  try {
+    const existing = await db.collection('questions').doc(String(id)).get();
+    const doc = existing.data;
+    if (doc && doc.aiStatus === 'ready' && doc.aiAnalysis) {
+      return { success: true, data: { skipped: true } };
+    }
+  } catch (e) {
+    console.warn('generateAnswerAsync precheck failed:', e.message);
+  }
+
+  const now = new Date().toISOString();
+  await db.collection('questions').doc(String(id)).update({
+    data: { aiStatus: 'pending', updatedAt: now }
+  });
+
+  try {
+    const answerRes = await invokeFunction('answer', { action: 'generate', text });
+    if (answerRes.success && answerRes.data) {
+      await db.collection('questions').doc(String(id)).update({
+        data: {
+          aiAnswer: answerRes.data.answer || '',
+          aiAnalysis: answerRes.data.analysis || '',
+          aiStatus: 'ready',
+          updatedAt: new Date().toISOString()
+        }
+      });
+      return { success: true, data: { updated: true } };
+    }
+  } catch (e) {
+    console.warn('generateAnswerAsync answer failed:', e.message);
+  }
+
+  await db.collection('questions').doc(String(id)).update({
+    data: { aiStatus: 'failed', updatedAt: new Date().toISOString() }
+  });
+  return { success: false, error: 'Answer generation failed' };
+}
+
 async function batchSaveQuestions(event) {
   const { questions, category, difficulty, imageUrl, generateAi = false } = event;
 
@@ -419,6 +474,11 @@ async function batchSaveQuestions(event) {
         aiStatus: (aiAnswer || aiAnalysis) ? 'ready' : 'pending',
         ocrConfidence: item.confidence || 0.85
       });
+
+      if (createRes.success && createRes.data && !aiAnswer && !aiAnalysis) {
+        const qid = createRes.data.id || createRes.data._id;
+        if (qid) scheduleAnswerGeneration(qid, text);
+      }
 
       return createRes.success ? createRes.data : null;
     })

@@ -177,14 +177,14 @@
         </view>
       </view>
 
-      <view class="detail-section" wx:if="{{detailQuestion.aiAnswer && detailQuestion.aiAnswer !== '待补充'}}">
-        <text class="detail-section-title">参考答案</text>
-        <text class="detail-section-body">{{detailQuestion.aiAnswer}}</text>
+      <view class="detail-section detail-section-ai">
+        <text class="detail-section-title">AI 答案</text>
+        <text class="detail-section-body {{detailQuestion.aiStatus === 'pending' && !detailQuestion.hasAiAnswer ? 'detail-placeholder' : ''}}">{{detailQuestion.aiAnswer}}</text>
       </view>
 
-      <view class="detail-section" wx:if="{{detailQuestion.aiAnalysis && detailQuestion.aiAnalysis !== 'AI暂未给出解析'}}">
-        <text class="detail-section-title">解析</text>
-        <text class="detail-section-body">{{detailQuestion.aiAnalysis}}</text>
+      <view class="detail-section detail-section-ai">
+        <text class="detail-section-title">AI 解析</text>
+        <text class="detail-section-body {{detailQuestion.aiStatus === 'pending' && !detailQuestion.hasAiAnalysis ? 'detail-placeholder' : ''}}">{{detailQuestion.aiAnalysis}}</text>
       </view>
 
       <view class="detail-section" wx:if="{{detailQuestion.tags && detailQuestion.tags.length > 0}}">

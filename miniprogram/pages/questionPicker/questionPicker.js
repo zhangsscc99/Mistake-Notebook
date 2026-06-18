@@ -186,8 +186,6 @@ Page({
         if (res.result && res.result.success) {
           app.globalData.recognitionDraft = null;
           const count = res.result.data.savedCount || selectedQuestions.length;
-          const savedQuestions = (res.result.data && res.result.data.questions) || [];
-          this.generateAnswersInBackground(savedQuestions);
           wx.showToast({ title: `已保存${count}道题`, icon: 'success' });
           setTimeout(() => {
             wx.switchTab({ url: '/pages/categories/categories' });
@@ -209,52 +207,6 @@ Page({
           showCancel: false
         });
       }
-    });
-  },
-
-  generateAnswersInBackground: function (savedQuestions) {
-    (savedQuestions || []).forEach((question) => {
-      const text = question.content;
-      const id = question.id || question._id;
-      if (!text || !id) return;
-      if (question.aiStatus === 'ready' && question.aiAnalysis) return;
-
-      wx.cloud.callFunction({
-        name: 'question',
-        data: { action: 'update', id, aiStatus: 'pending' }
-      });
-
-      wx.cloud.callFunction({
-        name: 'answer',
-        config: { timeout: 60000 },
-        data: { action: 'generate', text },
-        success: (res) => {
-          const data = res.result && res.result.data;
-          if (!res.result || !res.result.success || !data) {
-            wx.cloud.callFunction({
-              name: 'question',
-              data: { action: 'update', id, aiStatus: 'failed' }
-            });
-            return;
-          }
-          wx.cloud.callFunction({
-            name: 'question',
-            data: {
-              action: 'update',
-              id,
-              aiAnswer: data.answer || '',
-              aiAnalysis: data.analysis || '',
-              aiStatus: 'ready'
-            }
-          });
-        },
-        fail: () => {
-          wx.cloud.callFunction({
-            name: 'question',
-            data: { action: 'update', id, aiStatus: 'failed' }
-          });
-        }
-      });
     });
   }
 });
