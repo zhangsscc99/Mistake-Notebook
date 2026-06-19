@@ -39,7 +39,11 @@ Page({
       data: { action: 'list' },
       success: (res) => {
         if (res.result && res.result.success && Array.isArray(res.result.data)) {
-          const records = res.result.data.slice(0, 10).map((q) => ({
+          const settled = res.result.data.filter((q) => {
+            const status = q.aiStatus || '';
+            return status !== 'pending' && status !== 'processing' && status !== 'failed';
+          });
+          const records = settled.slice(0, 10).map((q) => ({
             id: q._id || q.id,
             title: buildRecentTitle(q),
             timeText: formatTime(q.createdAt),

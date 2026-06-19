@@ -1,0 +1,40 @@
+<!--pages/analyzing/analyzing.wxml-->
+<view class="analyzing-page">
+  <view class="page-header">
+    <text class="page-title">AI 解析进度</text>
+    <text class="page-desc" wx:if="{{pendingCount > 0}}">共 {{pendingCount}} 道题正在后台生成解析</text>
+  </view>
+
+  <view class="loading-wrap" wx:if="{{loading}}">
+    <text class="loading-text">加载中…</text>
+  </view>
+
+  <view class="empty-state" wx:elif="{{allDone}}">
+    <text class="empty-icon">✓</text>
+    <text class="empty-title">全部解析完成</text>
+    <text class="empty-desc">题目已自动进入对应分类</text>
+    <button class="back-btn" bindtap="goBack">返回分类</button>
+  </view>
+
+  <view class="question-list" wx:else>
+    <view class="question-item" wx:for="{{pendingList}}" wx:key="id">
+      <view class="item-header">
+        <text class="item-index">第{{item.displayIndex}}题</text>
+        <text class="item-category" wx:if="{{item.category}}">{{item.category}}</text>
+      </view>
+      <text class="item-preview">{{item.preview || '暂无内容'}}</text>
+
+      <view class="status-row" wx:if="{{item.isAnalyzing}}">
+        <view class="indeterminate-bar">
+          <view class="indeterminate-bar-fill"></view>
+        </view>
+        <text class="status-text analyzing">{{item.statusText}}</text>
+      </view>
+
+      <view class="status-row failed-row" wx:elif="{{item.isFailed}}">
+        <text class="status-text failed">解析失败</text>
+        <button class="retry-btn" size="mini" bindtap="retryQuestion" data-id="{{item.id}}">重试</button>
+      </view>
+    </view>
+  </view>
+</view>

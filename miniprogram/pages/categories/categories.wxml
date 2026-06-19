@@ -40,6 +40,21 @@
     </view>
   </view>
 
+  <!-- 解析中卡片 -->
+  <view class="pending-card" wx:if="{{pendingCount > 0}}" bindtap="goToAnalyzing">
+    <view class="pending-card-header">
+      <view class="pending-card-left">
+        <text class="pending-card-title">解析中</text>
+        <text class="pending-card-count">· {{pendingCount}} 道题</text>
+      </view>
+      <text class="pending-card-arrow">›</text>
+    </view>
+    <view class="pending-indeterminate-bar">
+      <view class="pending-indeterminate-fill"></view>
+    </view>
+    <text class="pending-card-hint">点击查看 AI 解析进度</text>
+  </view>
+
   <!-- 分类列表 -->
   <view class="categories-section">
     <view class="category-card"

@@ -3,6 +3,7 @@
     "pages/index/index",
     "pages/categories/categories",
     "pages/categoryDetail/categoryDetail",
+    "pages/analyzing/analyzing",
     "pages/paperBuilder/paperBuilder",
     "pages/questionPicker/questionPicker",
     "pages/questionSelector/questionSelector",

@@ -320,3 +320,78 @@
   color: rgba(11, 22, 51, 0.55);
   padding: 4px 8px;
 }
+
+/* 解析中卡片 */
+.pending-card {
+  margin: 0 20px 16px;
+  padding: 16px 18px;
+  background: #fff;
+  border: 1px solid rgba(36, 89, 255, 0.18);
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
+}
+
+.pending-card:active {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 40px rgba(31, 91, 255, 0.12);
+}
+
+.pending-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.pending-card-left {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.pending-card-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #2459ff;
+}
+
+.pending-card-count {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(11, 22, 51, 0.55);
+}
+
+.pending-card-arrow {
+  font-size: 20px;
+  color: rgba(11, 22, 51, 0.35);
+}
+
+.pending-indeterminate-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(36, 89, 255, 0.12);
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.pending-indeterminate-fill {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2459ff, #52b7ff);
+  animation: pendingShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes pendingShimmer {
+  0% { left: -40%; }
+  100% { left: 100%; }
+}
+
+.pending-card-hint {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.45);
+}

@@ -198,32 +198,16 @@ Page({
         throw new Error('没有成功保存的题目');
       }
 
-      let chain = Promise.resolve();
-      saved.forEach((q, index) => {
-        chain = chain.then(() => {
-          const id = q.id || q._id;
-          if (!id) return Promise.resolve();
-          wx.showLoading({
-            title: `正在生成解析 (${index + 1}/${saved.length})...`,
-            mask: true
-          });
-          return this.callQuestion('generateAnswer', { id }, 60000).catch((err) => {
-            console.warn('generateAnswer failed:', id, err);
-            return null;
-          });
-        });
-      });
-
-      return chain.then(() => saveRes);
+      return saveRes;
     }).then((saveRes) => {
       wx.hideLoading();
       this.setData({ saving: false });
       app.globalData.recognitionDraft = null;
       const count = saveRes.data.savedCount || selectedQuestions.length;
-      wx.showToast({ title: `已保存${count}道题`, icon: 'success' });
+      wx.showToast({ title: `已保存${count}道，AI解析中`, icon: 'none', duration: 2000 });
       setTimeout(() => {
         wx.switchTab({ url: '/pages/categories/categories' });
-      }, 1000);
+      }, 800);
     }).catch((err) => {
       wx.hideLoading();
       this.setData({ saving: false });

@@ -33,6 +33,10 @@ exports.main = async (event, context) => {
         return await batchDeleteQuestions(event);
       case 'byCategory':
         return await getQuestionsByCategory(event);
+      case 'pending':
+        return await listPendingQuestions(event);
+      case 'retry':
+        return await retryQuestion(event);
       case 'statsCategory':
         return await statsByCategory();
       case 'statsDifficulty':
@@ -295,16 +299,17 @@ async function getQuestionsByCategory(event) {
   }
 
   const category = await resolveCategory({ categoryId, categoryName });
-  const conditions = [{ categoryId: String(categoryId), isDeleted: false }];
+  const settled = _.nin(['pending', 'processing', 'failed']);
+  const conditions = [{ categoryId: String(categoryId), isDeleted: false, aiStatus: settled }];
 
   if (category && category._id) {
-    conditions.push({ categoryId: category._id, isDeleted: false });
+    conditions.push({ categoryId: category._id, isDeleted: false, aiStatus: settled });
   }
   if (category && category.name) {
-    conditions.push({ category: category.name, isDeleted: false });
+    conditions.push({ category: category.name, isDeleted: false, aiStatus: settled });
   }
   if (categoryName) {
-    conditions.push({ category: String(categoryName), isDeleted: false });
+    conditions.push({ category: String(categoryName), isDeleted: false, aiStatus: settled });
   }
 
   const result = await db.collection('questions')
@@ -313,6 +318,36 @@ async function getQuestionsByCategory(event) {
     .get();
 
   return { success: true, data: mapQuestionList(result.data) };
+}
+
+async function listPendingQuestions() {
+  const result = await db.collection('questions')
+    .where({
+      isDeleted: false,
+      aiStatus: _.in(['pending', 'processing', 'failed'])
+    })
+    .orderBy('createdAt', 'desc')
+    .get();
+
+  return { success: true, data: mapQuestionList(result.data) };
+}
+
+async function retryQuestion(event) {
+  const { id } = event;
+  if (!id) {
+    return { success: false, error: 'Missing question id' };
+  }
+
+  await db.collection('questions')
+    .doc(String(id))
+    .update({
+      data: {
+        aiStatus: 'pending',
+        updatedAt: new Date().toISOString()
+      }
+    });
+
+  return { success: true, data: { _id: id, aiStatus: 'pending' } };
 }
 
 async function statsByCategory() {

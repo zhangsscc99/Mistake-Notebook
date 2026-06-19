@@ -1,5 +1,6 @@
 // pages/categories/categories.js
 const app = getApp();
+const { startPendingWatch, closePendingWatch, fetchPendingQuestions } = require('../../utils/aiPendingWatch.js');
 
 const SYMBOL_MAP = {
   '数学': '数', '物理': '物', '化学': '化', '英语': '英',
@@ -30,6 +31,7 @@ Page({
   data: {
     totalQuestions: 0,
     todayAdded: 0,
+    pendingCount: 0,
     categories: [],
     filteredCategories: [],
     searchKeyword: '',
@@ -41,6 +43,16 @@ Page({
     this.setData({ isPaperBuilderMode });
     this.fetchStats();
     this.fetchCategories();
+    this.loadPending();
+    this.startWatch();
+  },
+
+  onHide: function () {
+    this.stopWatch();
+  },
+
+  onUnload: function () {
+    this.stopWatch();
   },
 
   onPullDownRefresh: function () {
@@ -48,7 +60,7 @@ Page({
     let done = 0;
     const finish = () => {
       done++;
-      if (done >= 2) wx.stopPullDownRefresh();
+      if (done >= 3) wx.stopPullDownRefresh();
     };
     wx.cloud.callFunction({
       name: 'category',
@@ -56,7 +68,11 @@ Page({
       success: (res) => {
         if (res.result && res.result.success) {
           const data = res.result.data;
-          that.setData({ totalQuestions: data.totalQuestions || 0, todayAdded: data.todayAdded || 0 });
+          that.setData({
+            totalQuestions: data.totalQuestions || 0,
+            todayAdded: data.todayAdded || 0,
+            pendingCount: data.pendingCount || 0
+          });
         }
         finish();
       },
@@ -74,6 +90,12 @@ Page({
       },
       fail: finish
     });
+    fetchPendingQuestions()
+      .then((list) => {
+        that.setData({ pendingCount: list.length });
+      })
+      .catch(() => {})
+      .finally(finish);
   },
 
   fetchStats: function () {
@@ -85,7 +107,8 @@ Page({
           const data = res.result.data;
           this.setData({
             totalQuestions: data.totalQuestions || 0,
-            todayAdded: data.todayAdded || 0
+            todayAdded: data.todayAdded || 0,
+            pendingCount: data.pendingCount || 0
           });
         }
       },
@@ -111,16 +134,34 @@ Page({
     });
   },
 
-  setMockCategories: function () {
-    const raw = [
-      { id: 1, name: '数学', description: '高数、代数、几何错题等', color: '#2459ff', questionCount: 15, tags: ['函数', '方程', '几何'] },
-      { id: 2, name: '物理', description: '力学、电磁学、光学、热学等', color: '#2459ff', questionCount: 10, tags: ['力学', '电学'] },
-      { id: 3, name: '化学', description: '无机、有机、化学反应平衡等', color: '#2459ff', questionCount: 6, tags: ['有机', '无机', '反应'] },
-      { id: 4, name: '英语', description: '阅读理解、完形填空、语法填空等', color: '#2459ff', questionCount: 8, tags: ['阅读', '填空'] },
-      { id: 5, name: '语文', description: '文言文阅读、诗歌鉴赏、现代文等', color: '#2459ff', questionCount: 3, tags: ['文言文', '诗歌'] }
-    ];
-    const categories = raw.map(c => ({ ...c, icon: SYMBOL_MAP[c.name] || '题' }));
-    this.setData({ categories, filteredCategories: categories });
+  loadPending: function () {
+    fetchPendingQuestions()
+      .then((list) => {
+        this.setData({ pendingCount: list.length });
+      })
+      .catch(() => {});
+  },
+
+  startWatch: function () {
+    this.stopWatch();
+    this._watcher = startPendingWatch((docs) => {
+      const pendingCount = docs.length;
+      const prevCount = this.data.pendingCount;
+      this.setData({ pendingCount });
+      if (prevCount > 0 && pendingCount === 0) {
+        this.fetchStats();
+        this.fetchCategories();
+      }
+    });
+  },
+
+  stopWatch: function () {
+    closePendingWatch(this._watcher);
+    this._watcher = null;
+  },
+
+  goToAnalyzing: function () {
+    wx.navigateTo({ url: '/pages/analyzing/analyzing' });
   },
 
   onSearchInput: function (e) {

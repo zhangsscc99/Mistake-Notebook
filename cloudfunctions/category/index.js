@@ -1,8 +1,12 @@
 const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
+const _ = db.command;
 const $ = db.command.aggregate;
 const { normalizeCategory } = require('./normalize');
+
+const PENDING_STATUSES = ['pending', 'processing', 'failed'];
+const settledStatus = () => _.nin(PENDING_STATUSES);
 
 exports.main = async (event, context) => {
   const { action } = event;
@@ -36,7 +40,8 @@ async function listCategories() {
     const countResult = await db.collection('questions')
       .where({
         categoryId: cat._id,
-        isDeleted: false
+        isDeleted: false,
+        aiStatus: settledStatus()
       })
       .count();
     return normalizeCategory({
@@ -77,7 +82,7 @@ async function getCategory(event) {
   }
 
   const countResult = await db.collection('questions')
-    .where({ categoryId: category._id, isDeleted: false })
+    .where({ categoryId: category._id, isDeleted: false, aiStatus: settledStatus() })
     .count();
 
   return {
@@ -94,7 +99,7 @@ async function getStats() {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const totalQuestionsResult = await db.collection('questions')
-    .where({ isDeleted: false })
+    .where({ isDeleted: false, aiStatus: settledStatus() })
     .count();
 
   const totalCategoriesResult = await db.collection('categories')
@@ -104,7 +109,15 @@ async function getStats() {
   const todayAddedResult = await db.collection('questions')
     .where({
       isDeleted: false,
+      aiStatus: settledStatus(),
       createdAt: db.command.gte(todayStart.toISOString())
+    })
+    .count();
+
+  const pendingResult = await db.collection('questions')
+    .where({
+      isDeleted: false,
+      aiStatus: _.in(PENDING_STATUSES)
     })
     .count();
 
@@ -113,7 +126,8 @@ async function getStats() {
     data: {
       totalQuestions: totalQuestionsResult.total,
       totalCategories: totalCategoriesResult.total,
-      todayAdded: todayAddedResult.total
+      todayAdded: todayAddedResult.total,
+      pendingCount: pendingResult.total
     }
   };
 }

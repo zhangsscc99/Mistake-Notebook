@@ -8,7 +8,7 @@ const _ = db.command;
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 const DASHSCOPE_MODEL = 'qwen3-vl-flash';
-const PENDING_BATCH_SIZE = 2;
+const PENDING_BATCH_SIZE = 5;
 
 function callDashScope(messages, temperature = 0.2) {
   return new Promise((resolve, reject) => {
