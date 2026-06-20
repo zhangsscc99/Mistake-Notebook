@@ -77,7 +77,7 @@ function buildDetailQuestion(item, index) {
     imageUrl: item.imageUrl || '',
     hasAiAnswer,
     hasAiAnalysis,
-    aiAnswer: buildAiDisplayText(item.aiAnswer, pending, '暂无 AI 答案', 'AI 答案生成中…'),
+    aiAnswer: buildAiDisplayText(item.aiAnswer, pending, hasAiAnalysis ? '见下方解析' : '暂无 AI 答案', 'AI 答案生成中…'),
     aiAnalysis: buildAiDisplayText(item.aiAnalysis, pending, '暂无 AI 解析', 'AI 解析生成中…'),
     aiStatus: item.aiStatus || '',
     tags: item.tags || [],

@@ -46,13 +46,41 @@ function callDashScope(messages, temperature = 0.2) {
   });
 }
 
+function parseAnswerResult(content) {
+  const result = { answer: '', analysis: '', confidence: 0 };
+  const raw = String(content || '').trim();
+
+  try {
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      result.answer = parsed.answer || '';
+      result.analysis = parsed.analysis || '';
+      result.confidence = parsed.confidence || 0;
+      if (result.answer || result.analysis) {
+        return result;
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse answer JSON, falling back to text', e.message);
+  }
+
+  const cleaned = raw.replace(/```json|```/g, '').trim();
+  result.analysis = cleaned;
+  const m = cleaned.match(/(?:最终答案|答案)[:：]?\s*([^\n]{1,200})/);
+  result.answer = m ? m[1].trim() : '';
+  return result;
+}
+
 async function generateAnswerText(text) {
   const prompt = `请解答以下题目，给出详细的解题步骤和最终答案。
 
 题目内容：
 ${text}
 
-请以JSON格式返回（不要包含markdown代码块标记）：
+只返回一个纯 JSON 对象，不要输出任何解释文字，不要使用 markdown 代码块（不要出现 \`\`\`）。
+JSON 字符串内部的换行用 \\n，遇到反斜杠、双引号、数学符号请正确转义，确保整体可被 JSON.parse 解析。
+格式如下：
 {
   "answer": "最终的答案",
   "analysis": "详细的解题步骤和分析过程",
@@ -64,20 +92,7 @@ ${text}
     throw new Error('Answer generation failed: ' + JSON.stringify(response).slice(0, 200));
   }
 
-  const content = response.choices[0].message.content;
-  let result = { answer: '', analysis: '', confidence: 0 };
-
-  try {
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      result = { ...result, ...JSON.parse(jsonMatch[0]) };
-    }
-  } catch (e) {
-    console.warn('Failed to parse answer JSON, returning raw text', e.message);
-    result.answer = content;
-  }
-
-  return result;
+  return parseAnswerResult(response.choices[0].message.content);
 }
 
 function resolveDocId(event) {
