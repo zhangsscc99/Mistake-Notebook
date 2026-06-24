@@ -101,4 +101,9 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
      * 根据分类ID查询题目列表
      */
     List<Question> findByCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(Long categoryId);
+
+    /**
+     * 根据AI解析状态查询题目（未删除）—— 用于"解析中"轮询
+     */
+    List<Question> findByAiStatusInAndIsDeletedFalseOrderByCreatedAtDesc(List<Question.AiStatus> statuses);
 } 

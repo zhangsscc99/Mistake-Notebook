@@ -42,11 +42,11 @@
         
         <!-- 操作按钮 -->
         <div class="action-buttons">
-          <van-button type="primary" size="small" @click="startPractice">
+          <van-button v-if="!isPaperSelectMode" type="primary" size="small" @click="startPractice">
             开始练习
           </van-button>
-          <van-button type="default" size="small" @click="addToExam">
-            加入组卷
+          <van-button :type="isPaperSelectMode ? 'primary' : 'default'" size="small" @click="addToExam">
+            {{ isPaperSelectMode ? '确认组卷' : '加入组卷' }}
           </van-button>
         </div>
       </div>
@@ -59,6 +59,10 @@
         <van-dropdown-item v-model="filterBy" :options="filterOptions" />
         <van-dropdown-item v-model="knowledgePointFilter" :options="knowledgePointOptions" />
       </van-dropdown-menu>
+      <div class="group-toggle">
+        <span class="group-toggle-label">按知识点分组</span>
+        <van-switch v-model="groupByKnowledgePoint" size="20px" />
+      </div>
     </div>
 
     <!-- 知识点分组展示 -->
@@ -92,7 +96,7 @@
               
               <!-- 识别的文字 -->
               <div class="question-text">
-                <p>{{ question.recognizedText }}</p>
+                <p>{{ question.displayContent || question.recognizedText }}</p>
               </div>
               
               <!-- 标签 -->
@@ -111,6 +115,8 @@
             <!-- 题目元信息 -->
             <div class="question-meta">
               <div class="meta-left">
+                <span class="q-index">#{{ question.displayIndex }}</span>
+                <span class="q-difficulty" :class="'diff-' + question.difficulty">{{ getDifficultyText(question.difficulty) }}</span>
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
               </div>
               <div class="meta-right" v-if="editMode">
@@ -119,6 +125,27 @@
                   @click.stop="toggleSelection(question)"
                 />
               </div>
+            </div>
+            <van-button
+              v-if="!editMode"
+              size="mini"
+              type="primary"
+              plain
+              class="ai-toggle-btn"
+              @click.stop="openAIChat(question)"
+            >
+              AI答疑
+            </van-button>
+            <div v-if="question.showAI && !editMode" class="ai-box">
+              <div class="ai-title">AI 标准答案与解析</div>
+              <div class="ai-subtitle">标准答案：</div>
+              <p class="ai-content" :class="{ 'detail-placeholder': question.aiPending && !question.hasAiAnswer }">
+                {{ question.displayAiAnswer }}
+              </p>
+              <div class="ai-subtitle ai-subtitle-gap">智能解析：</div>
+              <p class="ai-content" :class="{ 'detail-placeholder': question.aiPending && !question.hasAiAnalysis }">
+                {{ question.displayAiAnalysis }}
+              </p>
             </div>
           </div>
         </div>
@@ -154,7 +181,7 @@
               
               <!-- 识别的文字 -->
               <div class="question-text">
-                <p>{{ question.recognizedText }}</p>
+                <p>{{ question.displayContent || question.recognizedText }}</p>
               </div>
               
               <!-- 标签 -->
@@ -173,6 +200,8 @@
             <!-- 题目元信息 -->
             <div class="question-meta">
               <div class="meta-left">
+                <span class="q-index">#{{ question.displayIndex }}</span>
+                <span class="q-difficulty" :class="'diff-' + question.difficulty">{{ getDifficultyText(question.difficulty) }}</span>
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
               </div>
               <div class="meta-right" v-if="editMode">
@@ -181,6 +210,27 @@
                   @click.stop="toggleSelection(question)"
                 />
               </div>
+            </div>
+            <van-button
+              v-if="!editMode"
+              size="mini"
+              type="primary"
+              plain
+              class="ai-toggle-btn"
+              @click.stop="openAIChat(question)"
+            >
+              AI答疑
+            </van-button>
+            <div v-if="question.showAI && !editMode" class="ai-box">
+              <div class="ai-title">AI 标准答案与解析</div>
+              <div class="ai-subtitle">标准答案：</div>
+              <p class="ai-content" :class="{ 'detail-placeholder': question.aiPending && !question.hasAiAnswer }">
+                {{ question.displayAiAnswer }}
+              </p>
+              <div class="ai-subtitle ai-subtitle-gap">智能解析：</div>
+              <p class="ai-content" :class="{ 'detail-placeholder': question.aiPending && !question.hasAiAnalysis }">
+                {{ question.displayAiAnalysis }}
+              </p>
             </div>
           </div>
 
@@ -205,6 +255,65 @@
       </div>
     </div>
 
+    <!-- 题目详情弹窗（对齐小程序） -->
+    <van-popup v-model:show="showDetailModal" position="bottom" round :style="{ height: '75%' }">
+      <div v-if="detailQuestion" class="detail-modal">
+        <div class="detail-modal-header">
+          <span class="detail-modal-title">题目 #{{ detailQuestion.displayIndex }}</span>
+          <van-icon name="cross" @click="showDetailModal = false" />
+        </div>
+        <div class="detail-modal-body">
+          <img
+            v-if="detailQuestion.imageUrl"
+            :src="detailQuestion.imageUrl"
+            class="detail-img"
+            alt="题目图片"
+            @click="previewImage(detailQuestion.imageUrl)"
+          />
+          <div class="detail-section">
+            <div class="detail-section-title">题目内容</div>
+            <div
+              v-for="(para, idx) in detailQuestion.contentParas"
+              :key="idx"
+              class="detail-para"
+            >
+              <span v-if="para.sub" class="detail-para-label">（{{ para.label }}）</span>
+              <p class="detail-section-body">{{ para.text }}</p>
+            </div>
+          </div>
+          <div class="detail-section detail-section-ai">
+            <div class="detail-section-title">AI 答案</div>
+            <p
+              class="detail-section-body"
+              :class="{ 'detail-placeholder': detailQuestion.aiPending && !detailQuestion.hasAiAnswer }"
+            >
+              {{ detailQuestion.aiAnswer }}
+            </p>
+          </div>
+          <div class="detail-section detail-section-ai">
+            <div class="detail-section-title">AI 解析</div>
+            <p
+              class="detail-section-body"
+              :class="{ 'detail-placeholder': detailQuestion.aiPending && !detailQuestion.hasAiAnalysis }"
+            >
+              {{ detailQuestion.aiAnalysis }}
+            </p>
+          </div>
+          <div v-if="detailQuestion.tags?.length" class="detail-section">
+            <div class="detail-section-title">标签</div>
+            <van-tag v-for="tag in detailQuestion.tags" :key="tag" size="mini" class="custom-tag">{{ tag }}</van-tag>
+          </div>
+          <div class="detail-section">
+            <div class="detail-section-title">添加时间</div>
+            <p class="detail-section-body">{{ detailQuestion.formattedDate }}</p>
+          </div>
+        </div>
+        <div class="detail-modal-footer">
+          <van-button type="primary" block @click="openAIChat(detailQuestion)">AI 答疑</van-button>
+        </div>
+      </div>
+    </van-popup>
+
 
   </div>
 </template>
@@ -214,6 +323,14 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showDialog, showConfirmDialog, ImagePreview, Dialog } from 'vant'
 import categoryAPI from '../api/category'
+import paperAPI from '../api/paper'
+import { apiClient } from '../api/config'
+import {
+  formatQuestionText,
+  parseQuestionParas,
+  buildAiDisplayText,
+  isPendingQuestion
+} from '../utils/questionFormat'
 
 export default {
   name: 'CategoryDetail',
@@ -233,6 +350,8 @@ export default {
     const editMode = ref(false)
     const isAllSelected = computed(() => questions.length > 0 && questions.every(q => q.selected))
     const isPaperSelectMode = computed(() => route.query.mode === 'paper-select')
+    const showDetailModal = ref(false)
+    const detailQuestion = ref(null)
 
 
     const categoryInfo = reactive({
@@ -419,52 +538,92 @@ export default {
       }
     }
 
-    // 查看题目详情
-    const viewQuestion = (question) => {
-      const formatRichText = (text) => {
-        return (text || '暂无内容').replace(/\n/g, '<br/>')
+    const buildDetailQuestion = (question, index) => {
+      const pending = isPendingQuestion(question)
+      const hasAiAnswer = !!(question.aiAnswer && question.aiAnswer.trim() && question.aiAnswer !== '待补充')
+      const hasAiAnalysis = !!(question.aiAnalysis && question.aiAnalysis.trim() && question.aiAnalysis !== 'AI暂未给出解析')
+      const rawContent = question.recognizedText || question.content || '暂无内容'
+      const formattedContent = formatQuestionText(rawContent)
+      const contentParas = parseQuestionParas(formattedContent)
+      return {
+        ...question,
+        displayIndex: index + 1,
+        content: formattedContent,
+        displayContent: formattedContent,
+        contentParas: contentParas.length ? contentParas : [{ label: '', text: formattedContent, sub: false }],
+        hasAiAnswer,
+        hasAiAnalysis,
+        aiPending: pending,
+        displayAiAnswer: buildAiDisplayText(
+          question.aiAnswer,
+          pending,
+          hasAiAnalysis ? '见下方解析' : '暂无 AI 答案',
+          'AI 答案生成中…'
+        ),
+        displayAiAnalysis: buildAiDisplayText(
+          question.aiAnalysis,
+          pending,
+          '暂无 AI 解析',
+          'AI 解析生成中…'
+        ),
+        aiAnswer: buildAiDisplayText(
+          question.aiAnswer,
+          pending,
+          hasAiAnalysis ? '见下方解析' : '暂无 AI 答案',
+          'AI 答案生成中…'
+        ),
+        aiAnalysis: buildAiDisplayText(
+          question.aiAnalysis,
+          pending,
+          '暂无 AI 解析',
+          'AI 解析生成中…'
+        ),
+        formattedDate: formatTime(question.createdAt)
       }
-      const content = formatRichText(question.recognizedText || question.text || question.content)
-      const answer = formatRichText(question.aiAnswer || '待补充')
-      const analysis = formatRichText(question.aiAnalysis || 'AI暂未给出解析')
+    }
 
-      showDialog({
-        title: `题目 #${question.id}`,
-        message: `
-          <div style="text-align: left;">
-            <div class="dialog-section" style="text-align: left;">
-              <div class="dialog-section__title" style="text-align: left;">题目内容</div>
-              <div class="dialog-section__body" style="text-align: left;">${content}</div>
-            </div>
-            <div class="dialog-section" style="text-align: left;">
-              <div class="dialog-section__title" style="text-align: left;">参考答案</div>
-              <div class="dialog-section__body" style="text-align: left;">${answer}</div>
-            </div>
-            <div class="dialog-section" style="text-align: left;">
-              <div class="dialog-section__title" style="text-align: left;">解析</div>
-              <div class="dialog-section__body" style="text-align: left;">${analysis}</div>
-            </div>
-            ${question.tags.length > 0 ? `
-              <div class="dialog-section" style="text-align: left;">
-                <div class="dialog-section__title" style="text-align: left;">标签</div>
-                <div class="dialog-section__body" style="text-align: left;">${question.tags.join(', ')}</div>
-              </div>` : ''}
-            <div class="dialog-section" style="text-align: left;">
-              <div class="dialog-section__title" style="text-align: left;">添加时间</div>
-              <div class="dialog-section__body" style="text-align: left;">${formatTime(question.createdAt)}</div>
-            </div>
-          </div>
-        `,
-        allowHtml: true,
-        confirmButtonText: '关闭',
-        className: 'question-detail-dialog',
-        width: '90%'
-      }).catch(() => {
-        // 用户关闭弹窗
+    // 查看题目详情（打开时拉取最新数据，确保 AI 答案/解析是最新的）
+    const viewQuestion = async (question) => {
+      const idx = questions.findIndex(q => q.id === question.id)
+      detailQuestion.value = buildDetailQuestion(question, idx >= 0 ? idx : 0)
+      showDetailModal.value = true
+
+      try {
+        const res = await apiClient.get(`/questions/${question.id}`)
+        const fresh = res.data?.data
+        if (fresh && showDetailModal.value && detailQuestion.value?.id === question.id) {
+          const merged = {
+            ...question,
+            aiAnswer: fresh.aiAnswer || question.aiAnswer,
+            aiAnalysis: fresh.aiAnalysis || question.aiAnalysis,
+            aiStatus: fresh.aiStatus || question.aiStatus,
+            tags: Array.isArray(fresh.tags) && fresh.tags.length ? fresh.tags : question.tags,
+            difficulty: fresh.difficulty || question.difficulty
+          }
+          detailQuestion.value = buildDetailQuestion(merged, idx >= 0 ? idx : 0)
+          // 同步更新列表中的题目，便于卡片内 AI 区域刷新
+          if (idx >= 0) {
+            questions[idx] = { ...questions[idx], ...merged }
+          }
+        }
+      } catch (e) {
+        // 忽略，沿用已有数据
+      }
+    }
+
+    const openAIChat = (question) => {
+      const content = question.content || question.recognizedText || question.displayContent || ''
+      showDetailModal.value = false
+      router.push({
+        path: '/ai-chat',
+        query: { context: encodeURIComponent(content) }
       })
     }
 
-    // 预览图片
+    const toggleShowAI = (question) => {
+      question.showAI = !question.showAI
+    }
+
     const previewImage = (imageUrl) => {
       ImagePreview([imageUrl])
     }
@@ -550,6 +709,12 @@ export default {
     const addToExam = () => {
       if (selectedQuestions.value.length === 0) {
         showToast('请先选择题目')
+        return
+      }
+
+      // 组卷选题模式：确认组卷 → 直接保存为试卷（对齐小程序一步式确认）
+      if (isPaperSelectMode.value) {
+        savePaper()
         return
       }
 
@@ -669,46 +834,30 @@ export default {
         }
       }, 100)
       
-      dialog.then(() => {
+      dialog.then(async () => {
         // 用户点击确定
-        console.log('用户输入的值:', inputValue)
-        
         if (!inputValue || !inputValue.trim()) {
           showToast('请输入试卷名称')
           return
         }
-        
-        // 保存试卷到本地存储
-        const paper = {
-          id: Date.now(),
-          title: inputValue.trim(),
-          questionCount: selectedQuestions.value.length,
-          questions: selectedQuestions.value.map(q => ({
+
+        // 保存试卷（云端优先，失败回退本地）
+        const { localOnly } = await paperAPI.savePaper(
+          selectedQuestions.value.map(q => ({
             id: q.id,
-            content: q.recognizedText,
+            content: q.recognizedText || q.content,
             answer: q.aiAnswer || '待补充',
             analysis: q.aiAnalysis || 'AI暂未给出解析',
             categoryId: categoryId,
-            categoryName: categoryInfo.name
+            categoryName: categoryInfo.name,
+            tags: q.tags || [],
+            difficulty: q.difficulty
           })),
-          duration: 90, // 默认90分钟
-          totalScore: selectedQuestions.value.length * 5, // 每题5分
-          createdAt: new Date().toLocaleDateString()
-        }
-        
-        console.log('准备保存试卷:', paper)
-        
-        // 从本地存储读取已有试卷
-        const papersJson = localStorage.getItem('savedPapers')
-        const papers = papersJson ? JSON.parse(papersJson) : []
-        papers.unshift(paper) // 添加到最前面
-        
-        // 保存回本地存储
-        localStorage.setItem('savedPapers', JSON.stringify(papers))
-        console.log('试卷已保存到localStorage')
-        
-        showToast({ message: '试卷保存成功', type: 'success' })
-        
+          inputValue.trim()
+        )
+
+        showToast({ message: localOnly ? '已本地保存' : '试卷保存成功', type: 'success' })
+
         // 根据模式决定是否跳转
         if (isPaperSelectMode.value) {
           // 从"组建新卷"进来的，跳转回组卷页面
@@ -776,28 +925,31 @@ export default {
         console.log('题目API响应:', response)
         
         if (response.success && response.data && response.data.data) {
-          const apiQuestions = response.data.data.map(question => ({
-            id: question.id,
-            recognizedText: question.content || question.recognizedText || '暂无内容',
-            imageUrl: question.imageUrl || '',
-            aiAnswer: question.aiAnswer || '待补充',
-            aiAnalysis: question.aiAnalysis || 'AI暂未给出解析',
-            tags: (() => {
-              if (!question.tags) return [];
-              if (typeof question.tags === 'string') {
-                return question.tags.split(',').filter(tag => tag.trim());
-              }
-              if (Array.isArray(question.tags)) {
-                return question.tags;
-              }
-              return [];
-            })(),
-            difficulty: question.difficulty || 'medium',
-            confidence: question.aiConfidence || 0.85,
-            createdAt: new Date(question.createdAt).getTime(),
-            isCorrect: question.isCorrect || false,
-            selected: false
-          }))
+          const apiQuestions = response.data.data.map((question, index) => {
+            const base = {
+              id: question.id,
+              recognizedText: question.content || question.recognizedText || '暂无内容',
+              content: question.content || question.recognizedText || '暂无内容',
+              imageUrl: question.imageUrl || '',
+              aiAnswer: question.aiAnswer || '待补充',
+              aiAnalysis: question.aiAnalysis || 'AI暂未给出解析',
+              tags: (() => {
+                if (!question.tags) return []
+                if (typeof question.tags === 'string') {
+                  return question.tags.split(',').filter(tag => tag.trim())
+                }
+                if (Array.isArray(question.tags)) return question.tags
+                return []
+              })(),
+              difficulty: question.difficulty || 'medium',
+              confidence: question.aiConfidence || 0.85,
+              createdAt: new Date(question.createdAt).getTime(),
+              isCorrect: question.isCorrect || false,
+              selected: false,
+              showAI: false
+            }
+            return buildDetailQuestion(base, index)
+          })
           
           questions.splice(0, questions.length, ...apiQuestions)
           console.log('成功加载题目数据:', apiQuestions)
@@ -859,7 +1011,11 @@ export default {
       batchDelete,
       shareCategory,
       isPaperSelectMode,
-      savePaper
+      savePaper,
+      showDetailModal,
+      detailQuestion,
+      openAIChat,
+      toggleShowAI
     }
   }
 }
@@ -1152,6 +1308,52 @@ export default {
   box-shadow: var(--shadow-glow);
 }
 
+.group-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.group-toggle-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.q-index {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-accent, #2459ff);
+  margin-right: 8px;
+}
+
+.q-difficulty {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  margin-right: 8px;
+  font-weight: 600;
+  background: rgba(31, 91, 255, 0.1);
+  color: #2459ff;
+}
+
+.q-difficulty.diff-easy {
+  background: rgba(7, 193, 96, 0.12);
+  color: #07a463;
+}
+
+.q-difficulty.diff-medium {
+  background: rgba(255, 151, 30, 0.14);
+  color: #e8821a;
+}
+
+.q-difficulty.diff-hard {
+  background: rgba(238, 10, 36, 0.12);
+  color: #ee0a24;
+}
+
 .questions-section {
   padding: 20px;
 }
@@ -1234,6 +1436,8 @@ export default {
 
 .meta-left {
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 
@@ -1471,5 +1675,108 @@ export default {
 :deep(.save-paper-dialog #paper-title-input:focus) {
   border-color: var(--primary-color) !important;
   box-shadow: 0 0 0 2px rgba(31, 91, 255, 0.2) !important;
+}
+
+.ai-toggle-btn {
+  margin-top: 10px;
+  border-radius: 16px !important;
+}
+
+.ai-box {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(36, 89, 255, 0.06);
+  border-radius: 12px;
+  border: 1px solid rgba(36, 89, 255, 0.12);
+}
+
+.ai-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2459ff;
+  margin-bottom: 8px;
+}
+
+.ai-subtitle {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.55);
+  margin-bottom: 4px;
+}
+
+.ai-subtitle-gap {
+  margin-top: 10px;
+}
+
+.ai-content {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #0b1633;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.detail-placeholder {
+  color: rgba(11, 22, 51, 0.45);
+  font-style: italic;
+}
+
+.detail-modal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 16px 16px;
+}
+
+.detail-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(11, 22, 51, 0.08);
+}
+
+.detail-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.detail-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+}
+
+.detail-modal-footer {
+  padding-top: 12px;
+}
+
+.detail-img {
+  width: 100%;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2459ff;
+  margin-bottom: 8px;
+}
+
+.detail-section-body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #0b1633;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.detail-para-label {
+  font-weight: 700;
+  margin-right: 4px;
 }
 </style>

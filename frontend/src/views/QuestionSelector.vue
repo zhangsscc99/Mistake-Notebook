@@ -154,19 +154,32 @@
 
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { imageRecognitionAPI } from '../api/recognition'
 import categoryAPI from '../api/category'
+import { API_BASE_URL } from '../api/config'
+
+function isDifficultQuestion(segment) {
+  const type = segment.type || ''
+  const confidence = typeof segment.confidence === 'number' ? segment.confidence : 1
+  return type.includes('解答') || confidence < 0.85
+}
+
+function resolveImageUrl(url) {
+  if (!url) return ''
+  if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) return url
+  const base = API_BASE_URL.replace(/\/api\/?$/, '')
+  return `${base}${url.startsWith('/') ? url : '/' + url}`
+}
 
 export default {
   name: 'QuestionSelector',
   setup() {
     const router = useRouter()
-    const route = useRoute()
 
-    // 响应式数据
     const originalImage = ref('')
+    const serverImageUrl = ref('')
     const questions = reactive([])
     const saving = ref(false)
     const showCategoryModal = ref(false)
@@ -189,107 +202,52 @@ export default {
 
     // 初始化数据
     const initializeData = () => {
-      console.log('QuestionSelector 初始化开始') // 调试信息
-      console.log('路由参数:', route.query) // 调试信息
-      
-      // 从路由参数获取图片
-      if (route.query.image) {
-        originalImage.value = decodeURIComponent(route.query.image)
-        console.log('获取到图片URL:', originalImage.value) // 调试信息
+      const draftRaw = sessionStorage.getItem('recognitionDraft')
+      if (!draftRaw) {
+        showToast('无识别结果')
+        setTimeout(() => router.back(), 800)
+        return
       }
 
-      // 从路由参数获取识别结果
-      if (route.query.results) {
-        try {
-          console.log('开始解析识别结果') // 调试信息
-          const results = JSON.parse(route.query.results)
-          console.log('解析后的结果:', results) // 调试信息
-          
-          if (results.data && results.data.questions) {
-            // 将后端返回的题目数据转换为前端格式
-            const backendQuestions = results.data.questions.map(q => ({
-              id: q.id,
-              selected: q.isDifficult || q.difficult, // 默认选中疑难题目（兼容两种字段名）
-              bounds: q.bounds,
-              text: q.text,
-              difficulty: getDifficultyByConfidence(q.confidence),
-              confidence: q.confidence
-            }))
-            
-            console.log('转换后的题目数据:', backendQuestions) // 调试信息
-            questions.splice(0, questions.length, ...backendQuestions)
-            return
-          }
-        } catch (error) {
-          console.error('解析识别结果失败:', error)
-        }
+      let draft
+      try {
+        draft = JSON.parse(draftRaw)
+      } catch {
+        showToast('识别数据无效')
+        setTimeout(() => router.back(), 800)
+        return
       }
 
-      // 如果没有识别结果，使用模拟数据
-      const mockQuestions = [
-        {
-          id: 1,
-          selected: false,
-          bounds: { top: 15, left: 10, width: 80, height: 12 },
-          text: '1. (1+5i)的绝对值',
-          difficulty: '简单',
-          confidence: 0.92,
-          aiAnswer: '示例答案1',
-          aiAnalysis: '示例解析1'
-        },
-        {
-          id: 2,
-          selected: true, // 默认选中疑难题目
-          bounds: { top: 30, left: 10, width: 80, height: 12 },
-          text: '2. 设集合U={1,2,3,4,5,6,7,8}，集合A={1,3,5,7}，B(A)表示A在全集U中的补集',
-          difficulty: '中等',
-          confidence: 0.88,
-          aiAnswer: '示例答案2',
-          aiAnalysis: '示例解析2'
-        },
-        {
-          id: 3,
-          selected: false,
-          bounds: { top: 45, left: 10, width: 80, height: 12 },
-          text: '3. 若直线l经过点P(1,2)且倾斜角为π/3，则直线l的方程为',
-          difficulty: '中等',
-          confidence: 0.90,
-          aiAnswer: '示例答案3',
-          aiAnalysis: '示例解析3'
-        },
-        {
-          id: 4,
-          selected: false,
-          bounds: { top: 60, left: 10, width: 80, height: 15 },
-          text: '4. 若点(a,b)(a>0)是圆M上一点，且到直线y=2tan(x-π/4)的距离为max，M的圆心的横坐标是',
-          difficulty: '困难',
-          confidence: 0.85,
-          aiAnswer: '示例答案4',
-          aiAnalysis: '示例解析4'
-        },
-        {
-          id: 5,
-          selected: true, // 默认选中疑难题目
-          bounds: { top: 78, left: 10, width: 80, height: 15 },
-          text: '5. 设f(x)是定义在R上的函数，若对于任意x≤3时，f(x)=x-21，M=max{f(x)|x∈R}',
-          difficulty: '困难',
-          confidence: 0.87,
-          aiAnswer: '示例答案5',
-          aiAnalysis: '示例解析5'
-        },
-        {
-          id: 6,
-          selected: false,
-          bounds: { top: 95, left: 10, width: 80, height: 25 },
-          text: '6. 假设扔掷，运动总量的信息只需满足以下大小的的，是对信息风险的风力',
-          difficulty: '中等',
-          confidence: 0.75,
-          aiAnswer: '示例答案6',
-          aiAnalysis: '示例解析6'
-        }
-      ]
+      const segments = draft.segments || []
+      if (!segments.length) {
+        showToast('无识别结果')
+        setTimeout(() => router.back(), 800)
+        return
+      }
 
-      questions.splice(0, questions.length, ...mockQuestions)
+      originalImage.value = draft.tempFilePath || resolveImageUrl(draft.imageUrl)
+      serverImageUrl.value = draft.imageUrl || ''
+
+      const mapped = segments.map((segment, index) => {
+        const conf = segment.confidence || 0
+        return {
+          id: String(segment.id || index + 1),
+          selected: segment.isDifficult !== undefined ? !!segment.isDifficult : isDifficultQuestion(segment),
+          bounds: segment.bounds || { top: 15 + index * 12, left: 10, width: 80, height: 12 },
+          text: segment.text || segment.content || '',
+          type: segment.type || '',
+          confidence: conf,
+          difficulty: getDifficultyByConfidence(conf)
+        }
+      }).filter(q => q.text)
+
+      questions.splice(0, questions.length, ...mapped)
+
+      const defaultSubject = segments[0]?.subject
+      if (defaultSubject && categories.length) {
+        const match = categories.find(c => c.name === defaultSubject)
+        if (match) selectedCategory.value = match.id
+      }
     }
 
     // 根据置信度判断难度
@@ -356,15 +314,13 @@ export default {
           selectedQuestions,
           getCategoryName(selectedCategory.value),
           selectedDifficulty.value,
-          originalImage.value
+          serverImageUrl.value || originalImage.value
         )
-        
-        console.log('保存结果:', result) // 调试信息
 
-        showToast(`已保存${selectedQuestions.length}道题目到错题本`)
-        
-        // 跳转到分类页面
-        router.push('/categories')
+        const count = result?.data?.savedCount || selectedQuestions.length
+        sessionStorage.removeItem('recognitionDraft')
+        showToast(`已保存${count}道，AI解析中`)
+        setTimeout(() => router.push('/categories'), 800)
         
       } catch (error) {
         console.error('保存失败:', error)
@@ -408,8 +364,8 @@ export default {
     }
 
     // 生命周期
-    onMounted(() => {
-      loadCategories()
+    onMounted(async () => {
+      await loadCategories()
       initializeData()
     })
 

@@ -31,8 +31,17 @@ function sanitizeText(text) {
     .replace(/\\right/g, '')
     .replace(/\\[a-zA-Z]+/g, '')
     .replace(/[{}]/g, '')
+    // 去除 markdown 噪音
+    .replace(/```[a-zA-Z]*\n?/g, '')
+    .replace(/^\s*#{1,6}\s*/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/(^|\n)\s*[-*]\s+/g, '$1')
+    .replace(/(^|\n)\s*(?:[-*_]\s*){3,}(?=\n|$)/g, '$1')
+    // 收紧空白：行尾空格、空行、行首空格
     .replace(/[ \t]+\n/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/\n{2,}/g, '\n')
     .trim();
   return cleaned || raw.trim();
 }
@@ -220,16 +229,19 @@ async function generatePDF(event) {
         doc.font(fontPath).fontSize(11)
           .fillColor('#4caf50')
           .text('参考答案', { indent: 15 });
+        doc.moveDown(0.2);
         doc.font(fontPath).fontSize(11)
-          .fillColor('#000000')
-          .text(answer, { indent: 15, paragraphGap: 4, lineGap: 2 });
+          .fillColor('#222222')
+          .text(answer, { indent: 15, align: 'justify', lineGap: 3 });
+        doc.moveDown(0.4);
         doc.font(fontPath).fontSize(11)
           .fillColor('#2196f3')
           .text('详细解析', { indent: 15 });
+        doc.moveDown(0.2);
         doc.font(fontPath).fontSize(11)
-          .fillColor('#000000')
-          .text(analysis, { indent: 15, paragraphGap: 4, lineGap: 2 });
-        doc.moveDown(0.5);
+          .fillColor('#222222')
+          .text(analysis, { indent: 15, align: 'justify', lineGap: 3 });
+        doc.moveDown(0.6);
       }
 
       if (!withAnalysis && q.needsAnswerArea !== false) {

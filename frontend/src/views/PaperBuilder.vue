@@ -14,6 +14,19 @@
       </van-button>
     </div>
 
+    <!-- 统计卡片（试卷数 / 总题数，对齐小程序） -->
+    <div class="paper-stats-card">
+      <div class="paper-stat">
+        <div class="paper-stat-num">{{ paperStats.paperCount }}</div>
+        <div class="paper-stat-label">试卷数</div>
+      </div>
+      <div class="paper-stat-divider"></div>
+      <div class="paper-stat">
+        <div class="paper-stat-num">{{ paperStats.totalQuestions }}</div>
+        <div class="paper-stat-label">总题数</div>
+      </div>
+    </div>
+
     <!-- 当前组卷草稿 -->
     <div class="pending-section" v-if="pendingQuestions.length > 0">
       <div class="section-header">
@@ -61,6 +74,12 @@
             <h4 class="paper-title">{{ paper.title }}</h4>
             <p class="paper-meta">{{ paper.questionCount }} 道题 · {{ paper.createdAt }}</p>
           </div>
+          <van-icon
+            name="delete-o"
+            class="paper-delete-icon"
+            color="var(--text-secondary)"
+            @click.stop="deletePaperItem(paper)"
+          />
           <van-icon name="arrow" color="var(--text-secondary)" />
         </div>
       </div>
@@ -98,6 +117,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast, showLoadingToast, showDialog, showConfirmDialog } from 'vant'
 import categoryAPI from '../api/category'
+import paperAPI from '../api/paper'
+import { apiClient } from '../api/config'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -409,7 +430,13 @@ export default {
       try {
         // 等待一下让loading显示出来
         await new Promise(resolve => setTimeout(resolve, 300))
-        
+
+        // 带解析版导出前，刷新最新 AI 答案/解析
+        if (withAnalysis) {
+          const freshQuestions = await refreshPaperAnalysis(paper)
+          paper = { ...paper, questions: freshQuestions }
+        }
+
         // 创建临时容器用于渲染HTML
         const container = document.createElement('div')
         container.style.cssText = `
@@ -525,15 +552,59 @@ export default {
       }
     }
 
-    // 加载已保存的试卷
-    const loadSavedPapers = () => {
-      // TODO: 调用后端API加载试卷列表
-      // 暂时使用本地存储模拟
-      const papersJson = localStorage.getItem('savedPapers')
-      if (papersJson) {
-        const papers = JSON.parse(papersJson)
-        savedPapers.splice(0, savedPapers.length, ...papers)
+    // 统计：试卷数 / 总题数
+    const paperStats = computed(() => ({
+      paperCount: savedPapers.length,
+      totalQuestions: savedPapers.reduce((sum, p) => sum + (p.questionCount || (p.questions ? p.questions.length : 0)), 0)
+    }))
+
+    // 导出带解析版前，刷新题目的最新 AI 答案/解析（对齐小程序 question.batch）
+    const refreshPaperAnalysis = async (paper) => {
+      const ids = (paper.questions || [])
+        .map(q => q.id)
+        .filter(id => id !== undefined && id !== null && !Number.isNaN(Number(id)))
+        .map(Number)
+      if (!ids.length) return paper.questions
+      try {
+        const res = await apiClient.post('/questions/batch', ids)
+        const fresh = res.data?.data || []
+        const map = new Map(fresh.map(q => [String(q.id), q]))
+        return (paper.questions || []).map(q => {
+          const f = map.get(String(q.id))
+          if (!f) return q
+          return {
+            ...q,
+            answer: (f.aiAnswer && f.aiAnswer !== '待补充') ? f.aiAnswer : q.answer,
+            analysis: (f.aiAnalysis && f.aiAnalysis !== 'AI暂未给出解析') ? f.aiAnalysis : q.analysis
+          }
+        })
+      } catch (e) {
+        console.warn('刷新试卷解析失败，使用已保存内容', e)
+        return paper.questions
       }
+    }
+
+    // 加载已保存的试卷（云端优先）
+    const loadSavedPapers = async () => {
+      try {
+        const papers = await paperAPI.listPapers()
+        savedPapers.splice(0, savedPapers.length, ...papers)
+      } catch (e) {
+        console.error('加载试卷失败:', e)
+      }
+    }
+
+    // 删除试卷
+    const deletePaperItem = async (paper) => {
+      try {
+        await showConfirmDialog({ title: '确认删除', message: `确定要删除试卷「${paper.title}」吗？` })
+      } catch {
+        return
+      }
+      await paperAPI.deletePaper(paper.id)
+      const idx = savedPapers.findIndex(p => String(p.id) === String(paper.id))
+      if (idx > -1) savedPapers.splice(idx, 1)
+      showToast({ message: '已删除', type: 'success' })
     }
 
     // 加载可用分类
@@ -648,32 +719,16 @@ export default {
           }
           return true
         }
-      }).then(() => {
+      }).then(async () => {
         if (!inputValue || !inputValue.trim()) { showToast('请输入试卷名称'); return }
-        const paper = {
-          id: Date.now(),
-          title: inputValue.trim(),
-          questionCount: pendingQuestions.length,
-          questions: pendingQuestions.map(q => ({
-            id: q.id,
-            content: q.content || '',
-            answer: q.answer || '待补充',
-            analysis: q.analysis || 'AI暂未给出解析',
-            categoryId: q.categoryId,
-            categoryName: q.categoryName
-          })),
-          duration: 90,
-          totalScore: pendingQuestions.reduce((s, q) => s + (q.score || 5), 0),
-          createdAt: new Date().toLocaleDateString()
-        }
-        const papersJson = localStorage.getItem('savedPapers')
-        const papers = papersJson ? JSON.parse(papersJson) : []
-        papers.unshift(paper)
-        localStorage.setItem('savedPapers', JSON.stringify(papers))
-        savedPapers.splice(0, savedPapers.length, ...papers)
+        const { paper, localOnly } = await paperAPI.savePaper(
+          pendingQuestions.map(q => ({ ...q })),
+          inputValue.trim()
+        )
+        savedPapers.unshift(paper)
         pendingQuestions.splice(0)
         sessionStorage.removeItem('pendingPaperQuestions')
-        showToast({ message: '试卷保存成功', type: 'success' })
+        showToast({ message: localOnly ? '已本地保存' : '试卷保存成功', type: 'success' })
       }).catch(() => {})
       setTimeout(() => {
         const input = document.getElementById('pending-paper-title')
@@ -690,6 +745,7 @@ export default {
 
     return {
       paperInfo,
+      paperStats,
       selectedCategories,
       allSelectedQuestions,
       availableCategories,
@@ -722,13 +778,49 @@ export default {
       createNewPaper,
       viewPaper,
       exportPaperPDF,
-      showExportOptions
+      showExportOptions,
+      deletePaperItem
     }
   }
 }
 </script>
 
 <style scoped>
+.paper-stats-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  margin: 0 16px 16px;
+  padding: 18px 16px;
+  border-radius: var(--radius-lg, 16px);
+  background: linear-gradient(135deg, rgba(36, 89, 255, 0.92), rgba(82, 183, 255, 0.92));
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(31, 91, 255, 0.24);
+}
+
+.paper-stat {
+  text-align: center;
+  flex: 1;
+}
+
+.paper-stat-num {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.paper-stat-label {
+  font-size: 13px;
+  opacity: 0.92;
+  margin-top: 4px;
+}
+
+.paper-stat-divider {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
 .paper-builder-page {
   min-height: 100vh;
   background: var(--bg-primary);
@@ -929,6 +1021,11 @@ export default {
 .paper-icon {
   font-size: 32px;
   filter: drop-shadow(0 2px 4px rgba(31, 91, 255, 0.3));
+}
+
+.paper-delete-icon {
+  font-size: 18px;
+  padding: 4px;
 }
 
 .paper-info {

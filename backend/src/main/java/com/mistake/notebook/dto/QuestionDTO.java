@@ -26,6 +26,8 @@ public class QuestionDTO {
     private Double aiConfidence;
     private String aiAnswer;
     private String aiAnalysis;
+    private String aiStatus;
+    private String aiError;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -44,6 +46,11 @@ public class QuestionDTO {
         dto.setAiConfidence(question.getAiConfidence());
         dto.setAiAnswer(question.getAiAnswer());
         dto.setAiAnalysis(question.getAiAnalysis());
+        Question.AiStatus status = question.getAiStatus() != null
+                ? question.getAiStatus()
+                : Question.AiStatus.COMPLETED;
+        dto.setAiStatus(status.name().toLowerCase());
+        dto.setAiError(question.getAiError());
         dto.setCreatedAt(question.getCreatedAt());
         dto.setUpdatedAt(question.getUpdatedAt());
         return dto;
@@ -78,6 +85,14 @@ public class QuestionDTO {
         question.setAiAnswer(this.aiAnswer);
         question.setAiAnalysis(this.aiAnalysis);
         question.setIsDeleted(false);
+
+        if (this.aiStatus != null && !this.aiStatus.isBlank()) {
+            try {
+                question.setAiStatus(Question.AiStatus.valueOf(this.aiStatus.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                question.setAiStatus(Question.AiStatus.COMPLETED);
+            }
+        }
         
         return question;
     }
@@ -87,7 +102,7 @@ public class QuestionDTO {
      * 暂时使用简单的映射逻辑，避免数据库NOT NULL约束错误
      * TODO: 后续应该注入CategoryRepository来动态查询分类ID
      */
-    private Long mapCategoryToId(String categoryName) {
+    public static Long mapCategoryToId(String categoryName) {
         // 暂时使用固定映射，避免外键约束问题
         // 注意：这假设数据库中分类的插入顺序和ID生成是可预测的
         if (categoryName == null) {

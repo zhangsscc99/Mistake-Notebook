@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 public class QuestionService {
 
     private final QuestionRepository questionRepository;
+    private final AIAnswerService aiAnswerService;
 
     /**
      * 创建题目
@@ -234,6 +235,149 @@ public class QuestionService {
         
         log.info("分类ID {} 下共找到 {} 道题目", categoryId, questionDTOs.size());
         return questionDTOs;
+    }
+
+    /**
+     * 重新生成 AI 答案与解析
+     */
+    @Transactional
+    public Optional<QuestionDTO> regenerateAiAnswer(Long id) {
+        return questionRepository.findById(id)
+                .filter(q -> !q.getIsDeleted())
+                .map(question -> {
+                    AIAnswerService.AnswerResult result = aiAnswerService.generateAnswer(question.getContent());
+                    question.setAiAnswer(result.getAnswer());
+                    question.setAiAnalysis(result.getAnalysis());
+                    if (result.isSuccess()) {
+                        question.setAiConfidence(result.getConfidence());
+                    }
+                    Question saved = questionRepository.save(question);
+                    log.info("题目 {} AI 解析已重新生成", id);
+                    return QuestionDTO.fromEntity(saved);
+                });
+    }
+
+    /**
+     * 创建处于"待AI解析"状态的题目（快速返回，后台异步生成答案/分类）
+     */
+    @Transactional
+    public QuestionDTO createPendingQuestion(CreateQuestionRequest request) {
+        QuestionDTO dto = new QuestionDTO();
+        dto.setContent(request.getContent());
+        dto.setImageUrl(request.getImageUrl());
+        dto.setCategory(request.getCategory());
+        dto.setDifficulty(request.getDifficulty());
+        dto.setTags(request.getTags());
+        dto.setOcrConfidence(request.getOcrConfidence());
+        dto.setAiStatus("pending");
+
+        Question question = dto.toEntity();
+        question.setAiStatus(Question.AiStatus.PENDING);
+        Question saved = questionRepository.save(question);
+        log.info("题目已保存(待解析)，ID：{}", saved.getId());
+        return QuestionDTO.fromEntity(saved);
+    }
+
+    /**
+     * 查询正在/等待 AI 解析（或失败）的题目，用于"解析中"轮询
+     */
+    public List<QuestionDTO> getPendingQuestions() {
+        List<Question.AiStatus> statuses = List.of(
+                Question.AiStatus.PENDING,
+                Question.AiStatus.PROCESSING,
+                Question.AiStatus.FAILED);
+        return questionRepository.findByAiStatusInAndIsDeletedFalseOrderByCreatedAtDesc(statuses)
+                .stream()
+                .map(QuestionDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 标记题目进入 AI 处理中（独立事务，便于前端立即看到状态）
+     */
+    @Transactional
+    public void markAiProcessing(Long id) {
+        questionRepository.findById(id).ifPresent(q -> {
+            q.setAiStatus(Question.AiStatus.PROCESSING);
+            questionRepository.save(q);
+        });
+    }
+
+    /**
+     * 将题目重置为待解析（用于重试）
+     */
+    @Transactional
+    public boolean markAiPending(Long id) {
+        return questionRepository.findById(id)
+                .filter(q -> !q.getIsDeleted())
+                .map(q -> {
+                    q.setAiStatus(Question.AiStatus.PENDING);
+                    q.setAiError(null);
+                    questionRepository.save(q);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    /**
+     * 写入 AI 分类与答案结果，并把状态置为完成/失败
+     */
+    @Transactional
+    public void applyAiResult(Long id,
+                              AIClassificationService.ClassificationResult classification,
+                              AIAnswerService.AnswerResult answer) {
+        questionRepository.findById(id).ifPresent(q -> {
+            if (classification != null && classification.isSuccess()) {
+                if (classification.getCategory() != null) {
+                    q.setCategory(classification.getCategory());
+                    q.setCategoryId(QuestionDTO.mapCategoryToId(classification.getCategory()));
+                }
+                if (classification.getDifficulty() != null) {
+                    q.setDifficulty(classification.getDifficulty());
+                }
+                if (classification.getTags() != null && !classification.getTags().isEmpty()) {
+                    q.setTags(classification.getTags());
+                }
+                q.setAiConfidence(classification.getConfidence());
+            }
+
+            boolean success = answer != null && answer.isSuccess();
+            if (answer != null) {
+                q.setAiAnswer(answer.getAnswer());
+                q.setAiAnalysis(answer.getAnalysis());
+            }
+
+            if (success) {
+                q.setAiStatus(Question.AiStatus.COMPLETED);
+                q.setAiError(null);
+            } else {
+                q.setAiStatus(Question.AiStatus.FAILED);
+                q.setAiError(answer != null ? answer.getAnalysis() : "AI解析失败");
+            }
+            questionRepository.save(q);
+            log.info("题目 {} AI解析完成，状态：{}", id, q.getAiStatus());
+        });
+    }
+
+    /**
+     * 标记题目 AI 解析失败
+     */
+    @Transactional
+    public void markAiFailed(Long id, String error) {
+        questionRepository.findById(id).ifPresent(q -> {
+            q.setAiStatus(Question.AiStatus.FAILED);
+            q.setAiError(error);
+            questionRepository.save(q);
+        });
+    }
+
+    /**
+     * 读取题目内容（供异步任务使用）
+     */
+    public Optional<String> getQuestionContent(Long id) {
+        return questionRepository.findById(id)
+                .filter(q -> !q.getIsDeleted())
+                .map(Question::getContent);
     }
 
     /**

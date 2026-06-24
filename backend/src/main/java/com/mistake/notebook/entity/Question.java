@@ -88,6 +88,20 @@ public class Question {
     private String aiAnalysis;
 
     /**
+     * AI解析处理状态：PENDING(待处理) / PROCESSING(处理中) / COMPLETED(完成) / FAILED(失败)
+     * 旧数据默认 COMPLETED，新建题目走异步先置为 PENDING
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_status", length = 20, columnDefinition = "VARCHAR(20) DEFAULT 'COMPLETED'")
+    private AiStatus aiStatus = AiStatus.COMPLETED;
+
+    /**
+     * AI解析失败原因（可选）
+     */
+    @Column(name = "ai_error", columnDefinition = "TEXT")
+    private String aiError;
+
+    /**
      * 是否已删除
      */
     @Column(name = "is_deleted")
@@ -124,5 +138,15 @@ public class Question {
         public String getDescription() {
             return description;
         }
+    }
+
+    /**
+     * AI解析状态枚举
+     */
+    public enum AiStatus {
+        PENDING,
+        PROCESSING,
+        COMPLETED,
+        FAILED
     }
 } 

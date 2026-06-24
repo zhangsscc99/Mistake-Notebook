@@ -41,6 +41,7 @@ public class UploadController {
     private final AIClassificationService aiClassificationService;
     private final AIAnswerService aiAnswerService;
     private final QuestionService questionService;
+    private final com.mistake.notebook.service.AsyncAiProcessingService asyncAiProcessingService;
 
     @Value("${file.upload.path}")
     private String uploadPath;
@@ -270,10 +271,12 @@ public class UploadController {
             log.info("分类：{}，难度：{}，图片URL：{}", category, difficulty, imageUrl);
             
             List<QuestionDTO> savedQuestions = new ArrayList<>();
-            
+            List<Long> pendingIds = new ArrayList<>();
+
+            // 快速保存阶段：先把题目落库为"待AI解析"，立即返回，AI 分类/解析放到后台异步进行
             for (Map<String, Object> questionData : selectedQuestions) {
                 CreateQuestionRequest createRequest = new CreateQuestionRequest();
-                
+
                 // 设置题目内容
                 String content = (String) questionData.get("text");
                 if (content == null || content.trim().isEmpty()) {
@@ -281,17 +284,17 @@ public class UploadController {
                     continue;
                 }
                 createRequest.setContent(content);
-                
+
                 // 设置图片URL（处理过长的URL）
                 String processedImageUrl = processImageUrl(imageUrl);
                 createRequest.setImageUrl(processedImageUrl);
-                
-                // 设置分类
+
+                // 设置用户选择的分类（AI 后续可能在后台覆盖）
                 createRequest.setCategory(convertCategoryToEnglish(category));
-                
+
                 // 设置难度（使用全局难度设置）
                 createRequest.setDifficulty(convertDifficultyToEnglish(difficulty));
-                
+
                 // 设置OCR置信度
                 Object confidenceObj = questionData.get("confidence");
                 if (confidenceObj instanceof Number) {
@@ -299,73 +302,30 @@ public class UploadController {
                 } else {
                     createRequest.setOcrConfidence(0.85); // 默认置信度
                 }
-                
-                // 调用AI分类服务进行智能分析
-                log.info("开始AI分类分析题目: {}", content.substring(0, Math.min(50, content.length())));
-                try {
-                    AIClassificationService.ClassificationResult aiResult = aiClassificationService.classifyQuestion(content);
-                    
-                    if (aiResult.isSuccess()) {
-                        // 使用AI分析的结果覆盖分类和难度
-                        createRequest.setCategory(convertCategoryToEnglish(aiResult.getCategory()));
-                        createRequest.setDifficulty(aiResult.getDifficulty().name());
-                        createRequest.setTags(aiResult.getTags()); // 直接使用标签列表
-                        createRequest.setAiConfidence(aiResult.getConfidence());
-                        
-                        log.info("AI分类完成 - 分类: {}, 难度: {}, 标签: {}, 置信度: {}", 
-                                aiResult.getCategory(), 
-                                aiResult.getDifficulty().name(), 
-                                aiResult.getTags(), 
-                                aiResult.getConfidence());
-                    } else {
-                        // AI分类失败，使用默认值
-                        log.warn("AI分类失败，使用默认设置");
-                        createRequest.setAiConfidence(0.5);
-                        createRequest.setTags(null); // 空标签
-                    }
-                } catch (Exception aiException) {
-                    log.error("AI分类服务异常，使用默认设置", aiException);
-                    createRequest.setAiConfidence(0.5);
-                    createRequest.setTags(null); // 空标签
-                }
 
-                // AI答案解析
                 try {
-                    AIAnswerService.AnswerResult answerResult = aiAnswerService.generateAnswer(content);
-                    log.info("AI答案生成结果: success={}, confidence={}, summary={}",
-                            answerResult.isSuccess(),
-                            answerResult.getConfidence(),
-                            answerResult.getAnswer() != null ? answerResult.getAnswer().substring(0, Math.min(30, answerResult.getAnswer().length())) : "null");
-
-                    createRequest.setAiAnswer(answerResult.getAnswer());
-                    createRequest.setAiAnalysis(answerResult.getAnalysis());
-                    if (!answerResult.isSuccess()) {
-                        log.warn("AI答案解析生成失败：{}", answerResult.getAnalysis());
-                    }
-                } catch (Exception answerException) {
-                    log.error("AI答案生成异常，使用默认答案", answerException);
-                    createRequest.setAiAnswer("待补充");
-                    createRequest.setAiAnalysis("AI暂未给出解析");
-                }
-                
-                log.info("准备保存题目: {}", content.substring(0, Math.min(50, content.length())));
-                
-                try {
-                    QuestionDTO savedQuestion = questionService.createQuestion(createRequest);
+                    QuestionDTO savedQuestion = questionService.createPendingQuestion(createRequest);
                     savedQuestions.add(savedQuestion);
-                    log.info("成功保存题目 ID: {}", savedQuestion.getId());
+                    pendingIds.add(savedQuestion.getId());
+                    log.info("成功保存待解析题目 ID: {}", savedQuestion.getId());
                 } catch (Exception e) {
                     log.error("保存单个题目失败: {}", content.substring(0, Math.min(30, content.length())), e);
                     throw e; // 重新抛出异常，让外层处理
                 }
             }
-            
+
+            // 触发后台异步 AI 处理（不阻塞响应）
+            for (Long id : pendingIds) {
+                asyncAiProcessingService.processQuestion(id);
+            }
+
             Map<String, Object> result = new HashMap<>();
             result.put("savedCount", savedQuestions.size());
             result.put("questions", savedQuestions);
-            
-            log.info("批量保存题目完成，成功保存{}道题目", savedQuestions.size());
-            return ResponseEntity.ok(ApiResponse.success("题目保存成功", result));
+            result.put("pending", true);
+
+            log.info("批量保存题目完成，已提交{}道题目进入后台AI解析", savedQuestions.size());
+            return ResponseEntity.ok(ApiResponse.success("题目保存成功，AI解析中", result));
             
         } catch (Exception e) {
             log.error("批量保存题目失败，错误详情：", e);

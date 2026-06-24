@@ -1,5 +1,14 @@
 <template>
   <div class="categories-page">
+    <!-- 组卷选题模式提示 -->
+    <div v-if="isPaperBuilderMode" class="paper-mode-banner">
+      <div class="paper-mode-text">
+        <span class="paper-mode-title">组建新卷</span>
+        <span class="paper-mode-desc">请选择分类，勾选题目后点击「确认组卷」</span>
+      </div>
+      <span class="paper-mode-cancel" @click="exitPaperBuilderMode">取消</span>
+    </div>
+
     <!-- 顶部搜索栏 -->
     <div class="search-section">
       <van-search 
@@ -33,6 +42,21 @@
         <span class="stat-label">今日新增</span>
       </div>
     </div>
+    </div>
+
+    <!-- 解析中提示卡片（对齐小程序） -->
+    <div v-if="pendingCount > 0" class="pending-card" @click="goToAnalyzing">
+      <div class="pending-card-header">
+        <div class="pending-card-left">
+          <span class="pending-card-title">解析中</span>
+          <span class="pending-card-count">· {{ pendingCount }} 道题</span>
+        </div>
+        <span class="pending-card-arrow">›</span>
+      </div>
+      <div class="pending-indeterminate-bar">
+        <div class="pending-indeterminate-fill"></div>
+      </div>
+      <span class="pending-card-hint">点击查看 AI 解析进度</span>
     </div>
 
     <!-- 分类列表 -->
@@ -111,15 +135,21 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import categoryAPI from '../api/category'
+import { startPendingPoll, fetchPendingQuestions } from '../utils/pendingQuestions'
 
 export default {
   name: 'Categories',
   setup() {
     const router = useRouter()
     const route = useRoute()
+
+    const isPaperBuilderMode = computed(() => route.query.mode === 'paper-builder')
+    const exitPaperBuilderMode = () => {
+      router.replace('/categories')
+    }
 
     const searchText = ref('')
     const refreshing = ref(false)
@@ -133,6 +163,8 @@ export default {
       totalCategories: 0,
       todayAdded: 0
     })
+    const pendingCount = ref(0)
+    let stopPendingPoll = null
 
     // 计算属性
     const filteredCategories = computed(() => {
@@ -158,8 +190,7 @@ export default {
     const onRefresh = async () => {
       refreshing.value = true
       try {
-        await loadCategories()
-        await loadStats()
+        await Promise.all([loadCategories(), loadStats(), loadPending()])
       } finally {
         refreshing.value = false
       }
@@ -178,7 +209,6 @@ export default {
       }
     }
 
-    // 查看分类详情
     const viewCategory = (category) => {
       // 检查是否是组卷模式
       const mode = route.query.mode
@@ -272,10 +302,37 @@ export default {
       }
     }
 
+    const goToAnalyzing = () => {
+      router.push('/analyzing')
+    }
+
+    const loadPending = async () => {
+      try {
+        const list = await fetchPendingQuestions()
+        pendingCount.value = list.length
+      } catch {
+        pendingCount.value = 0
+      }
+    }
+
     // 组件挂载时加载数据
     onMounted(() => {
       loadCategories()
       loadStats()
+      loadPending()
+      stopPendingPoll = startPendingPoll((list) => {
+        const prev = pendingCount.value
+        pendingCount.value = list.length
+        // 解析任务完成（待处理数归零）时，自动刷新分类与统计
+        if (prev > 0 && list.length === 0) {
+          loadCategories()
+          loadStats()
+        }
+      }, 5000)
+    })
+
+    onBeforeUnmount(() => {
+      if (stopPendingPoll) stopPendingPoll()
     })
 
     return {
@@ -287,11 +344,15 @@ export default {
       totalQuestions,
       totalCategories,
       todayAdded,
+      pendingCount,
+      isPaperBuilderMode,
+      exitPaperBuilderMode,
       onSearch,
       onRefresh,
       onLoadMore,
       viewCategory,
-      formatTime
+      formatTime,
+      goToAnalyzing
     }
   }
 }
@@ -602,5 +663,106 @@ export default {
 :deep(.van-tabbar-item--active::before),
 :deep(.van-tabbar-item--active::after) {
   content: none !important;
+}
+
+.paper-mode-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 12px 16px 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  border-radius: 14px;
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(36, 89, 255, 0.28);
+}
+
+.paper-mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.paper-mode-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.paper-mode-desc {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+.paper-mode-cancel {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.pending-card {
+  margin: 0 16px 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(234, 243, 255, 0.85));
+  border: 1px solid rgba(36, 89, 255, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(36, 89, 255, 0.12);
+  cursor: pointer;
+}
+
+.pending-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.pending-card-left {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.pending-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #2459ff;
+}
+
+.pending-card-count {
+  font-size: 14px;
+  color: rgba(11, 22, 51, 0.55);
+}
+
+.pending-card-arrow {
+  font-size: 20px;
+  color: rgba(11, 22, 51, 0.35);
+}
+
+.pending-indeterminate-bar {
+  height: 4px;
+  background: rgba(36, 89, 255, 0.12);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.pending-indeterminate-fill {
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, #2459ff, #52b7ff);
+  animation: pendingShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes pendingShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+.pending-card-hint {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.45);
 }
 </style>

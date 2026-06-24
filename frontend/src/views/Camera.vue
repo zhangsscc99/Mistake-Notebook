@@ -119,8 +119,8 @@
     <input 
       ref="fileInput"
       type="file" 
-      accept="image/*" 
-      multiple
+      accept="image/*"
+      :capture="captureMode ? 'environment' : undefined"
       style="display: none"
       @change="handleFileSelect"
     />
@@ -136,12 +136,14 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
+import Compressor from 'compressorjs'
 import { imageRecognitionAPI } from '../api/recognition'
 import { apiClient } from '../api/config'
 import categoryAPI from '../api/category'
+import { isPendingQuestion } from '../utils/questionFormat'
 
 export default {
   name: 'Homepage',
@@ -152,6 +154,41 @@ export default {
     const selectedImages = reactive([])
     const recentRecords = reactive([])
     const fileInput = ref(null)
+    const captureMode = ref(false)
+
+    // 读取设置里的图片质量（对齐小程序：高清/标准/省流）
+    const getImageQuality = () => {
+      try {
+        const s = JSON.parse(localStorage.getItem('app_settings') || '{}')
+        return s.imageQuality || 'high'
+      } catch {
+        return 'high'
+      }
+    }
+
+    // 按质量压缩图片，加快上传与识别
+    const compressImage = (file) => {
+      const quality = getImageQuality()
+      const presets = {
+        high: { quality: 0.92, maxWidth: 2400 },
+        medium: { quality: 0.75, maxWidth: 1600 },
+        low: { quality: 0.55, maxWidth: 1080 }
+      }
+      const preset = presets[quality] || presets.high
+      return new Promise((resolve) => {
+        try {
+          new Compressor(file, {
+            quality: preset.quality,
+            maxWidth: preset.maxWidth,
+            convertSize: Infinity,
+            success: (result) => resolve(result),
+            error: () => resolve(file)
+          })
+        } catch {
+          resolve(file)
+        }
+      })
+    }
 
     // 确保所有响应式数据都有初始值
     if (!selectedImages) {
@@ -161,37 +198,31 @@ export default {
       recentRecords.splice(0, recentRecords.length)
     }
 
-    // 拍照功能
-    const takePhoto = () => {
-      // 在真实应用中，这里会调用相机API
-      // 现在先调用文件选择作为替代
-      selectFromGallery()
-    }
-
-    // 从相册选择
-    const selectFromGallery = () => {
+    // 拍照功能（移动端唤起摄像头，桌面端退化为文件选择）
+    const takePhoto = async () => {
+      captureMode.value = true
+      await nextTick()
       fileInput.value.click()
     }
 
-    // 处理文件选择
+    // 从相册选择
+    const selectFromGallery = async () => {
+      captureMode.value = false
+      await nextTick()
+      fileInput.value.click()
+    }
+
+    // 处理文件选择（单张，对齐小程序）
     const handleFileSelect = (event) => {
-      const files = Array.from(event.target.files)
-      
-      files.forEach(file => {
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader()
-          reader.onload = (e) => {
-            selectedImages.push({
-              file: file,
-              url: e.target.result,
-              name: file.name
-            })
-          }
-          reader.readAsDataURL(file)
-        }
+      const file = event.target.files?.[0]
+      if (!file || !file.type.startsWith('image/')) return
+
+      selectedImages.splice(0, selectedImages.length)
+      selectedImages.push({
+        file,
+        url: URL.createObjectURL(file),
+        name: file.name
       })
-      
-      // 清空文件输入
       event.target.value = ''
     }
 
@@ -208,54 +239,31 @@ export default {
       }
 
       processing.value = true
-      
+
       try {
-        console.log('开始调用API识别...') // 调试信息
-        
-        // 调用图像识别API进行OCR识别
-        const results = await imageRecognitionAPI.recognizeImages(selectedImages)
-        
-        console.log('API识别结果:', results) // 调试信息
-        console.log('API调用成功，准备显示Toast...') // 调试信息
-        
-        showToast('识别完成!')
-        
-        console.log('Toast显示完成，准备跳转...') // 调试信息
-        
-        // 获取第一张图片的URL用于题目选择页面
-        const firstImageUrl = selectedImages[0].url
-        
-        console.log('准备跳转到题目选择页面, 图片URL:', firstImageUrl) // 调试信息
-        
-        // 先尝试简单跳转测试
-        console.log('当前路由器对象:', router) // 调试信息
-        
-        // 跳转到题目选择页面，传递图片和识别结果
-        const routeData = {
-          path: '/question-selector',
-          query: {
-            image: encodeURIComponent(firstImageUrl),
-            results: JSON.stringify(results)
-          }
+        // 按图片质量设置压缩后再识别
+        const compressed = await Promise.all(
+          selectedImages.map(async (img) => ({
+            ...img,
+            file: await compressImage(img.file)
+          }))
+        )
+        const results = await imageRecognitionAPI.recognizeImages(compressed)
+        const payload = results.data || {}
+        if (!payload.questions?.length) {
+          showToast('未识别到题目')
+          return
         }
-        
-        console.log('路由数据:', routeData) // 调试信息
-        
-        // 先测试简单跳转
-        try {
-          console.log('开始执行路由跳转...') // 调试信息
-          await router.push(routeData)
-          console.log('路由跳转执行完成') // 调试信息
-        } catch (error) {
-          console.error('路由跳转失败:', error) // 调试信息
-        }
-        
-        // 清空已选择的图片
+
+        sessionStorage.setItem('recognitionDraft', JSON.stringify({
+          tempFilePath: selectedImages[0].url,
+          imageUrl: payload.imageUrl || selectedImages[0].url,
+          segments: payload.questions
+        }))
+
         selectedImages.splice(0)
-        
-        // 更新最近记录
+        await router.push('/question-selector')
         loadRecentRecords()
-        
       } catch (error) {
         console.error('图像识别失败:', error)
         showToast('识别失败，请重试')
@@ -321,7 +329,10 @@ export default {
           }
         })
 
-        const records = questions.slice(0, 10).map((question) => ({
+        const records = questions
+          .filter(q => !isPendingQuestion(q))
+          .slice(0, 10)
+          .map((question) => ({
           id: question.id,
           title: buildRecentTitle(question),
           createdAt: question.createdAt,
@@ -347,6 +358,7 @@ export default {
       selectedImages,
       recentRecords,
       fileInput,
+      captureMode,
       takePhoto,
       selectFromGallery,
       handleFileSelect,

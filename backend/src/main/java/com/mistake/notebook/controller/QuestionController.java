@@ -26,6 +26,21 @@ import java.util.Map;
 public class QuestionController {
 
     private final QuestionService questionService;
+    private final com.mistake.notebook.service.AsyncAiProcessingService asyncAiProcessingService;
+
+    /**
+     * 查询正在/等待 AI 解析（或失败）的题目，用于前端"解析中"轮询
+     */
+    @GetMapping("/pending")
+    public ResponseEntity<ApiResponse<List<QuestionDTO>>> getPendingQuestions() {
+        try {
+            return ResponseEntity.ok(ApiResponse.success(questionService.getPendingQuestions()));
+        } catch (Exception e) {
+            log.error("查询待解析题目失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("查询失败：" + e.getMessage()));
+        }
+    }
 
     /**
      * 创建题目
@@ -208,6 +223,30 @@ public class QuestionController {
             log.error("获取难度统计失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("获取统计数据失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 重新生成 AI 答案与解析（对齐小程序 question.retry）
+     */
+    @PostMapping("/{id}/retry-ai")
+    public ResponseEntity<ApiResponse<QuestionDTO>> retryAi(@PathVariable Long id) {
+        try {
+            boolean ok = questionService.markAiPending(id);
+            if (!ok) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(ApiResponse.error("题目不存在"));
+            }
+            // 异步重新分类 + 生成解析，立即返回，前端通过轮询感知进度
+            asyncAiProcessingService.processQuestion(id);
+            return questionService.getQuestionById(id)
+                    .map(q -> ResponseEntity.ok(ApiResponse.success("已重新提交AI解析", q)))
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(ApiResponse.error("题目不存在")));
+        } catch (Exception e) {
+            log.error("重新生成 AI 解析失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("重试失败：" + e.getMessage()));
         }
     }
 

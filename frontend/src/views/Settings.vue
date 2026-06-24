@@ -23,7 +23,11 @@
         </div>
         <div class="user-info">
           <h3 class="user-name">{{ userInfo.name || '用户' }}</h3>
-          <p class="user-email">{{ userInfo.email || '未设置邮箱' }}</p>
+          <div class="user-stats">
+            <span class="user-stat"><b>{{ stats.questionCount }}</b> 错题</span>
+            <span class="user-stat-divider">·</span>
+            <span class="user-stat"><b>{{ stats.categoryCount }}</b> 分类</span>
+          </div>
         </div>
         <van-icon name="edit" @click="editProfile" />
       </div>
@@ -204,7 +208,16 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue'
-import { Toast, Dialog } from 'vant'
+import {
+  showToast,
+  showSuccessToast,
+  showFailToast,
+  showLoadingToast,
+  closeToast,
+  showConfirmDialog
+} from 'vant'
+import categoryAPI from '../api/category'
+import { apiClient } from '../api/config'
 
 export default {
   name: 'Settings',
@@ -222,6 +235,12 @@ export default {
       name: '错题本用户',
       email: '',
       avatar: 'https://via.placeholder.com/60x60?text=User'
+    })
+
+    // 统计信息（对齐小程序：错题数 / 分类数）
+    const stats = reactive({
+      questionCount: 0,
+      categoryCount: 0
     })
 
     // 应用信息
@@ -320,25 +339,25 @@ export default {
       savedSettings[key] = settings[key]
       localStorage.setItem('app_settings', JSON.stringify(savedSettings))
       
-      Toast.success('设置已保存')
+      showSuccessToast('设置已保存')
     }
 
     // 编辑个人资料
     const editProfile = () => {
-      Toast('个人资料编辑功能开发中...')
+      showToast('个人资料编辑功能开发中...')
     }
 
     // 保存自动分类设置
     const saveAutoClassifySettings = () => {
       localStorage.setItem('auto_classify_config', JSON.stringify(autoClassifyConfig))
       showAutoClassifySettings.value = false
-      Toast.success('自动分类设置已保存')
+      showSuccessToast('自动分类设置已保存')
     }
 
     // 保存云服务配置
     const saveCloudConfig = () => {
       if (!cloudConfig.accessKeyId || !cloudConfig.accessKeySecret) {
-        Toast.fail('请填写完整的配置信息')
+        showFailToast('请填写完整的配置信息')
         return
       }
       
@@ -346,23 +365,17 @@ export default {
       localStorage.setItem('cloud_config', JSON.stringify(cloudConfig))
       cloudStatus.aliyun = true
       showCloudConfig.value = false
-      Toast.success('云服务配置已保存')
+      showSuccessToast('云服务配置已保存')
     }
 
-    // 同步数据
+    // 同步数据（重新拉取统计，对齐小程序的"数据同步"刷新行为）
     const syncData = async () => {
-      if (!cloudStatus.aliyun) {
-        Toast.fail('请先配置云服务')
-        return
-      }
-      
       syncing.value = true
       try {
-        // 模拟同步过程
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        Toast.success('数据同步完成')
+        await loadStats()
+        showSuccessToast('数据同步完成')
       } catch (error) {
-        Toast.fail('同步失败，请重试')
+        showFailToast('同步失败，请重试')
       } finally {
         syncing.value = false
       }
@@ -371,14 +384,22 @@ export default {
     // 导出数据
     const exportData = async () => {
       try {
-        Toast.loading('正在导出数据...')
-        
-        // 模拟导出过程
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        
-        Toast.success('数据导出成功')
+        showLoadingToast({ message: '正在导出数据...', forbidClick: true })
+        const res = await apiClient.get('/questions')
+        const questions = res.data?.data || []
+        const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), questions }, null, 2)],
+          { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `错题本导出_${new Date().toISOString().slice(0, 10)}.json`
+        a.click()
+        URL.revokeObjectURL(url)
+        closeToast()
+        showSuccessToast('数据导出成功')
       } catch (error) {
-        Toast.fail('导出失败')
+        closeToast()
+        showFailToast('导出失败')
       }
     }
 
@@ -393,32 +414,37 @@ export default {
       if (!file) return
       
       try {
-        Toast.loading('正在导入数据...')
-        
-        // 模拟导入过程
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        
-        Toast.success('数据导入成功')
+        showLoadingToast({ message: '正在导入数据...', forbidClick: true })
+        await new Promise(resolve => setTimeout(resolve, 1200))
+        closeToast()
+        showToast('导入功能即将上线')
       } catch (error) {
-        Toast.fail('导入失败')
+        closeToast()
+        showFailToast('导入失败')
       }
       
       // 清空文件输入
       event.target.value = ''
     }
 
-    // 清空缓存
+    // 清空缓存（真实清除本地缓存键，云端数据不受影响）
     const clearCache = async () => {
       try {
-        await Dialog.confirm({
+        await showConfirmDialog({
           title: '确认清空',
-          message: '确定要清空应用缓存吗？这将删除临时文件和图片缓存。'
+          message: '确定要清空应用缓存吗？这将删除本地试卷草稿、识别草稿和图片缓存（云端错题不受影响）。'
         })
-        
-        Toast.loading('正在清空缓存...')
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        Toast.success('缓存清空完成')
+
+        const cacheKeys = [
+          'savedPapers',
+          'pendingPaperQuestions',
+          'recognitionDraft'
+        ]
+        cacheKeys.forEach(k => localStorage.removeItem(k))
+        sessionStorage.removeItem('pendingPaperQuestions')
+        sessionStorage.removeItem('recognitionDraft')
+
+        showSuccessToast('缓存清空完成')
       } catch (error) {
         // 用户取消
       }
@@ -427,22 +453,23 @@ export default {
     // 重置应用
     const resetApp = async () => {
       try {
-        await Dialog.confirm({
+        await showConfirmDialog({
           title: '危险操作',
-          message: '确定要重置应用吗？这将删除所有数据，此操作不可恢复！',
+          message: '确定要重置应用吗？这将清除本地所有设置与缓存，此操作不可恢复！',
           confirmButtonText: '确认重置',
           confirmButtonColor: '#ee0a24'
         })
         
         // 清空本地存储
         localStorage.clear()
+        sessionStorage.clear()
         
-        Toast.success('应用已重置，请重新启动')
+        showSuccessToast('应用已重置，请重新启动')
         
-        // 3秒后刷新页面
+        // 2秒后刷新页面
         setTimeout(() => {
           location.reload()
-        }, 3000)
+        }, 2000)
         
       } catch (error) {
         // 用户取消
@@ -451,29 +478,46 @@ export default {
 
     // 检查更新
     const checkUpdate = async () => {
-      Toast.loading('检查更新中...')
-      
+      showLoadingToast({ message: '检查更新中...', forbidClick: true })
       try {
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        Toast.success('当前已是最新版本')
+        await new Promise(resolve => setTimeout(resolve, 1200))
+        closeToast()
+        showSuccessToast('当前已是最新版本')
       } catch (error) {
-        Toast.fail('检查更新失败')
+        closeToast()
+        showFailToast('检查更新失败')
       }
     }
 
     // 用户反馈
     const feedback = () => {
-      Toast('反馈功能开发中...')
+      showToast('反馈功能开发中...')
     }
 
     // 显示隐私政策
     const showPrivacyPolicy = () => {
-      Toast('隐私政策页面开发中...')
+      showToast('隐私政策页面开发中...')
     }
 
     // 显示使用条款
     const showTerms = () => {
-      Toast('使用条款页面开发中...')
+      showToast('使用条款页面开发中...')
+    }
+
+    // 加载统计（错题数 / 分类数）
+    const loadStats = async () => {
+      try {
+        const [catRes, qRes] = await Promise.all([
+          categoryAPI.getCategories(),
+          apiClient.get('/questions')
+        ])
+        const categories = catRes?.data?.data || []
+        const questions = qRes?.data?.data || []
+        stats.categoryCount = Array.isArray(categories) ? categories.length : 0
+        stats.questionCount = Array.isArray(questions) ? questions.length : 0
+      } catch (error) {
+        console.warn('加载统计失败', error)
+      }
     }
 
     // 加载设置
@@ -494,10 +538,12 @@ export default {
     // 组件挂载
     onMounted(() => {
       loadSettings()
+      loadStats()
     })
 
     return {
       userInfo,
+      stats,
       appInfo,
       settings,
       cloudStatus,
@@ -611,6 +657,24 @@ export default {
   font-size: 14px;
   opacity: 0.9;
   margin: 0;
+}
+
+.user-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+.user-stat b {
+  font-size: 16px;
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.user-stat-divider {
+  opacity: 0.6;
 }
 
 .settings-section,

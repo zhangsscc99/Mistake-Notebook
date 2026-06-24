@@ -7,6 +7,8 @@ import CategoryDetail from '../views/CategoryDetail.vue'
 import PaperBuilder from '../views/PaperBuilder.vue'
 import Settings from '../views/Settings.vue'
 import QuestionSelector from '../views/QuestionSelector.vue'
+import AiChat from '../views/AiChat.vue'
+import Analyzing from '../views/Analyzing.vue'
 
 const routes = [  
   {
@@ -61,6 +63,22 @@ const routes = [
     component: QuestionSelector,
     meta: {
       title: '选择题目'
+    }
+  },
+  {
+    path: '/ai-chat',
+    name: 'AiChat',
+    component: AiChat,
+    meta: {
+      title: 'AI 答疑'
+    }
+  },
+  {
+    path: '/analyzing',
+    name: 'Analyzing',
+    component: Analyzing,
+    meta: {
+      title: 'AI 解析进度'
     }
   }
 ]
