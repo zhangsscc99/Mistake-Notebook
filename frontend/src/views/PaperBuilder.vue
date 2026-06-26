@@ -107,7 +107,6 @@
       <van-tabbar-item icon="home-o" to="/homepage">首页</van-tabbar-item>
       <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
       <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
-      <van-tabbar-item icon="setting-o" to="/settings">设置</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
