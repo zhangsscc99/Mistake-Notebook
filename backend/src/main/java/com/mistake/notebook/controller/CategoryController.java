@@ -37,18 +37,7 @@ public class CategoryController {
             List<Category> categories = categoryRepository.findAllActive();
             
             List<Map<String, Object>> categoryList = categories.stream().map(category -> {
-                // 统计该分类下的题目数量
-                long questionCount = questionRepository.countByCategoryIdAndIsDeleted(category.getId(), false);
-                
-                Map<String, Object> categoryData = new HashMap<>();
-                categoryData.put("id", category.getId());
-                categoryData.put("name", category.getName());
-                categoryData.put("description", category.getDescription());
-                categoryData.put("color", category.getColor());
-                categoryData.put("questionCount", questionCount);
-                categoryData.put("icon", getCategoryIcon(category.getName()));
-                
-                return categoryData;
+                return toCategoryData(category);
             }).collect(Collectors.toList());
 
             return ResponseEntity.ok(ApiResponse.success("获取分类列表成功", categoryList));
@@ -56,6 +45,23 @@ public class CategoryController {
             log.error("获取分类列表失败", e);
             return ResponseEntity.status(500)
                     .body(ApiResponse.error("获取分类列表失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取分类详情
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getCategoryById(@PathVariable Long id) {
+        try {
+            return categoryRepository.findById(id)
+                    .filter(category -> !Boolean.TRUE.equals(category.getIsDeleted()))
+                    .map(category -> ResponseEntity.ok(ApiResponse.success("获取分类详情成功", toCategoryData(category))))
+                    .orElse(ResponseEntity.status(404).body(ApiResponse.error("分类不存在")));
+        } catch (Exception e) {
+            log.error("获取分类详情失败，分类ID: {}", id, e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("获取分类详情失败：" + e.getMessage()));
         }
     }
 
@@ -118,5 +124,21 @@ public class CategoryController {
             default:
                 return "📖";
         }
+    }
+
+    private Map<String, Object> toCategoryData(Category category) {
+        long questionCount = questionRepository.countByCategoryIdAndIsDeleted(category.getId(), false);
+
+        Map<String, Object> categoryData = new HashMap<>();
+        categoryData.put("id", category.getId());
+        categoryData.put("name", category.getName());
+        categoryData.put("description", category.getDescription());
+        categoryData.put("color", category.getColor());
+        categoryData.put("questionCount", questionCount);
+        categoryData.put("icon", getCategoryIcon(category.getName()));
+        categoryData.put("createdAt", category.getCreatedAt());
+        categoryData.put("updatedAt", category.getUpdatedAt());
+
+        return categoryData;
     }
 }
