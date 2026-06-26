@@ -46,8 +46,12 @@ cd ..
 # 上传后端JAR
 scp backend/target/notebook-backend-1.0.0.jar root@103.146.124.206:/opt/mistake-notebook/
 
-# 上传前端
-scp -r frontend/dist/* root@103.146.124.206:/opt/mistake-notebook/frontend/
+# 上传前端静态文件
+ssh root@103.146.124.206 "mkdir -p /var/www/mistake-notebook"
+scp -r frontend/dist/* root@103.146.124.206:/var/www/mistake-notebook/
+
+# 上传 Nginx 配置模板
+scp deploy/nginx/mistake-notebook.conf root@103.146.124.206:/etc/nginx/sites-available/default
 ```
 
 ### 3. 配置环境变量
@@ -69,11 +73,13 @@ systemctl daemon-reload
 systemctl start mistake-notebook
 systemctl enable mistake-notebook
 
-# 重启Nginx
+# 检查并重启 Nginx
+nginx -t
 systemctl restart nginx
 
 # 查看状态
 systemctl status mistake-notebook
+systemctl status nginx
 ```
 
 ## 🔍 验证部署
@@ -81,6 +87,14 @@ systemctl status mistake-notebook
 访问：`http://103.146.124.206`
 
 如果看到前端页面，说明部署成功！
+
+API 通过同一个入口访问：
+
+```bash
+curl http://103.146.124.206/api/categories
+```
+
+前端由 Nginx 静态托管，不需要使用 `vue-cli-service serve` 或 PM2 前端进程。
 
 ## 🐛 常见问题
 
@@ -101,7 +115,7 @@ netstat -tlnp | grep 8080
 nginx -t
 
 # 检查文件是否存在
-ls -la /opt/mistake-notebook/frontend/dist/
+ls -la /var/www/mistake-notebook/
 ```
 
 ### 数据库连接失败
@@ -113,4 +127,3 @@ mysql -u notebook_user -p mistake_notebook
 # 检查MySQL状态
 systemctl status mysql
 ```
-
