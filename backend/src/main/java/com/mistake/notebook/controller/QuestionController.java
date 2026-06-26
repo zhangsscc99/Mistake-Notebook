@@ -113,6 +113,15 @@ public class QuestionController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         try {
+            if (page < 0 || size <= 0) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("分页参数不合法"));
+            }
+            if (!List.of("asc", "desc").contains(sortDir.toLowerCase())) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("排序方向只能是 asc 或 desc"));
+            }
+            if (!List.of("id", "content", "category", "difficulty", "createdAt", "updatedAt").contains(sortBy)) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("排序字段不支持"));
+            }
             Page<QuestionDTO> questions = questionService.getQuestions(page, size, sortBy, sortDir);
             return ResponseEntity.ok(ApiResponse.success(questions));
         } catch (Exception e) {

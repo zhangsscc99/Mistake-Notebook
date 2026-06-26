@@ -261,8 +261,14 @@ public class UploadController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> saveSelectedQuestions(
             @RequestBody Map<String, Object> request) {
         try {
+            Object questionsObj = request.get("questions");
+            if (!(questionsObj instanceof List) || ((List<?>) questionsObj).isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("请选择要保存的题目"));
+            }
+
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> selectedQuestions = (List<Map<String, Object>>) request.get("questions");
+            List<Map<String, Object>> selectedQuestions = (List<Map<String, Object>>) questionsObj;
             String category = (String) request.get("category");
             String difficulty = (String) request.get("difficulty");
             String imageUrl = (String) request.get("imageUrl");
