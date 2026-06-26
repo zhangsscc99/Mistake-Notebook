@@ -840,39 +840,16 @@ export default {
     inset 0 1px 0 rgba(255, 255, 255, 0.62) !important;
 }
 
-.process-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  padding: 1px;
-  border-radius: inherit;
-  background: linear-gradient(
-    135deg,
-    rgba(47, 107, 255, 0.34),
-    rgba(142, 211, 255, 0.18),
-    rgba(138, 125, 255, 0.14)
-  );
-  pointer-events: none;
-  opacity: 0.95;
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
+/* Safari/WebKit: mask border pseudo renders as a black seam through button text */
+.process-btn::before,
+.process-btn::after {
+  content: none !important;
+  display: none !important;
 }
 
-.process-btn::after {
-  content: '';
-  position: absolute;
-  inset: -70% -70%;
-  background: linear-gradient(
-    120deg,
-    transparent 38%,
-    rgba(255, 255, 255, 0.34) 46%,
-    rgba(255, 255, 255, 0.10) 54%,
-    transparent 64%
-  );
-  transform: translateX(-12%) rotate(12deg);
-  opacity: 0.65;
-  pointer-events: none;
+.process-btn :deep(.van-button__content::before) {
+  content: none !important;
+  display: none !important;
 }
 
 .process-btn:hover {
