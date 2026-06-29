@@ -86,7 +86,7 @@ export function decoratePendingItem(item, index) {
   const failed = isFailedQuestion(item)
   const status = (item.aiStatus || '').toLowerCase()
   const processing = status === 'processing'
-  const preview = (item.content || '').replace(/\s+/g, ' ').trim()
+  const preview = formatLatex((item.content || '').replace(/\s+/g, ' ').trim())
   let statusText = '等待解析…'
   if (failed) statusText = '解析失败'
   else if (processing) statusText = 'AI 解析中…'

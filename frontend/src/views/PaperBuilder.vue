@@ -43,7 +43,7 @@
           class="pending-question-item"
         >
           <span class="pq-index">{{ idx + 1 }}</span>
-          <span class="pq-content">{{ q.content || '（无内容）' }}</span>
+          <span class="pq-content">{{ formatQuestionText(q.content) || '（无内容）' }}</span>
           <van-icon name="cross" class="pq-remove" @click="removePending(q)" />
         </div>
       </div>
@@ -118,6 +118,7 @@ import { showToast, showLoadingToast, showDialog, showConfirmDialog } from 'vant
 import categoryAPI from '../api/category'
 import paperAPI from '../api/paper'
 import { apiClient } from '../api/config'
+import { formatQuestionText } from '../utils/questionFormat'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -370,7 +371,7 @@ export default {
         <div style="padding: 12px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(31, 91, 255, 0.15); border-radius: 8px; text-align: left;">
           <div style="display: flex; align-items: flex-start; gap: 8px;">
             <span style="color: var(--text-accent); font-weight: 600; min-width: 30px;">${index + 1}.</span>
-            <span style="color: var(--text-primary); flex: 1;">${q.content}</span>
+            <span style="color: var(--text-primary); flex: 1;">${formatQuestionText(q.content)}</span>
           </div>
         </div>
       `).join('')
@@ -465,7 +466,7 @@ export default {
             <div style="margin-bottom: ${withAnalysis ? '40px' : '30px'};">
               <div style="font-weight: bold; color: #2459ff; margin-bottom: 8px;">第 ${index + 1} 题</div>
               <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-left: 4px solid #2459ff; border-radius: 4px;">
-                ${q.content}
+                ${formatQuestionText(q.content)}
               </div>
           `
           
@@ -474,11 +475,11 @@ export default {
             htmlContent += `
               <div style="margin-top: 15px; padding: 15px; background: #fff8e1; border-left: 4px solid #4caf50; border-radius: 4px;">
                 <div style="font-weight: bold; color: #4caf50; margin-bottom: 8px;">参考答案</div>
-                <div>${q.answer || 'A'}</div>
+                <div>${formatQuestionText(q.answer) || 'A'}</div>
               </div>
               <div style="margin-top: 10px; padding: 15px; background: #e3f2fd; border-left: 4px solid #2196f3; border-radius: 4px;">
                 <div style="font-weight: bold; color: #2196f3; margin-bottom: 8px;">详细解析</div>
-                <div>${q.analysis || 'AI暂未给出解析'}</div>
+                <div>${formatQuestionText(q.analysis) || 'AI暂未给出解析'}</div>
               </div>
             `
           } else {
@@ -745,6 +746,7 @@ export default {
     return {
       paperInfo,
       paperStats,
+      formatQuestionText,
       selectedCategories,
       allSelectedQuestions,
       availableCategories,

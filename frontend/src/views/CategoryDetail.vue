@@ -1414,9 +1414,12 @@ export default {
 
 .question-text p {
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--text-primary);
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
 .question-tags {
