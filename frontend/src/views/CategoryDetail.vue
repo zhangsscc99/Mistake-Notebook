@@ -96,7 +96,7 @@
               
               <!-- 识别的文字 -->
               <div class="question-text">
-                <p>{{ question.displayContent || question.recognizedText }}</p>
+                <QuestionText :segments="question.displaySegments" />
               </div>
               
               <!-- 标签 -->
@@ -181,7 +181,7 @@
               
               <!-- 识别的文字 -->
               <div class="question-text">
-                <p>{{ question.displayContent || question.recognizedText }}</p>
+                <QuestionText :segments="question.displaySegments" />
               </div>
               
               <!-- 标签 -->
@@ -278,7 +278,7 @@
               class="detail-para"
             >
               <span v-if="para.sub" class="detail-para-label">（{{ para.label }}）</span>
-              <p class="detail-section-body">{{ para.text }}</p>
+              <QuestionText :text="para.text" preformatted class="detail-section-body" />
             </div>
           </div>
           <div class="detail-section detail-section-ai">
@@ -327,13 +327,16 @@ import paperAPI from '../api/paper'
 import { apiClient } from '../api/config'
 import {
   formatQuestionText,
+  getQuestionSegments,
   parseQuestionParas,
   buildAiDisplayText,
   isPendingQuestion
 } from '../utils/questionFormat'
+import QuestionText from '../components/QuestionText.vue'
 
 export default {
   name: 'CategoryDetail',
+  components: { QuestionText },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -550,6 +553,7 @@ export default {
         displayIndex: index + 1,
         content: formattedContent,
         displayContent: formattedContent,
+        displaySegments: getQuestionSegments(rawContent),
         contentParas: contentParas.length ? contentParas : [{ label: '', text: formattedContent, sub: false }],
         hasAiAnswer,
         hasAiAnalysis,
@@ -1417,9 +1421,12 @@ export default {
   line-height: 1.6;
   color: var(--text-primary);
   margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.question-text :deep(.question-rich-text) {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-primary);
 }
 
 .question-tags {

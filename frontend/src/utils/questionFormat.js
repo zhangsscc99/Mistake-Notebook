@@ -1,4 +1,12 @@
-import { formatLatex } from './latex'
+import { formatLatex, splitMatrixSegments } from './latex'
+
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 
 export function parseQuestionParas(text) {
   if (!text) return []
@@ -45,6 +53,22 @@ export function parseQuestionParas(text) {
 
 export function formatQuestionText(raw) {
   return formatLatex(raw || '')
+}
+
+export function getQuestionSegments(raw, { preformatted = false } = {}) {
+  const formatted = preformatted ? (raw || '') : formatLatex(raw || '')
+  return splitMatrixSegments(formatted)
+}
+
+export function formatQuestionHtml(raw) {
+  const matrixStyle = 'font-family:Menlo,Consolas,monospace;font-size:13px;line-height:1.55;margin:6px 0;padding:8px 10px;background:#f4f6f8;border-radius:6px;white-space:pre;overflow-x:auto;display:block;'
+  const flowStyle = 'white-space:pre-wrap;word-break:break-word;'
+  return getQuestionSegments(raw).map((seg) => {
+    if (seg.type === 'matrix') {
+      return `<pre class="math-matrix" style="${matrixStyle}">${escapeHtml(seg.content)}</pre>`
+    }
+    return `<span class="question-text-flow" style="${flowStyle}">${escapeHtml(seg.content).replace(/\n/g, '<br>')}</span>`
+  }).join('')
 }
 
 export function buildAiDisplayText(value, pending, emptyFallback, pendingFallback) {

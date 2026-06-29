@@ -249,4 +249,101 @@ export function formatLatex(text) {
   return convertPlainMath(out)
 }
 
-export default { formatLatex }
+const AUG_ROW_FULL = /^(\[\s*.+\|\s*.+\s*\])([\s\S]*)$/
+const DET_ROW_FULL = /^(\|\s*.+\s\|)([\s\S]*)$/
+
+function isPmatMatrixRow(line) {
+  const t = String(line).trim()
+  return /^\(\s*.+\s\)$/.test(t) && /\s{2,}/.test(t)
+}
+
+/** 将已格式化的文本拆成普通文本段与矩阵块，便于等宽纵向对齐渲染 */
+export function splitMatrixSegments(text) {
+  if (!text) return [{ type: 'text', content: '' }]
+  const lines = String(text).split('\n')
+  const segments = []
+  let textBuf = []
+
+  const flushText = () => {
+    if (!textBuf.length) return
+    const content = textBuf.join('\n')
+    if (content) segments.push({ type: 'text', content })
+    textBuf = []
+  }
+
+  const pushMatrix = (rows, suffix) => {
+    if (rows.length) segments.push({ type: 'matrix', content: rows.join('\n') })
+    if (suffix && suffix.trim()) textBuf.push(suffix)
+  }
+
+  const collectRows = (firstRow, rowRe, startIdx, initialSuffix = '') => {
+    const rows = [firstRow]
+    let suffix = initialSuffix
+    let i = startIdx
+    while (i < lines.length && !suffix.trim()) {
+      const m = lines[i].match(rowRe)
+      if (!m) break
+      rows.push(m[1].trim())
+      suffix = m[2] || ''
+      i++
+    }
+    return { rows, suffix, nextIdx: i }
+  }
+
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+
+    const inlineAug = line.match(/^([\s\S]*?)(\[\s*[^\]]+\|\s*[^\]]+\s*\])([\s\S]*)$/)
+    if (inlineAug && inlineAug[2]) {
+      const [, prefix, row1, restAfterFirst] = inlineAug
+      if (prefix) textBuf.push(prefix)
+      flushText()
+      const { rows, suffix, nextIdx } = collectRows(row1.trim(), AUG_ROW_FULL, i + 1, restAfterFirst)
+      i = nextIdx
+      pushMatrix(rows, suffix)
+      continue
+    }
+
+    const augM = line.match(AUG_ROW_FULL)
+    if (augM) {
+      flushText()
+      const { rows, suffix, nextIdx } = collectRows(augM[1].trim(), AUG_ROW_FULL, i + 1, augM[2] || '')
+      i = nextIdx
+      pushMatrix(rows, suffix)
+      continue
+    }
+
+    const detM = line.match(DET_ROW_FULL)
+    if (detM) {
+      flushText()
+      const { rows, suffix, nextIdx } = collectRows(detM[1].trim(), DET_ROW_FULL, i + 1, detM[2] || '')
+      i = nextIdx
+      pushMatrix(rows, suffix)
+      continue
+    }
+
+    if (isPmatMatrixRow(line)) {
+      flushText()
+      const rows = []
+      while (i < lines.length && isPmatMatrixRow(lines[i])) {
+        rows.push(lines[i].trim())
+        i++
+      }
+      if (rows.length >= 2) {
+        segments.push({ type: 'matrix', content: rows.join('\n') })
+        continue
+      }
+      textBuf.push(...rows)
+      continue
+    }
+
+    textBuf.push(line)
+    i++
+  }
+
+  flushText()
+  return segments.length ? segments : [{ type: 'text', content: text }]
+}
+
+export default { formatLatex, splitMatrixSegments }
