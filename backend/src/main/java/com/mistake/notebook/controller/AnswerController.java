@@ -68,6 +68,10 @@ public class AnswerController {
             data.put("lastQuestions", status.getLastQuestions());
             data.put("topics", status.getTopics());
             data.put("summary", status.getSummary());
+            data.put("profile", status.getProfile());
+            data.put("preferences", status.getPreferences());
+            data.put("weaknesses", status.getWeaknesses());
+            data.put("mistakePatterns", status.getMistakePatterns());
             return ResponseEntity.ok(ApiResponse.success(data));
         } catch (Exception e) {
             log.error("获取记忆状态失败", e);

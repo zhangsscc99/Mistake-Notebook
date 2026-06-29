@@ -88,11 +88,33 @@ function buildGreeting(ctxRaw, memoryStatus) {
     const questions = memoryStatus.lastQuestions
     if (questions?.length) {
       const lastQ = questions[questions.length - 1]
+      const weakHint = formatWeaknessHint(memoryStatus.weaknesses)
       if (ctxRaw) {
-        return `你好，你上次问过「${lastQ}」，关于这道题，有什么不懂的地方都可以问我～`
+        return weakHint
+          ? `你好，你上次问过「${lastQ}」。${weakHint}关于这道题，有什么不懂的地方都可以问我～`
+          : `你好，你上次问过「${lastQ}」，关于这道题，有什么不懂的地方都可以问我～`
       }
-      return `你好，你上次问过「${lastQ}」，今天继续学吧～`
+      return weakHint
+        ? `你好，你上次问过「${lastQ}」。${weakHint}今天继续学吧～`
+        : `你好，你上次问过「${lastQ}」，今天继续学吧～`
     }
+
+    const weakHint = formatWeaknessHint(memoryStatus.weaknesses)
+    if (weakHint) {
+      return ctxRaw
+        ? `${weakHint}关于这道题，有什么不懂的地方都可以问我～`
+        : `${weakHint}继续把疑问发给我吧～`
+    }
+
+    const profileHint = formatProfileHint(memoryStatus.profile)
+    if (profileHint && memoryStatus.topics?.length) {
+      const topicHint = memoryStatus.topics.slice(0, 4).join('、')
+      if (ctxRaw) {
+        return `你好，${profileHint}我记得你之前学过 ${topicHint} 等内容。关于这道题，有什么不懂的地方都可以问我～`
+      }
+      return `你好，${profileHint}我记得你之前学过 ${topicHint} 等内容，继续把疑问发给我吧～`
+    }
+
     if (memoryStatus.topics?.length) {
       const topicHint = memoryStatus.topics.slice(0, 4).join('、')
       if (ctxRaw) {
@@ -100,11 +122,35 @@ function buildGreeting(ctxRaw, memoryStatus) {
       }
       return `你好，我记得你之前学过 ${topicHint} 等内容，继续把疑问发给我吧～`
     }
+
+    if (profileHint) {
+      return ctxRaw
+        ? `你好，${profileHint}关于这道题，有什么不懂的地方都可以问我～`
+        : `你好，${profileHint}把你的疑问发给我吧～`
+    }
   }
   if (ctxRaw) {
     return '你好，我是你的 AI 答疑老师。关于这道题，有什么不懂的地方都可以问我～'
   }
   return '你好，我是你的 AI 答疑老师。把你的疑问发给我吧～'
+}
+
+function formatProfileHint(profile) {
+  if (!profile) return ''
+  const parts = []
+  if (profile.grade) parts.push(profile.grade)
+  if (profile.subject) parts.push(`主攻${profile.subject}`)
+  return parts.length ? parts.join('、') + '，' : ''
+}
+
+function formatWeaknessHint(weaknesses) {
+  if (!weaknesses?.length) return ''
+  const topics = weaknesses
+    .filter(w => w?.topic && (w.level === 'weak' || w.level === 'learning'))
+    .map(w => w.topic)
+    .slice(0, 3)
+  if (!topics.length) return ''
+  return `我记得你在 ${topics.join('、')} 方面还需要加强。`
 }
 
 export default {

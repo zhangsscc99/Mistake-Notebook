@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 
 /**
  * AI 答疑记忆（SQL 持久化）。
- * 以 clientId 维度保存每位用户的长期记忆：近期提问、知识主题、对话摘要。
+ * 以 clientId 维度保存分类长期记忆（profile / preferences / mastery / patterns / dialog / context）。
  */
 @Entity
 @Table(name = "chat_memory", indexes = {
@@ -55,6 +55,30 @@ public class ChatMemory {
      */
     @Column(name = "last_question_context", columnDefinition = "TEXT")
     private String lastQuestionContext;
+
+    /**
+     * 用户画像（JSON 对象：grade/subject/goal）
+     */
+    @Column(name = "profile", columnDefinition = "TEXT")
+    private String profile;
+
+    /**
+     * 学习偏好（JSON 数组：[{topic,value}]）
+     */
+    @Column(name = "preferences", columnDefinition = "TEXT")
+    private String preferences;
+
+    /**
+     * 薄弱/掌握知识点（JSON 数组：[{topic,level,note}]）
+     */
+    @Column(name = "weaknesses", columnDefinition = "TEXT")
+    private String weaknesses;
+
+    /**
+     * 常见错题模式（JSON 数组：[{pattern,note}]）
+     */
+    @Column(name = "mistake_patterns", columnDefinition = "TEXT")
+    private String mistakePatterns;
 
     /**
      * 累计对话会话数

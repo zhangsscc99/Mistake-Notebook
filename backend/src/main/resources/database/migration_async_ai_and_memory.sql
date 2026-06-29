@@ -27,3 +27,9 @@ CREATE TABLE IF NOT EXISTS chat_memory (
     updated_at DATETIME NULL,
     UNIQUE KEY idx_chat_memory_client (client_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI答疑记忆';
+
+-- 3. 分类长期记忆字段（dev 环境 ddl-auto=update 会自动建列；prod 需手动执行）
+-- ALTER TABLE chat_memory ADD COLUMN profile TEXT NULL COMMENT '用户画像(JSON)';
+-- ALTER TABLE chat_memory ADD COLUMN preferences TEXT NULL COMMENT '学习偏好(JSON数组)';
+-- ALTER TABLE chat_memory ADD COLUMN weaknesses TEXT NULL COMMENT '薄弱知识点(JSON数组)';
+-- ALTER TABLE chat_memory ADD COLUMN mistake_patterns TEXT NULL COMMENT '错题模式(JSON数组)';

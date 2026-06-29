@@ -47,13 +47,26 @@ const answerAPI = {
           hasMemory: !!data.hasMemory,
           lastQuestions: data.lastQuestions || [],
           topics: data.topics || [],
-          summary: data.summary || ''
+          summary: data.summary || '',
+          profile: data.profile || {},
+          preferences: data.preferences || [],
+          weaknesses: data.weaknesses || [],
+          mistakePatterns: data.mistakePatterns || []
         }
       }
     } catch (e) {
       // ignore
     }
-    return { hasMemory: false, lastQuestions: [], topics: [], summary: '' }
+    return {
+      hasMemory: false,
+      lastQuestions: [],
+      topics: [],
+      summary: '',
+      profile: {},
+      preferences: [],
+      weaknesses: [],
+      mistakePatterns: []
+    }
   },
 
   // 对话结束后让后端异步总结并持久化记忆（离开页面时调用）
