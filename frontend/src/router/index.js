@@ -1,14 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-// 页面组件
-import Camera from '../views/Camera.vue'
-import Categories from '../views/Categories.vue'
-import CategoryDetail from '../views/CategoryDetail.vue'
-import PaperBuilder from '../views/PaperBuilder.vue'
-import Settings from '../views/Settings.vue'
-import QuestionSelector from '../views/QuestionSelector.vue'
-import AiChat from '../views/AiChat.vue'
-import Analyzing from '../views/Analyzing.vue'
+const Camera = () => import(/* webpackChunkName: "page-home" */ '../views/Camera.vue')
+const Categories = () => import(/* webpackChunkName: "page-categories" */ '../views/Categories.vue')
+const CategoryDetail = () => import(/* webpackChunkName: "page-category-detail" */ '../views/CategoryDetail.vue')
+const PaperBuilder = () => import(/* webpackChunkName: "page-paper-builder" */ '../views/PaperBuilder.vue')
+const Settings = () => import(/* webpackChunkName: "page-settings" */ '../views/Settings.vue')
+const QuestionSelector = () => import(/* webpackChunkName: "page-question-selector" */ '../views/QuestionSelector.vue')
+const AiChat = () => import(/* webpackChunkName: "page-ai-chat" */ '../views/AiChat.vue')
+const Analyzing = () => import(/* webpackChunkName: "page-analyzing" */ '../views/Analyzing.vue')
 
 const routes = [  
   {

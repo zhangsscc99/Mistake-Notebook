@@ -120,8 +120,6 @@ import paperAPI from '../api/paper'
 import { apiClient } from '../api/config'
 import { formatQuestionText, formatQuestionHtml } from '../utils/questionFormat'
 import QuestionText from '../components/QuestionText.vue'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
 
 export default {
   name: 'PaperBuilder',
@@ -430,6 +428,11 @@ export default {
       showLoadingToast({ message: `正在生成${mode}PDF...`, forbidClick: true, duration: 0 })
       
       try {
+        const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+          import(/* webpackChunkName: "pdf-export" */ 'jspdf'),
+          import(/* webpackChunkName: "pdf-export" */ 'html2canvas')
+        ])
+
         // 等待一下让loading显示出来
         await new Promise(resolve => setTimeout(resolve, 300))
 

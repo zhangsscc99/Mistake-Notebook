@@ -18,6 +18,33 @@ module.exports = defineConfig({
   productionSourceMap: false,
   // 关闭 ESLint
   lintOnSave: false,
+  configureWebpack: {
+    optimization: {
+      splitChunks: {
+        chunks: 'all',
+        cacheGroups: {
+          vant: {
+            test: /[\\/]node_modules[\\/]vant[\\/]/,
+            name: 'vendor-vant',
+            priority: 30,
+            enforce: true
+          },
+          vue: {
+            test: /[\\/]node_modules[\\/](@vue|vue|vue-router)[\\/]/,
+            name: 'vendor-vue',
+            priority: 25,
+            enforce: true
+          },
+          common: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'vendor-common',
+            priority: 10,
+            reuseExistingChunk: true
+          }
+        }
+      }
+    }
+  },
   // PWA配置（可选）
   pwa: {
     name: '错题本整理',

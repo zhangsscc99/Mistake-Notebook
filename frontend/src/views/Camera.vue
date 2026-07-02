@@ -138,7 +138,6 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
-import Compressor from 'compressorjs'
 import { imageRecognitionAPI } from '../api/recognition'
 import { apiClient } from '../api/config'
 import categoryAPI from '../api/category'
@@ -176,13 +175,17 @@ export default {
       const preset = presets[quality] || presets.high
       return new Promise((resolve) => {
         try {
-          new Compressor(file, {
-            quality: preset.quality,
-            maxWidth: preset.maxWidth,
-            convertSize: Infinity,
-            success: (result) => resolve(result),
-            error: () => resolve(file)
-          })
+          import(/* webpackChunkName: "image-compressor" */ 'compressorjs')
+            .then(({ default: Compressor }) => {
+              new Compressor(file, {
+                quality: preset.quality,
+                maxWidth: preset.maxWidth,
+                convertSize: Infinity,
+                success: (result) => resolve(result),
+                error: () => resolve(file)
+              })
+            })
+            .catch(() => resolve(file))
         } catch {
           resolve(file)
         }
