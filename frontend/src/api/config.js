@@ -10,7 +10,7 @@ export const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhos
 // 创建默认 axios 实例（用于普通 API 请求）
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -55,4 +55,3 @@ uploadClient.interceptors.request.use(requestInterceptor)
 uploadClient.interceptors.response.use(responseInterceptor, errorInterceptor)
 
 export default apiClient
-
