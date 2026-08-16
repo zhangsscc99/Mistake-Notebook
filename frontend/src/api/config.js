@@ -10,7 +10,7 @@ export const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://localhos
 // 创建默认 axios 实例（用于普通 API 请求）
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 60000,
+  timeout: 180000,
   headers: {
     'Content-Type': 'application/json'
   }
