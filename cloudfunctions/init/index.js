@@ -16,7 +16,11 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const MEMORY_COLLECTION = 'chat_memories';
-const COLLECTIONS = ['categories', 'questions', 'papers', MEMORY_COLLECTION, 'users'];
+// 所有业务集合统一在首次启动时创建，避免开发者工具逐个手动建库。
+const COLLECTIONS = [
+  'categories', 'questions', 'papers', MEMORY_COLLECTION, 'users',
+  'classes', 'class_members', 'teacher_messages', 'class_notebooks'
+];
 
 async function ensureCollection(name) {
   try {
