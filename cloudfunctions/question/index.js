@@ -6,8 +6,17 @@ const _ = db.command;
 const $ = db.command.aggregate;
 const { normalizeQuestion } = require('./normalize');
 
+const MARKS_COLLECTION = 'question_marks';
+
 function mapQuestionList(records) {
   return (records || []).map(normalizeQuestion);
+}
+
+// 本函数此前完全不认 openid（question 的增删改查都是全局的）。
+// 收藏/置顶是第一个需要「是谁」的功能，所以在这里补上。
+function getCallerOpenId() {
+  const wxContext = cloud.getWXContext();
+  return wxContext.OPENID || wxContext.FROM_OPENID || '';
 }
 
 exports.main = async (event, context) => {
@@ -45,6 +54,10 @@ exports.main = async (event, context) => {
         return await batchSaveQuestions(event);
       case 'generateAnswer':
         return await generateAnswerForQuestion(event);
+      case 'mark':
+        return await markQuestion(event);
+      case 'listMarks':
+        return await listMarks(event);
       default:
         return { success: false, error: `Unknown action: ${action}` };
     }
@@ -92,6 +105,10 @@ async function createQuestion(event) {
   const result = await db.collection('questions').add({
     data: questionData
   });
+
+  if (!event.skipWorkerNudge && questionData.aiStatus === 'pending') {
+    nudgeAnswerWorker({ action: 'generate', docId: result._id });
+  }
 
   return { success: true, data: normalizeQuestion({ _id: result._id, ...questionData }) };
 }
@@ -343,9 +360,13 @@ async function retryQuestion(event) {
     .update({
       data: {
         aiStatus: 'pending',
+        aiAnswer: '',
+        aiAnalysis: '',
         updatedAt: new Date().toISOString()
       }
     });
+
+  nudgeAnswerWorker({ action: 'generate', docId: id });
 
   return { success: true, data: { _id: id, aiStatus: 'pending' } };
 }
@@ -376,6 +397,105 @@ async function statsByDifficulty() {
   return { success: true, data: result.list };
 }
 
+// ─── 收藏 / 置顶 / 已掌握 ─────────────────────────────────────────────────────
+//
+// questions 集合本身没有归属字段（createQuestion 写入时只带内容，
+// 见本文件 :75-90），错题是所有人共享的一个池子。
+// 所以标记必须落在「每人对每题一条」的独立记录里，不能写进题目本身 ——
+// 否则 A 收藏一道题，B 那边也会显示成已收藏。
+//
+// _id 用 `${openid}_${questionId}` 确定性拼接：每人每题只可能有一条，
+// doc().set() 天然幂等，不需要事务也不会写重。
+const MARK_FIELDS = ['favorite', 'pinned', 'mastered'];
+
+async function markQuestion(event) {
+  const openId = getCallerOpenId();
+  if (!openId) {
+    return { success: false, error: 'No openid' };
+  }
+
+  const questionId = String(event.questionId || '').trim();
+  if (!questionId) {
+    return { success: false, error: 'Missing questionId' };
+  }
+
+  // 白名单 + 类型校验。客户端传什么进来都拦不住，这一层才是把关的，
+  // 与 user 云函数 updateProfile 的字段白名单是同一套思路
+  const patch = {};
+  for (const field of MARK_FIELDS) {
+    if (event[field] === undefined) continue;
+    if (typeof event[field] !== 'boolean') {
+      return { success: false, error: `Invalid ${field}` };
+    }
+    patch[field] = event[field];
+  }
+  if (Object.keys(patch).length === 0) {
+    return { success: false, error: '没有需要更新的标记' };
+  }
+
+  const now = new Date().toISOString();
+  const _id = `${openId}_${questionId}`;
+
+  // 读一次现有标记，好把这次没传的字段原样保留（只更新传了的）
+  const existing = await db.collection(MARKS_COLLECTION).where({ _id }).limit(1).get();
+  const current = (existing.data || [])[0];
+
+  const mark = {
+    favorite: current ? !!current.favorite : false,
+    pinned: current ? !!current.pinned : false,
+    mastered: current ? !!current.mastered : false,
+    ...patch
+  };
+
+  await db.collection(MARKS_COLLECTION).doc(_id).set({
+    data: {
+      openid: openId,
+      questionId,
+      ...mark,
+      createdAt: (current && current.createdAt) || now,
+      updatedAt: now
+    }
+  });
+
+  return { success: true, data: { questionId, ...mark } };
+}
+
+// 给一批题目取当前用户的标记，前端合并进题目对象后渲染。
+// 单独一个 action，不去改 byCategory 的返回结构 —— byCategory 还被
+// questionPicker / questionSelector 用，给它的响应加字段会让那些调用方白付一次查询
+async function listMarks(event) {
+  const openId = getCallerOpenId();
+  if (!openId) {
+    return { success: false, error: 'No openid' };
+  }
+
+  const questionIds = (Array.isArray(event.questionIds) ? event.questionIds : [])
+    .map((id) => String(id || '').trim())
+    .filter(Boolean)
+    .slice(0, 200); // 防御性上限，不让客户端塞一个巨数组进来
+
+  if (questionIds.length === 0) {
+    return { success: true, data: {} };
+  }
+
+  const res = await db.collection(MARKS_COLLECTION)
+    .where({ openid: openId, questionId: _.in(questionIds) })
+    .limit(200)
+    .get();
+
+  // 返回 { [questionId]: { favorite, pinned, mastered } }
+  const map = {};
+  (res.data || []).forEach((doc) => {
+    map[doc.questionId] = {
+      favorite: !!doc.favorite,
+      pinned: !!doc.pinned,
+      mastered: !!doc.mastered
+    };
+  });
+
+  return { success: true, data: map };
+}
+
 const DIFFICULTY_MAP = {
   '简单': 'EASY',
   '中等': 'MEDIUM',
@@ -388,6 +508,15 @@ const DIFFICULTY_MAP = {
 async function invokeFunction(name, data) {
   const res = await cloud.callFunction({ name, data });
   return res.result || {};
+}
+
+function nudgeAnswerWorker(data) {
+  cloud.callFunction({
+    name: 'answerWorker',
+    data
+  }).catch((err) => {
+    console.warn('nudgeAnswerWorker failed:', err && err.message);
+  });
 }
 
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
@@ -636,7 +765,8 @@ async function batchSaveQuestions(event) {
         aiAnswer: '',
         aiAnalysis: '',
         aiStatus: 'pending',
-        ocrConfidence: item.confidence || 0.85
+        ocrConfidence: item.confidence || 0.85,
+        skipWorkerNudge: true
       });
 
       return createRes.success ? createRes.data : null;
@@ -644,6 +774,10 @@ async function batchSaveQuestions(event) {
   );
 
   const savedQuestions = saved.filter(Boolean);
+
+  if (savedQuestions.length) {
+    nudgeAnswerWorker({ action: 'processPending' });
+  }
 
   return {
     success: true,

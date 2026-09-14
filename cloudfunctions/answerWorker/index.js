@@ -151,7 +151,8 @@ async function generateForQuestion(docId, doc) {
       return { success: true, data: { skipped: true, reason: 'processing' } };
     }
   }
-  if (doc.aiAnswer || doc.aiAnalysis) {
+  const shouldRegenerate = doc.aiStatus === 'pending' || doc.aiStatus === 'failed';
+  if (!shouldRegenerate && (doc.aiAnswer || doc.aiAnalysis)) {
     console.log('answerWorker skip:', docId, 'has_ai_content');
     return { success: true, data: { skipped: true, reason: 'has_ai_content' } };
   }

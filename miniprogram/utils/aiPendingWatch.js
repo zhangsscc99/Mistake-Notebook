@@ -1,6 +1,27 @@
 const db = wx.cloud.database();
 const _ = db.command;
 
+let lastSweepKickAt = 0;
+const SWEEP_KICK_COOLDOWN_MS = 15000;
+
+function kickAnswerWorker(data) {
+  const payload = data && typeof data === 'object' ? data : { action: 'processPending' };
+  const isSweep = payload.action === 'processPending';
+  const now = Date.now();
+  if (isSweep && now - lastSweepKickAt < SWEEP_KICK_COOLDOWN_MS) {
+    return;
+  }
+  if (isSweep) lastSweepKickAt = now;
+
+  wx.cloud.callFunction({
+    name: 'answerWorker',
+    data: payload,
+    fail: (err) => {
+      console.warn('kickAnswerWorker failed', err);
+    }
+  });
+}
+
 function mapPendingDoc(doc) {
   const id = doc._id || doc.id || '';
   const content = (doc.content || '').replace(/\s+/g, ' ').trim();
@@ -66,5 +87,6 @@ module.exports = {
   mapPendingDoc,
   startPendingWatch,
   closePendingWatch,
-  fetchPendingQuestions
+  fetchPendingQuestions,
+  kickAnswerWorker
 };

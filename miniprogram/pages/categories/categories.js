@@ -1,6 +1,6 @@
 // pages/categories/categories.js
 const app = getApp();
-const { startPendingWatch, closePendingWatch, fetchPendingQuestions } = require('../../utils/aiPendingWatch.js');
+const { startPendingWatch, closePendingWatch, fetchPendingQuestions, kickAnswerWorker } = require('../../utils/aiPendingWatch.js');
 
 const SYMBOL_MAP = {
   '数学': '数', '物理': '物', '化学': '化', '英语': '英',
@@ -138,6 +138,9 @@ Page({
     fetchPendingQuestions()
       .then((list) => {
         this.setData({ pendingCount: list.length });
+        if (list.length > 0) {
+          kickAnswerWorker({ action: 'processPending' });
+        }
       })
       .catch(() => {});
   },
