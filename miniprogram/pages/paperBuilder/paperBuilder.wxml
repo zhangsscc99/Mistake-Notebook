@@ -54,9 +54,6 @@
 
   <!-- ── 空状态 ── -->
   <view class="empty-state" wx:if="{{savedPapers.length === 0}}">
-    <view class="empty-illustration">
-      <text class="empty-emoji">📝</text>
-    </view>
     <text class="empty-title">还没有试卷</text>
     <text class="empty-desc-text">从错题本里选题，一键组建属于你的试卷</text>
     <button class="btn empty-action-btn" bindtap="createNewPaper">立即组建新卷</button>
