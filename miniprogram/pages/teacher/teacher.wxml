@@ -38,7 +38,7 @@
     <view class="section-head actions-head"><text>教学工具</text></view>
     <view class="tool-grid">
       <view class="tool-card" bindtap="openNotebook"><view class="tool-icon">题</view><view class="tool-title">班级错题本</view><view class="tool-desc">整理高频错题</view></view>
-      <view class="tool-card" bindtap="comingSoon"><view class="tool-icon">作</view><view class="tool-title">作业管理</view><view class="tool-desc">布置与批改作业</view></view>
+      <view class="tool-card" bindtap="openAssignments"><view class="tool-icon">作</view><view class="tool-title">作业管理</view><view class="tool-desc">布置与批改作业</view></view>
       <view class="tool-card" bindtap="comingSoon"><view class="tool-icon">报</view><view class="tool-title">家长报告</view><view class="tool-desc">生成学习反馈</view></view>
       <view class="tool-card" bindtap="openMessage"><view class="tool-icon">信</view><view class="tool-title">留言中心</view><view class="tool-desc">与学生沟通</view></view>
     </view>

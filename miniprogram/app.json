@@ -13,6 +13,7 @@
     "pages/teacher/teacher",
     "pages/classes/classes",
     "pages/teacherNotebook/teacherNotebook"
+    ,"pages/teacherAssignments/teacherAssignments"
   ],
   "window": {
     "backgroundTextStyle": "dark",

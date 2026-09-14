@@ -56,4 +56,5 @@ Page({
 
   comingSoon() { wx.showToast({ title: '功能正在接入中', icon: 'none' }); }
   ,openNotebook() { wx.navigateTo({ url: '/pages/teacherNotebook/teacherNotebook' }); }
+  ,openAssignments() { wx.navigateTo({ url: '/pages/teacherAssignments/teacherAssignments' }); }
 });
