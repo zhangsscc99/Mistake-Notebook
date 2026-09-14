@@ -16,7 +16,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const MEMORY_COLLECTION = 'chat_memories';
-const COLLECTIONS = ['categories', 'questions', 'papers', MEMORY_COLLECTION];
+const COLLECTIONS = ['categories', 'questions', 'papers', MEMORY_COLLECTION, 'users'];
 
 async function ensureCollection(name) {
   try {

@@ -8,7 +8,8 @@
     "pages/questionPicker/questionPicker",
     "pages/questionSelector/questionSelector",
     "pages/settings/settings",
-    "pages/aiChat/aiChat"
+    "pages/aiChat/aiChat",
+    "pages/profile/profile"
   ],
   "window": {
     "backgroundTextStyle": "dark",
@@ -47,6 +48,12 @@
         "text": "组卷",
         "iconPath": "images/tabbar/edit.png",
         "selectedIconPath": "images/tabbar/edit-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tabbar/profile.png",
+        "selectedIconPath": "images/tabbar/profile-active.png"
       }
     ]
   },

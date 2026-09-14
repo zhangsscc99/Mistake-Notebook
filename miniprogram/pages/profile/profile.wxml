@@ -1,0 +1,90 @@
+<!--pages/profile/profile.wxml-->
+<view class="profile-page">
+
+  <!-- 顶部身份卡 -->
+  <view class="hero">
+    <!-- 必须是 <button open-type="chooseAvatar">，用 view/image 包裹不生效 -->
+    <button
+      class="avatar-btn"
+      open-type="chooseAvatar"
+      bindchooseavatar="onChooseAvatar"
+      disabled="{{uploadingAvatar}}">
+      <image class="avatar-img" src="{{avatarFileID || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="avatar-badge">✎</view>
+    </button>
+
+    <view class="hero-name">{{nickName || '未设置昵称'}}</view>
+    <view class="hero-sub">智能错题本 · 终身免费版</view>
+
+    <view class="hero-stats">
+      <view class="stat-block">
+        <text class="stat-num">{{totalQuestions}}</text>
+        <text class="stat-lab">错题数</text>
+      </view>
+      <view class="stat-divider"></view>
+      <view class="stat-block">
+        <text class="stat-num">{{totalCategories}}</text>
+        <text class="stat-lab">分类数</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 资料编辑 -->
+  <view class="section-group">
+    <view class="section-title">个人资料</view>
+    <view class="cell-list">
+      <form bindsubmit="onSaveProfile">
+        <view class="form-row">
+          <text class="form-label">昵称</text>
+          <input
+            class="nick-input"
+            type="nickname"
+            name="nickName"
+            value="{{nickName}}"
+            maxlength="20"
+            placeholder="点击键盘上方昵称条可快速填入"
+            placeholder-class="nick-placeholder"
+            bindinput="onNickInput"
+            bindblur="onNickBlur" />
+        </view>
+        <view class="form-actions">
+          <button class="save-btn" form-type="submit" disabled="{{saving}}">
+            {{saving ? '保存中…' : '保存昵称'}}
+          </button>
+        </view>
+      </form>
+    </view>
+    <view class="section-hint">头像与昵称保存在云端，换手机也不会丢</view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="section-group">
+    <view class="section-title">我的</view>
+    <view class="cell-list">
+      <view class="cell" bindtap="goCategories">
+        <text class="cell-label">我的错题</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="goSettings">
+        <text class="cell-label">功能设置</text>
+        <text class="cell-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 关于 -->
+  <view class="section-group">
+    <view class="section-title">关于</view>
+    <view class="cell-list">
+      <view class="cell">
+        <text class="cell-label">应用版本</text>
+        <text class="cell-value">{{appVersion}}</text>
+      </view>
+      <view class="cell" bindtap="showVersionInfo">
+        <text class="cell-label">关于错题本</text>
+        <text class="cell-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+</view>

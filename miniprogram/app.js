@@ -19,7 +19,8 @@ App({
 
     // 全局数据，可用于存放用户信息等
     this.globalData = {
-      userInfo: null,
+      // 用户在 pages/profile 拉到资料后写入，供其他页面读取（服务端才是权威，这里只是缓存）
+      profile: null,
       recognitionDraft: null,
       selectedPaperQuestions: [],
       categoriesMode: null,

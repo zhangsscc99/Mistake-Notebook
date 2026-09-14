@@ -57,6 +57,12 @@
       "runtime": "Nodejs16.13"
     },
     {
+      "name": "user",
+      "timeout": 20,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
+    },
+    {
       "name": "pdf",
       "timeout": 120,
       "memorySize": 512,

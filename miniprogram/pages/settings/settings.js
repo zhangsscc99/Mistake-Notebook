@@ -3,13 +3,10 @@ const app = getApp();
 
 Page({
   data: {
-    hasUserInfo: false,
     autoClassify: true,
     imageQuality: 'high',
     autoBackup: true,
     cloudSyncing: false,
-    totalQuestions: 0,
-    totalCategories: 0,
     appVersion: '1.0.0 (2026版)'
   },
 
@@ -25,23 +22,11 @@ Page({
     } catch (e) {
       // ignore
     }
-    this.loadStats();
   },
 
-  loadStats: function () {
-    wx.cloud.callFunction({
-      name: 'category',
-      data: { action: 'stats' },
-      success: (res) => {
-        if (res.result && res.result.success) {
-          this.setData({
-            totalQuestions: res.result.data.totalQuestions || 0,
-            totalCategories: res.result.data.totalCategories || 0
-          });
-        }
-      },
-      fail: () => {}
-    });
+  // settings 不是 tab 页，跳「我的」必须用 switchTab（navigateTo 跳 tab 页会直接失败）
+  goProfile: function () {
+    wx.switchTab({ url: '/pages/profile/profile' });
   },
 
   saveSetting: function (key, value) {
@@ -83,9 +68,9 @@ Page({
   },
 
   syncData: function () {
+    // 原先这里会顺带拉一次错题/分类数量刷新页头，页头搬到「我的」页后已无此需要。
+    // 保留原有的「同步中 → 完成」反馈不变。
     this.setData({ cloudSyncing: true });
-    // 重新从云端拉取分类和题目数量
-    this.loadStats();
     setTimeout(() => {
       this.setData({ cloudSyncing: false });
       wx.showToast({ title: '同步完成', icon: 'success' });
