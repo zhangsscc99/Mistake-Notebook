@@ -57,7 +57,7 @@ aliyun:
   dashscope:
     api-key: ${DASHSCOPE_API_KEY:not-configured}
     base-url: ${DASHSCOPE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/}
-    model: ${DASHSCOPE_MODEL:qwen-turbo-latest}
+    model: ${DASHSCOPE_MODEL:qwen-turbo}
     application-id: ${DASHSCOPE_APPLICATION_ID:not-configured}
     
     vision:

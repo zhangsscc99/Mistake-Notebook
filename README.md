@@ -335,7 +335,7 @@ cd /root/Mistake-Notebook/backend
 
 cat > .env << 'EOF'
 # 阿里云百炼平台API密钥
-DASHSCOPE_API_KEY=sk-b2ccb84e15b544bc84e9a8a02cb4e168
+DASHSCOPE_API_KEY=your-dashscope-api-key
 
 # 视觉推理模型配置
 DASHSCOPE_VISION_MODEL=qwen3-vl-plus
@@ -348,7 +348,7 @@ DASHSCOPE_TEMPERATURE=0.1
 ALIYUN_OCR_USE_VISION_REASONING=true
 
 # AI 通用模型配置（文本分类/对话）
-AI_ALIYUN_API_KEY=sk-b2ccb84e15b544bc84e9a8a02cb4e168
+AI_ALIYUN_API_KEY=your-dashscope-api-key
 AI_ALIYUN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
 AI_ALIYUN_MODEL=qwen-plus
 AI_ALIYUN_APPLICATION_ID=
@@ -358,7 +358,7 @@ AI_ALIYUN_PAYMENT_SYSTEM_CONTENT=你是一个有用的AI助手
 
 # 数据库配置
 DB_USERNAME=root
-DB_PASSWORD=wyt!!010611ABC
+DB_PASSWORD=your-mysql-password
 EOF
 
 # 验证文件创建成功

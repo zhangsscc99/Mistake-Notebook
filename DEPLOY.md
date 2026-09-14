@@ -120,15 +120,15 @@ DB_USERNAME=notebook_user
 DB_PASSWORD=your_secure_password
 
 # 阿里云API配置
-AI_ALIYUN_API_KEY=sk-b2ccb84e15b544bc84e9a8a02cb4e168
+AI_ALIYUN_API_KEY=your-dashscope-api-key
 AI_ALIYUN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
 AI_ALIYUN_MODEL=qwen-plus
 AI_ALIYUN_APPLICATION_ID=dec67a3c4cbb45548b530dc7df0feacb
 
 # DashScope配置
-DASHSCOPE_API_KEY=sk-b2ccb84e15b544bc84e9a8a02cb4e168
+DASHSCOPE_API_KEY=your-dashscope-api-key
 DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/
-DASHSCOPE_MODEL=qwen-turbo-latest
+DASHSCOPE_MODEL=qwen-turbo
 DASHSCOPE_VISION_MODEL=qwen3-vl-plus
 ```
 

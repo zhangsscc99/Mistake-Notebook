@@ -16,19 +16,32 @@ const DEFAULT_CATEGORIES = [
 ];
 
 const MEMORY_COLLECTION = 'chat_memories';
+const COLLECTIONS = ['categories', 'questions', 'papers', MEMORY_COLLECTION];
 
-async function ensureMemoryCollection() {
+async function ensureCollection(name) {
   try {
-    await db.createCollection(MEMORY_COLLECTION);
+    await db.createCollection(name);
     return { created: true };
   } catch (e) {
     const msg = e.message || e.errMsg || String(e);
     if (/already exists|已存在|ResourceExist|Duplicate|DATABASE_COLLECTION_ALREADY_EXIST/i.test(msg)) {
       return { created: false, existed: true };
     }
-    console.warn('ensureMemoryCollection failed:', msg);
+    console.warn(`ensureCollection(${name}) failed:`, msg);
     return { created: false, error: msg };
   }
+}
+
+async function ensureMemoryCollection() {
+  return ensureCollection(MEMORY_COLLECTION);
+}
+
+async function ensureCollections() {
+  const results = {};
+  for (const name of COLLECTIONS) {
+    results[name] = await ensureCollection(name);
+  }
+  return results;
 }
 
 exports.main = async (event) => {
@@ -57,6 +70,7 @@ async function ensureMemoryCollectionStatus() {
 }
 
 async function getInitStatus() {
+  await ensureCollections();
   const categoriesCount = await db.collection('categories').count();
   const questionsCount = await db.collection('questions').count();
 
@@ -71,13 +85,13 @@ async function getInitStatus() {
 }
 
 async function seedCategories(force) {
-  const memoryCollection = await ensureMemoryCollection();
+  const collections = await ensureCollections();
   const existing = await db.collection('categories').count();
   if (existing.total > 0 && !force) {
     return {
       success: true,
       message: '数据库已初始化，无需重复创建',
-      data: { created: 0, total: existing.total, memoryCollection }
+      data: { created: 0, total: existing.total, collections }
     };
   }
 
@@ -107,6 +121,6 @@ async function seedCategories(force) {
   return {
     success: true,
     message: `已创建 ${created} 个分类`,
-    data: { created, total: total.total, memoryCollection }
+    data: { created, total: total.total, collections }
   };
 }
