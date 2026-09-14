@@ -14,6 +14,7 @@
     "pages/classes/classes",
     "pages/teacherNotebook/teacherNotebook"
     ,"pages/teacherAssignments/teacherAssignments"
+    ,"pages/assignment/assignment"
   ],
   "window": {
     "backgroundTextStyle": "dark",
