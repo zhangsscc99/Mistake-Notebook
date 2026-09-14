@@ -10,7 +10,8 @@
     "pages/settings/settings",
     "pages/aiChat/aiChat",
     "pages/profile/profile",
-    "pages/teacher/teacher"
+    "pages/teacher/teacher",
+    "pages/classes/classes"
   ],
   "window": {
     "backgroundTextStyle": "dark",

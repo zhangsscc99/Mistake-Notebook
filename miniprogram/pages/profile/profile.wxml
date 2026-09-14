@@ -81,6 +81,10 @@
         <text class="cell-label">加入教师班级</text>
         <text class="cell-arrow">›</text>
       </view>
+      <view class="cell" bindtap="goClasses">
+        <text class="cell-label">我的班级与留言</text>
+        <text class="cell-arrow">›</text>
+      </view>
       <view class="cell" bindtap="goCategories">
         <text class="cell-label">我的错题</text>
         <text class="cell-arrow">›</text>

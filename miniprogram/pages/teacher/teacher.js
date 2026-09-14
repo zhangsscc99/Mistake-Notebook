@@ -40,10 +40,13 @@ Page({
     this.setData({ selectedClass: item, students: result.success ? (result.data || []) : [] });
   },
 
-  showStudent(e) {
+  async showStudent(e) {
     const student = this.data.students.find(s => s.id === e.currentTarget.dataset.id);
     if (!student) return;
-    wx.showModal({ title: student.nickName || '学生情况', content: `错题 ${student.questionCount || 0} 道\n近7天练习 ${student.practiceCount || 0} 次\n最近学习：${student.lastActiveAt || '暂无记录'}`, showCancel: false, confirmText: '知道了' });
+    const result = await this.call('studentQuestions', { classId: this.data.selectedClass.id, studentId: student.id });
+    const questions = result.success ? (result.data || []) : [];
+    const preview = questions.slice(0, 5).map((q, i) => `${i + 1}. ${q.content}`).join('\n');
+    wx.showModal({ title: student.nickName || '学生情况', content: `错题 ${student.questionCount || 0} 道\n近7天练习 ${student.practiceCount || 0} 次\n最近学习：${student.lastActiveAt || '暂无记录'}${preview ? `\n\n最近错题：\n${preview}` : ''}`, showCancel: false, confirmText: '知道了' });
   },
 
   openMessage() {

@@ -1,0 +1,7 @@
+<view class="classes-page">
+  <view class="classes-header"><view class="header-kicker">MY CLASSES</view><view class="header-title">我的班级</view><view class="header-sub">查看教师通知和班级学习安排</view></view>
+  <view class="message-card" wx:for="{{messages}}" wx:key="_id"><view class="message-top"><text class="message-class">{{item.className || '班级通知'}}</text><text class="message-time">{{item.createdAt}}</text></view><view class="message-content">{{item.content}}</view></view>
+  <view class="class-card" wx:for="{{classes}}" wx:key="id"><view class="class-name">{{item.name}}</view><view class="class-meta">{{item.grade || '未设置学段'}} · {{item.teacherName}}</view><view class="class-code">已加入</view></view>
+  <view class="empty" wx:if="{{!loading && classes.length === 0}}">还没有加入班级<text>可在“我的”中输入教师提供的加入码</text></view>
+  <view class="loading" wx:if="{{loading}}">加载中…</view>
+</view>

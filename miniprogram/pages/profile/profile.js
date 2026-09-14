@@ -360,6 +360,10 @@ Page({
     });
   },
 
+  goClasses: function () {
+    wx.navigateTo({ url: '/pages/classes/classes' });
+  },
+
   showVersionInfo: function () {
     wx.showModal({
       title: '关于错题本',
