@@ -9,7 +9,8 @@
     "pages/questionSelector/questionSelector",
     "pages/settings/settings",
     "pages/aiChat/aiChat",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/teacher/teacher"
   ],
   "window": {
     "backgroundTextStyle": "dark",

@@ -56,6 +56,8 @@ exports.main = async (event, context) => {
 
 async function createQuestion(event) {
   const { content, imageUrl, category, difficulty, tags, aiAnswer, aiAnalysis } = event;
+  const wxContext = cloud.getWXContext();
+  const ownerId = wxContext.OPENID || wxContext.FROM_OPENID || '';
 
   let categoryId = event.categoryId;
   if (!categoryId && category) {
@@ -73,6 +75,7 @@ async function createQuestion(event) {
   const now = new Date().toISOString();
   const hasAiContent = !!(aiAnswer || aiAnalysis);
   const questionData = {
+    ownerId,
     content: content || '',
     imageUrl: imageUrl || '',
     categoryId: categoryId || '',

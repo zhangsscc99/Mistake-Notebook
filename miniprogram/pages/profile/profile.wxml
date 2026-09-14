@@ -73,6 +73,14 @@
   <view class="section-group">
     <view class="section-title">我的</view>
     <view class="cell-list">
+      <view class="cell" bindtap="goTeacher">
+        <text class="cell-label">教师工作台</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="joinClass">
+        <text class="cell-label">加入教师班级</text>
+        <text class="cell-arrow">›</text>
+      </view>
       <view class="cell" bindtap="goCategories">
         <text class="cell-label">我的错题</text>
         <text class="cell-arrow">›</text>

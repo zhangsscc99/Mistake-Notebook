@@ -335,6 +335,31 @@ Page({
     wx.switchTab({ url: '/pages/categories/categories' });
   },
 
+  goTeacher: function () {
+    wx.navigateTo({ url: '/pages/teacher/teacher' });
+  },
+
+  joinClass: function () {
+    wx.showModal({
+      title: '加入教师班级',
+      editable: true,
+      placeholderText: '输入 6 位班级加入码',
+      confirmText: '加入',
+      success: (res) => {
+        if (!res.confirm || !res.content.trim()) return;
+        wx.cloud.callFunction({
+          name: 'teacher',
+          data: { action: 'joinClass', joinCode: res.content.trim() },
+          success: (result) => {
+            const body = result.result || {};
+            wx.showToast({ title: body.success ? (body.data.alreadyJoined ? '你已在班级中' : '加入成功') : (body.error || '加入失败'), icon: body.success ? 'success' : 'none' });
+          },
+          fail: () => wx.showToast({ title: '加入失败，请稍后重试', icon: 'none' })
+        });
+      }
+    });
+  },
+
   showVersionInfo: function () {
     wx.showModal({
       title: '关于错题本',
