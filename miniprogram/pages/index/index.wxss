@@ -13,7 +13,7 @@
 .top-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 16rpx 28rpx 8rpx;
   position: relative;
   z-index: 10;
@@ -24,6 +24,34 @@
   font-weight: 800;
   color: #0b1633;
   letter-spacing: 1rpx;
+}
+
+/* 左上角：头像 + 问候语，点击进「我的」 */
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  /* 不加 min-width:0 的话，下面昵称的省略号不会生效，长昵称会把齿轮挤出屏幕 */
+  min-width: 0;
+  flex: 1;
+}
+
+.top-bar-avatar {
+  width: 64rpx;
+  height: 64rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.top-bar-greet {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #0b1633;
+  letter-spacing: 0.5rpx;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .top-bar-settings {

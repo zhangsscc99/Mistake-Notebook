@@ -1,5 +1,6 @@
 const app = getApp();
 const { formatLatex } = require('../../utils/latex');
+const { getProfile, getCachedProfile } = require('../../utils/profile');
 
 // 把题目文本拆成结构化段落：题干段（逐段独立）+ 各小问块
 function parseQuestionParas(text) {
@@ -45,28 +46,33 @@ function parseQuestionParas(text) {
   return paras;
 }
 
-function buildGreeting(ctxRaw, memoryStatus) {
+// 昵称是可选的：拿不到就退回原来的「你好」，六条文案都要能自然读通。
+// 注意下面的 `hi` 后面统一跟一个「，」，所以带昵称时读作「你好，小明，你上次问过…」
+function buildGreeting(ctxRaw, memoryStatus, nickName) {
+  const name = (nickName || '').trim();
+  const hi = name ? `你好，${name}` : '你好';
+
   if (memoryStatus && memoryStatus.hasMemory) {
     const questions = memoryStatus.lastQuestions;
     if (questions && questions.length > 0) {
       const lastQ = questions[questions.length - 1];
       if (ctxRaw) {
-        return `你好，你上次问过「${lastQ}」，关于这道题，有什么不懂的地方都可以问我～`;
+        return `${hi}，你上次问过「${lastQ}」，关于这道题，有什么不懂的地方都可以问我～`;
       }
-      return `你好，你上次问过「${lastQ}」，今天继续学吧～`;
+      return `${hi}，你上次问过「${lastQ}」，今天继续学吧～`;
     }
     if (memoryStatus.topics && memoryStatus.topics.length > 0) {
       const topicHint = memoryStatus.topics.slice(0, 4).join('、');
       if (ctxRaw) {
-        return `你好，我记得你之前学过 ${topicHint} 等内容。关于这道题，有什么不懂的地方都可以问我～`;
+        return `${hi}，我记得你之前学过 ${topicHint} 等内容。关于这道题，有什么不懂的地方都可以问我～`;
       }
-      return `你好，我记得你之前学过 ${topicHint} 等内容，继续把疑问发给我吧～`;
+      return `${hi}，我记得你之前学过 ${topicHint} 等内容，继续把疑问发给我吧～`;
     }
   }
   if (ctxRaw) {
-    return '你好，我是你的 AI 答疑老师。关于这道题，有什么不懂的地方都可以问我～';
+    return `${hi}，我是你的 AI 答疑老师。关于这道题，有什么不懂的地方都可以问我～`;
   }
-  return '你好，我是你的 AI 答疑老师。把你的疑问发给我吧～';
+  return `${hi}，我是你的 AI 答疑老师。把你的疑问发给我吧～`;
 }
 
 Page({
@@ -81,7 +87,12 @@ Page({
     sending: false,
     scrollToId: '',
     inputBottom: 0,
-    pageHeight: 0
+    pageHeight: 0,
+    // 头像放在页面级，不塞进 messages 的每一项 ——
+    // messages 在好几处被手工重建（:135/:159/:234/:237/:267），
+    // 逐条挂字段迟早漏掉某处；页面级读一次，本轮所有用户气泡都对
+    avatarFileID: '',
+    nickName: ''
   },
 
   onLoad() {
@@ -105,6 +116,9 @@ Page({
 
   // 本页现在是 tabBar 页：switchTab 不会重跑 onLoad，上下文只能在这里读
   onShow() {
+    // 必须先于下面所有提前 return —— 否则切回本 tab 时头像昵称不会刷新
+    this.loadProfile();
+
     // 消费掉外部塞进来的题目上下文，否则每次切回 tab 都会被重复触发
     const ctxRaw = (app.globalData && app.globalData.aiChatContext) || '';
     if (ctxRaw) app.globalData.aiChatContext = '';
@@ -116,13 +130,31 @@ Page({
     this.startConversation(ctxRaw);
   },
 
+  // 同步铺缓存 + 异步刷新。同步那步很关键：下面的 startConversation 是紧接着同步调用的，
+  // 只能读到此刻 this.data.nickName 的值。
+  loadProfile() {
+    const apply = (p) => this.setData({
+      avatarFileID: p.avatarFileID || '',
+      nickName: p.nickName || ''
+    });
+
+    apply(getCachedProfile());
+    getProfile()
+      .then(apply)
+      .catch((err) => {
+        console.warn('[aiChat] 读取资料失败，沿用缓存', err);
+      });
+  },
+
   startConversation(ctxRaw) {
     this._activeContext = ctxRaw;
     this._sessionSaved = false;
 
     const ctxDisplay = formatLatex(ctxRaw);
     const preview = ctxDisplay.length > 50 ? ctxDisplay.slice(0, 50) + '…' : ctxDisplay;
-    const greeting = buildGreeting(ctxRaw, null);
+    // 读 this.data.nickName 而不是再挂一个异步写入者去改 messages[0]：
+    // 那条消息已经被 loadMemoryGreeting 写过一次，三方竞争会互相覆盖
+    const greeting = buildGreeting(ctxRaw, null, this.data.nickName);
 
     this.setData({
       questionContext: ctxDisplay,
@@ -153,7 +185,9 @@ Page({
       success: (res) => {
         const data = res.result && res.result.data;
         if (!res.result || !res.result.success || !data || !data.hasMemory) return;
-        const greeting = buildGreeting(ctxRaw, data);
+        // 这里再读一次 nickName：onShow 里那次异步刷新多半已经落地，
+        // 拿到的比 startConversation 时更准
+        const greeting = buildGreeting(ctxRaw, data, this.data.nickName);
         const messages = [...this.data.messages];
         if (messages.length > 0 && messages[0].role === 'assistant') {
           messages[0] = { ...messages[0], content: greeting, display: greeting };

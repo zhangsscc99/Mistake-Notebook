@@ -147,6 +147,13 @@
 }
 
 .save-btn {
+  /* 底部栏的主操作，应当是通栏。原先这里没写 width，于是落到 app.json:60
+     "style": "v2" 的按钮默认宽度上 —— 同样会缩成一个居中短胶囊。
+     !important 的原因见 profile.wxss 的 .save-btn */
+  display: block;
+  width: 100% !important;
+  box-sizing: border-box;
+  padding: 0;
   background: #2459ff;
   color: #fff;
   border-radius: 999rpx;

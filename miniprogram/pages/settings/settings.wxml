@@ -8,7 +8,7 @@
       <view class="cell" bindtap="goProfile">
         <text class="cell-label">个人资料</text>
         <view class="cell-right">
-          <text class="cell-value">头像与昵称</text>
+          <text class="cell-value">{{nickName || '未设置昵称'}}</text>
           <text class="cell-arrow">›</text>
         </view>
       </view>

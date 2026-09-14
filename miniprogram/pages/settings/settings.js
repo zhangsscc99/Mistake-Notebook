@@ -1,5 +1,6 @@
 // pages/settings/settings.js
 const app = getApp();
+const { getProfile, getCachedProfile } = require('../../utils/profile');
 
 Page({
   data: {
@@ -7,7 +8,21 @@ Page({
     imageQuality: 'high',
     autoBackup: true,
     cloudSyncing: false,
-    appVersion: '1.0.0 (2026版)'
+    appVersion: '1.0.0 (2026版)',
+    nickName: ''
+  },
+
+  // 本页会从「我的」页跳进来，也会被设置齿轮从首页打开；
+  // 每次显示都刷一下，改完昵称回来才能看到新的
+  onShow: function () {
+    const apply = (p) => this.setData({ nickName: p.nickName || '' });
+
+    apply(getCachedProfile());
+    getProfile()
+      .then(apply)
+      .catch((err) => {
+        console.warn('[settings] 读取资料失败，沿用缓存', err);
+      });
   },
 
   onLoad: function () {
@@ -125,9 +140,11 @@ Page({
   },
 
   showPrivacyPolicy: function () {
+    // 微信《用户隐私保护指引》要求写明注销渠道，所以这里必须提到「我的 → 注销账号」。
+    // 这段话与 pages/profile 的注销功能是一对，改动要同步。
     wx.showModal({
       title: '隐私政策',
-      content: '本应用仅收集必要的使用数据用于改善产品体验，不向第三方共享个人信息。题目内容仅用于 AI 识别分析，不作他用。',
+      content: '本应用仅收集必要的使用数据用于改善产品体验，不向第三方共享个人信息。题目内容仅用于 AI 识别分析，不作他用。\n\n头像、昵称、学段仅保存在你的云端账号下。你可以随时在「我的 → 注销账号」自行清除全部云端数据，立即生效、不可恢复；也可通过「用户反馈」联系我们协助处理。',
       showCancel: false,
       confirmText: '了解'
     });

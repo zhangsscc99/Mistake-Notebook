@@ -1,5 +1,17 @@
 // app.js
 App({
+  // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
+  // `if (!wx.cloud) return`，一旦走到那条分支 globalData 就永远不会被赋值，
+  // 而首页 / 对话页 / 设置页都要读它。
+  globalData: {
+    // 由 utils/profile.js 统一读写（服务端才是权威，这里只是缓存）
+    profile: null,
+    recognitionDraft: null,
+    selectedPaperQuestions: [],
+    categoriesMode: null,
+    aiChatContext: ''
+  },
+
   onLaunch: function () {
     if (!wx.cloud) {
       console.error('请使用 2.2.3 或以上的基础库以使用云能力');
@@ -16,16 +28,6 @@ App({
       success: () => console.log('[app] 云开发登录态已刷新'),
       fail: (err) => console.warn('[app] wx.login 失败，上传可能受影响:', err)
     });
-
-    // 全局数据，可用于存放用户信息等
-    this.globalData = {
-      // 用户在 pages/profile 拉到资料后写入，供其他页面读取（服务端才是权威，这里只是缓存）
-      profile: null,
-      recognitionDraft: null,
-      selectedPaperQuestions: [],
-      categoriesMode: null,
-      aiChatContext: ''
-    };
 
     // 首次启动时初始化云数据库（创建默认分类）
     setTimeout(() => {

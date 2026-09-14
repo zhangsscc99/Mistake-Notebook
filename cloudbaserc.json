@@ -58,7 +58,7 @@
     },
     {
       "name": "user",
-      "timeout": 20,
+      "timeout": 60,
       "memorySize": 256,
       "runtime": "Nodejs16.13"
     },

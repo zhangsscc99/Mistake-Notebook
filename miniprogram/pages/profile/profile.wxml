@@ -47,6 +47,18 @@
             bindinput="onNickInput"
             bindblur="onNickBlur" />
         </view>
+        <view class="form-row form-row-stage">
+          <text class="form-label">学段</text>
+          <view class="chip-row">
+            <view
+              class="picker-chip {{stage === item ? 'active' : ''}}"
+              wx:for="{{stages}}"
+              wx:key="*this"
+              data-value="{{item}}"
+              bindtap="onStageSelect"
+            >{{item}}</view>
+          </view>
+        </view>
         <view class="form-actions">
           <button class="save-btn" form-type="submit" disabled="{{saving}}">
             {{saving ? '保存中…' : '保存昵称'}}
@@ -54,7 +66,7 @@
         </view>
       </form>
     </view>
-    <view class="section-hint">头像与昵称保存在云端，换手机也不会丢</view>
+    <view class="section-hint">头像、昵称与学段保存在云端，换手机也不会丢</view>
   </view>
 
   <!-- 快捷入口 -->
@@ -70,6 +82,18 @@
         <text class="cell-arrow">›</text>
       </view>
     </view>
+  </view>
+
+  <!-- 账号 -->
+  <view class="section-group">
+    <view class="section-title">账号</view>
+    <view class="cell-list">
+      <view class="cell" bindtap="onDeleteAccount">
+        <text class="cell-label cell-label-danger">注销账号</text>
+        <text class="cell-arrow">›</text>
+      </view>
+    </view>
+    <view class="section-hint">清除云端保存的头像、昵称、学段、对话记忆与试卷。错题本身为公共题库，不在删除范围。</view>
   </view>
 
   <!-- 关于 -->

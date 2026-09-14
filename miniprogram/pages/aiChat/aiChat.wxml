@@ -56,7 +56,15 @@
           <text wx:else class="msg-text" decode>{{item.display || item.content}}</text>
         </view>
 
-        <view class="msg-avatar msg-avatar-user" wx:if="{{item.role === 'user'}}">我</view>
+        <view class="msg-avatar msg-avatar-user" wx:if="{{item.role === 'user'}}">
+          <!-- 没设过头像就退回原来那个「我」字，不留空白 -->
+          <image
+            wx:if="{{avatarFileID}}"
+            class="msg-avatar-img"
+            src="{{avatarFileID}}"
+            mode="aspectFill"></image>
+          <text wx:else>我</text>
+        </view>
       </view>
     </view>
     <view class="scroll-pad" style="height: {{inputBottom}}px;"></view>

@@ -1,4 +1,16 @@
 const app = getApp();
+const { STAGES, getCachedProfile } = require('../../utils/profile');
+
+// 用户没设过学段时的默认值（与改动前保持一致）
+const DEFAULT_PERIOD = '高中';
+
+// 用户在「我的」页设了学段就拿来当默认。
+// 用同步的缓存读 —— 这里在 onLoad 里同步调用，不能等异步返回，
+// 否则会和用户打开弹窗的时机赛跑
+function preferredPeriod() {
+  const stage = (getCachedProfile().stage || '').trim();
+  return STAGES.indexOf(stage) === -1 ? DEFAULT_PERIOD : stage;
+}
 
 function isDifficultQuestion(segment) {
   const type = segment.type || '';
@@ -21,18 +33,24 @@ Page({
     categories: [],
     selectedCategory: '数学',
     selectedDifficulty: '中等',
-    selectedPeriod: '高中',
+    selectedPeriod: DEFAULT_PERIOD,
     difficulties: ['简单', '中等', '困难'],
-    periods: ['小学', '初中', '高中', '大学'],
+    // 与「我的」页的学段共用一份列表，不再各写一个字面量
+    periods: STAGES,
     selectedCount: 0,
     saving: false,
     showPickerModal: false,
     tempCategory: '数学',
     tempDifficulty: '中等',
-    tempPeriod: '高中'
+    tempPeriod: DEFAULT_PERIOD
   },
 
   onLoad: function () {
+    // 放在最前面：后面的 draft 检查失败会直接 navigateBack，无所谓；
+    // 但成功路径上 selectedPeriod 必须已经就位（openCategoryPicker 会拿它重置 tempPeriod）
+    const period = preferredPeriod();
+    this.setData({ selectedPeriod: period, tempPeriod: period });
+
     const draft = app.globalData.recognitionDraft;
     if (!draft || !draft.segments || !draft.segments.length) {
       wx.showToast({ title: '无识别结果', icon: 'none' });

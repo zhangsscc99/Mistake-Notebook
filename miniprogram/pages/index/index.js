@@ -1,6 +1,15 @@
 // pages/index/index.js
 const app = getApp();
 const { ensureCloudSession, isAccessTokenError } = require('../../utils/cloud.js');
+const { getProfile, getCachedProfile, greetingPrefix } = require('../../utils/profile.js');
+
+// 昵称最长 20 个码点（cloudfunctions/user/index.js 的 MAX_NICKNAME_LEN），
+// 这里不截断，交给 WXSS 的省略号兜底；但昵称为空时不能留下一个孤零零的逗号
+function buildGreeting(nickName) {
+  const prefix = greetingPrefix();
+  const name = (nickName || '').trim();
+  return name ? prefix + '，' + name : prefix;
+}
 
 function formatTime(dateStr) {
   if (!dateStr) return '';
@@ -25,11 +34,38 @@ Page({
   data: {
     tempFilePath: '',
     uploading: false,
-    recentRecords: []
+    recentRecords: [],
+    avatarFileID: '',
+    nickName: '',
+    greeting: ''
   },
 
   onShow: function () {
     this.loadRecentRecords();
+    this.loadProfile();
+  },
+
+  // 先铺缓存再拉最新的：头像和问候语不该等一次网络往返才出现。
+  // getProfile() 非 force —— 其他页面已经拉过的话这里直接命中缓存，不再打云函数。
+  loadProfile: function () {
+    const apply = (p) => this.setData({
+      avatarFileID: p.avatarFileID || '',
+      nickName: p.nickName || '',
+      greeting: buildGreeting(p.nickName)
+    });
+
+    apply(getCachedProfile());
+    getProfile()
+      .then(apply)
+      .catch((err) => {
+        // 拉失败就继续用缓存那份，不要把已经显示出来的头像问候语清掉
+        console.warn('[index] 读取资料失败，沿用缓存', err);
+      });
+  },
+
+  // 「我的」是 tab 页，必须 switchTab（navigateTo 跳 tab 页会直接失败）
+  goProfile: function () {
+    wx.switchTab({ url: '/pages/profile/profile' });
   },
 
   loadRecentRecords: function () {

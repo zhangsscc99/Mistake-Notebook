@@ -1,18 +1,45 @@
 // pages/profile/profile.js
 const app = getApp();
 const { ensureCloudSession, isAccessTokenError } = require('../../utils/cloud');
+const {
+  STAGES,
+  getProfile,
+  getCachedProfile,
+  setCachedProfile,
+  clearProfileCache
+} = require('../../utils/profile');
 
 const MAX_NICKNAME_LEN = 20;
+
+// 服务端 failed[].target 是内部标识（chatMemories / papers / users / avatarFile），
+// 直接拼进弹窗会漏出英文命名，所以在这里翻成人话。
+// 认不出来的标识原样显示 —— 宁可难看也不能吞掉一条失败项。
+const FAILED_LABELS = {
+  chatMemories: '对话记忆',
+  papers: '试卷',
+  users: '个人资料',
+  'users:read': '个人资料',
+  avatarFile: '头像图片'
+};
+
+function failedLabel(item) {
+  const target = (item && item.target) || '';
+  return FAILED_LABELS[target] || target || '未知项目';
+}
 
 Page({
   data: {
     openId: '',
     nickName: '',
     avatarFileID: '',
+    stage: '',
+    stages: STAGES,
     hasProfile: false,
     loading: true,
     saving: false,
+    savingStage: false,
     uploadingAvatar: false,
+    deleting: false,
     totalQuestions: 0,
     totalCategories: 0,
     appVersion: '1.0.0 (2026版)'
@@ -20,8 +47,20 @@ Page({
 
   onShow: function () {
     this._nickDraft = '';
+    // 先用缓存铺上，否则每次切回本页头像昵称都会空一下再出现
+    this.applyProfile(getCachedProfile());
     this.loadProfile();
     this.loadStats();
+  },
+
+  applyProfile: function (p) {
+    this.setData({
+      openId: p.openId,
+      nickName: p.nickName,
+      avatarFileID: p.avatarFileID,
+      stage: p.stage,
+      hasProfile: p.hasProfile
+    });
   },
 
   // 与 pages/index/index.js:157-177 同款包装（项目没有统一封装，各页内联是既有约定）
@@ -38,24 +77,16 @@ Page({
   },
 
   loadProfile: function () {
-    return this.callCloud('user', { action: 'get' }, 15000)
-      .then((res) => {
-        if (!res.success) throw new Error(res.error || '读取资料失败');
-        const d = res.data || {};
-        const profile = {
-          openId: d.openId || '',
-          nickName: d.nickName || '',
-          avatarFileID: d.avatarFileID || '',
-          hasProfile: !!d.exists
-        };
-        app.globalData.profile = profile;
-        this.setData({
-          ...profile,
-          loading: false
-        });
+    // force:true —— 本页是资料的权威展示面，缓存只用来先铺屏，背后照常拉一次最新的。
+    // 其他页面用非 force 的版本，命中缓存就不打云函数。
+    return getProfile({ force: true })
+      .then((p) => {
+        this.applyProfile(p);
+        this.setData({ loading: false });
       })
       .catch((err) => {
         console.error('[profile] 读取资料失败', err);
+        // 拉失败就继续用缓存铺的那份，不要把已经显示出来的头像昵称清掉
         this.setData({ loading: false });
         wx.showToast({
           title: isAccessTokenError(err) ? '云开发未登录，请重进小程序' : '资料读取失败',
@@ -116,11 +147,7 @@ Page({
       .then((res) => {
         if (!res.success) throw new Error(res.error || '保存失败');
         wx.hideLoading();
-        this.setData({
-          avatarFileID: res.data.avatarFileID,
-          hasProfile: true
-        });
-        app.globalData.profile = { ...app.globalData.profile, ...res.data };
+        this.applyProfile(setCachedProfile(res.data));
         wx.showToast({ title: '头像已更新', icon: 'success' });
       })
       .catch((err) => {
@@ -180,11 +207,7 @@ Page({
         if (!res.success) throw new Error(res.error || '保存失败');
         wx.hideLoading();
         // 以服务端返回为准：它做了 trim 和长度校验，才是权威
-        this.setData({
-          nickName: res.data.nickName || '',
-          hasProfile: true
-        });
-        app.globalData.profile = { ...app.globalData.profile, ...res.data };
+        this.applyProfile(setCachedProfile(res.data));
         wx.showToast({ title: '已保存', icon: 'success' });
       })
       .catch((err) => {
@@ -193,6 +216,114 @@ Page({
         wx.showToast({ title: err.message || '保存失败，请重试', icon: 'none' });
       })
       .then(() => this.setData({ saving: false }));
+  },
+
+  // 学段选中即保存，不走 form 提交。
+  // 理由：chip 和输入框是两套状态，若攒到「保存昵称」才一起提交，
+  // 用户选了学段却没改昵称（或昵称没变化被拦下）就会以为存上了，实际没存。
+  onStageSelect: function (e) {
+    if (this.data.savingStage) return;
+
+    const stage = e.currentTarget.dataset.value;
+    const prev = this.data.stage;
+    if (!stage || stage === prev) return;
+
+    this.setData({ stage, savingStage: true });
+
+    this.callCloud('user', { action: 'updateProfile', stage }, 30000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '保存失败');
+        this.applyProfile(setCachedProfile(res.data));
+        this.setData({ savingStage: false });
+        wx.showToast({ title: '已保存', icon: 'success' });
+      })
+      .catch((err) => {
+        // 失败要退回原值：界面上显示着一个并没存进去的学段，比不显示更糟
+        this.setData({ stage: prev, savingStage: false });
+        console.error('[profile] 保存学段失败', err);
+        wx.showToast({ title: err.message || '保存失败，请重试', icon: 'none' });
+      });
+  },
+
+  onDeleteAccount: function () {
+    if (this.data.deleting) return;
+
+    // 第一步：说清楚删什么、不删什么。
+    // 「题目不删」必须写在这里 —— 题目是全局共享的（写入时就没有归属字段），
+    // 注销确实动不了它，含糊过去等于虚假承诺。
+    wx.showModal({
+      title: '注销账号',
+      content: '将永久删除：\n· 个人资料（头像、昵称、学段）\n· 全部 AI 对话记忆\n· 全部试卷\n\n不会删除：\n· 错题本身（题目为公共题库，不归属个人）\n\n删除后无法恢复。',
+      confirmText: '继续',
+      confirmColor: '#ff4d4f',
+      success: (res) => {
+        if (res.confirm) this.confirmDeleteAccount();
+      }
+    });
+  },
+
+  confirmDeleteAccount: function () {
+    wx.showModal({
+      title: '最后确认',
+      content: '再次确认删除全部云端数据？\n\n注意：微信账号本身不受影响，下次进入仍可正常使用，只是资料是空白的。',
+      confirmText: '确认删除',
+      confirmColor: '#ff4d4f',
+      success: (res) => {
+        if (res.confirm) this.doDeleteAccount();
+      }
+    });
+  },
+
+  doDeleteAccount: function () {
+    this.setData({ deleting: true });
+    wx.showLoading({ title: '注销中...', mask: true });
+
+    this.callCloud('user', { action: 'deleteAccount' }, 60000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '注销失败');
+
+        const failed = (res.data && res.data.failed) || [];
+
+        // 定点清理，不用 wx.clearStorageSync() —— 那会连 appSettings
+        // （自动分类 / 图片质量 / 自动备份）一起抹掉，而用户只是想删账号数据。
+        clearProfileCache();
+        try {
+          wx.removeStorageSync('savedPapers');
+        } catch (err) {
+          // ignore
+        }
+        app.globalData.selectedPaperQuestions = [];
+        app.globalData.recognitionDraft = null;
+
+        // openId 要留着：微信不给撤销 openid，用户还是同一个人，
+        // 后面点头像换头像还得靠它拼归属路径
+        this.setData({
+          nickName: '',
+          avatarFileID: '',
+          stage: '',
+          hasProfile: false,
+          deleting: false
+        });
+        wx.hideLoading();
+
+        if (failed.length) {
+          // 部分失败必须说出来。静默当成成功，用户会以为删干净了 ——
+          // 这是本功能最危险的失败模式
+          wx.showModal({
+            title: '部分数据未能清除',
+            content: '以下项目删除失败：' + failed.map(failedLabel).join('、') + '\n请稍后重试。',
+            showCancel: false
+          });
+        } else {
+          wx.showToast({ title: '云端数据已清除', icon: 'success' });
+        }
+      })
+      .catch((err) => {
+        this.setData({ deleting: false });
+        wx.hideLoading();
+        console.error('[profile] 注销失败', err);
+        wx.showToast({ title: err.message || '注销失败，请重试', icon: 'none' });
+      });
   },
 
   // settings 不是 tab 页，这里必须用 navigateTo；反过来 settings 跳回本页要用 switchTab

@@ -15,11 +15,16 @@
   background: linear-gradient(135deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
 }
 
-/* 头像：button 原生样式必须重置，否则会带一圈默认边框和灰底 */
+/* 头像：button 原生样式必须重置，否则会带一圈默认边框和灰底。
+   尺寸必须 !important：app.json:60 的 "style": "v2" 会盖掉 wxss 给 <button> 的 width
+   （实测按钮被撑到约 280px，而这里是 148rpx）。按钮一宽，
+   .avatar-badge 的 right:0/bottom:0 就锚到了按钮右缘而不是头像右下角，
+   ✎ 会飘到头像右边一百多像素外。原因详见 .save-btn */
 .avatar-btn {
   position: relative;
-  width: 148rpx;
-  height: 148rpx;
+  display: block;
+  width: 148rpx !important;
+  height: 148rpx !important;
   padding: 0;
   margin: 0;
   line-height: normal;
@@ -153,6 +158,11 @@
   color: rgba(11, 22, 51, 0.45);
 }
 
+/* settings.wxss:47 有同款，profile.wxss 里没有（本项目不做全局样式抽取，逐页复制是既有惯例） */
+.cell-label-danger {
+  color: #ff4d4f;
+}
+
 .cell-arrow {
   font-size: 32rpx;
   color: rgba(11, 22, 51, 0.3);
@@ -183,7 +193,9 @@
   border-radius: 999rpx;
   font-size: 28rpx;
   color: #0b1633;
-  text-align: right;
+  /* 必须左对齐。placeholder 是一整句说明（「点击键盘上方昵称条可快速填入」），
+     右对齐会把它贴到药丸右缘、左边空出一大片，整行看起来像没对齐 */
+  text-align: left;
 }
 
 .nick-placeholder {
@@ -191,14 +203,54 @@
   font-size: 25rpx;
 }
 
+/* 学段：胶囊样式对齐 questionPicker 的「学习阶段」。
+   注意那边的 .picker-chip-row 同时用了 gap 和 margin-right，间距是双份的，
+   这里只留 gap 一份 */
+.form-row-stage {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  padding-top: 20rpx;
+}
+
+.chip-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.picker-chip {
+  display: inline-block;
+  padding: 12rpx 28rpx;
+  border-radius: 999rpx;
+  font-size: 26rpx;
+  color: #0b1633;
+  background: #f3f6ff;
+}
+
+.picker-chip.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff, #b6a6ff);
+}
+
 .form-actions {
   padding: 16rpx 28rpx 26rpx;
 }
 
 .save-btn {
-  width: 100%;
+  /* width 必须 !important：app.json:60 开了 "style": "v2"，新版组件样式会盖掉 wxss
+     给 <button> 的 width —— 按钮缩回 UA 默认宽度，再被 UA 的 margin:auto 居中，
+     于是在卡片里呈现为一个又短又居中的胶囊（实测宽约 185px，卡片可用宽 468px）。
+     paperBuilder.wxss:132 / index.wxss:311 / categoryDetail.wxss:391 都是同一个坑的既有修法。 */
+  display: block;
+  width: 100% !important;
   height: 80rpx;
   line-height: 80rpx;
+  /* 清掉 UA 的 margin:auto（那是居中的来源）与 14px 横向内边距 */
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
   border-radius: 999rpx;
   font-size: 29rpx;
   font-weight: 700;

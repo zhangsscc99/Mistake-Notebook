@@ -8,6 +8,15 @@
 
   <!-- 顶部导航栏 -->
   <view class="top-bar">
+    <!-- 头像用 image + bindtap，不能做成 chooseAvatar 按钮：
+         那会让用户绕开「我的」页的 openid 就绪检查直接上传 -->
+    <view class="top-bar-left" bindtap="goProfile">
+      <image
+        class="top-bar-avatar"
+        src="{{avatarFileID || '/images/default-avatar.png'}}"
+        mode="aspectFill"></image>
+      <text class="top-bar-greet">{{greeting}}</text>
+    </view>
     <navigator url="/pages/settings/settings" class="top-bar-settings">⚙️</navigator>
   </view>
 
