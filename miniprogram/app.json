@@ -11,7 +11,8 @@
     "pages/aiChat/aiChat",
     "pages/profile/profile",
     "pages/teacher/teacher",
-    "pages/classes/classes"
+    "pages/classes/classes",
+    "pages/teacherNotebook/teacherNotebook"
   ],
   "window": {
     "backgroundTextStyle": "dark",
