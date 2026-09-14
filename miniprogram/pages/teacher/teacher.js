@@ -57,4 +57,5 @@ Page({
   comingSoon() { wx.showToast({ title: '功能正在接入中', icon: 'none' }); }
   ,openNotebook() { wx.navigateTo({ url: '/pages/teacherNotebook/teacherNotebook' }); }
   ,openAssignments() { wx.navigateTo({ url: '/pages/teacherAssignments/teacherAssignments' }); }
+  ,openReport() { if (!this.data.selectedClass.id) return wx.showToast({ title: '请先选择班级', icon: 'none' }); wx.cloud.callFunction({ name: 'teacher', data: { action: 'parentReport', classId: this.data.selectedClass.id }, success: r => { const b = r.result || {}; if (!b.success) return wx.showToast({ title: b.error || '生成失败', icon: 'none' }); const rows = (b.data.students || []).map(s => `${s.nickName}：错题${s.questionCount}道，作业${s.submitted}份，平均${s.averageScore == null ? '待批改' : s.averageScore + '分'}`).join('\n'); wx.showModal({ title: b.data.title, content: `布置作业：${b.data.assignmentCount}份\n\n${rows || '暂无学生数据'}`, showCancel: false, confirmText: '知道了' }); }, fail: () => wx.showToast({ title: '生成失败', icon: 'none' }) }); }
 });

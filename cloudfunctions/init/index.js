@@ -20,7 +20,7 @@ const MEMORY_COLLECTION = 'chat_memories';
 const COLLECTIONS = [
   'categories', 'questions', 'papers', MEMORY_COLLECTION, 'users',
   'classes', 'class_members', 'teacher_messages', 'class_notebooks',
-  'assignments', 'assignment_submissions'
+  'assignments', 'assignment_submissions', 'parent_reports'
 ];
 
 async function ensureCollection(name) {
