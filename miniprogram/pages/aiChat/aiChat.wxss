@@ -2,6 +2,9 @@
 .ai-chat-page {
   display: flex;
   flex-direction: column;
+  /* 这里只是兜底高度，实际由 JS 按 windowHeight 覆盖（见 aiChat.js onLoad）。
+     不靠 100vh 定死也不补 padding：tabBar 页里 100vh 是否已含 tab 栏语义含糊，
+     猜的结果不是输入框被压住就是底下留一条缝。 */
   height: 100vh;
   box-sizing: border-box;
   background-color: #eef3fb;
@@ -237,13 +240,16 @@
 
 .msg-row {
   display: flex;
-  align-items: flex-end;
+  /* 头像对齐气泡首行；用 flex-end 时多行长气泡会把头像压到整个气泡的下沿 */
+  align-items: flex-start;
   gap: 16rpx;
   margin-bottom: 28rpx;
 }
 
+/* 用户消息：DOM 顺序是 [气泡][头像]，靠右排即头像落在最右外缘，与 AI 行镜像对称。
+   不能用 row-reverse —— 那会让头像跑到气泡左侧、悬在屏幕中间。 */
 .msg-row-user {
-  flex-direction: row-reverse;
+  justify-content: flex-end;
 }
 
 .msg-avatar {
@@ -279,6 +285,8 @@
 }
 
 .bubble-ai {
+  /* 助手回答普遍更长，行宽放宽一些减少换行；60rpx 的余量保证不会顶到头像 */
+  max-width: 78%;
   background: #ffffff;
   color: #1a2440;
   border-bottom-left-radius: 6rpx;
@@ -331,7 +339,7 @@
   display: flex;
   align-items: center;
   gap: 16rpx;
-  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 24rpx;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);

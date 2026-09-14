@@ -47,8 +47,8 @@
   "packOptions": {
     "ignore": [
       {
-        "type": "file",
-        "value": "miniprogram/README.md"
+        "value": "miniprogram/README.md",
+        "type": "file"
       }
     ],
     "include": []

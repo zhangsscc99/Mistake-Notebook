@@ -37,6 +37,12 @@
         "selectedIconPath": "images/tabbar/apps-active.png"
       },
       {
+        "pagePath": "pages/aiChat/aiChat",
+        "text": "对话",
+        "iconPath": "images/tabbar/chat.png",
+        "selectedIconPath": "images/tabbar/chat-active.png"
+      },
+      {
         "pagePath": "pages/paperBuilder/paperBuilder",
         "text": "组卷",
         "iconPath": "images/tabbar/edit.png",

@@ -80,28 +80,69 @@ Page({
     inputValue: '',
     sending: false,
     scrollToId: '',
-    inputBottom: 0
+    inputBottom: 0,
+    pageHeight: 0
   },
 
   onLoad() {
+    this._sessionSaved = false;
+    this._activeContext = null;
+    this.measurePageHeight();
+  },
+
+  // tabBar 页的「可使用窗口高度」不含 tab 栏，拿它定高最稳妥，不用去猜 tab 栏多高
+  measurePageHeight() {
+    try {
+      const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
+      if (info && info.windowHeight) {
+        this.setData({ pageHeight: info.windowHeight });
+      }
+    } catch (e) {
+      // 量不到就退回 wxss 里的 100vh 兜底
+      console.warn('[aiChat] 量取窗口高度失败:', e);
+    }
+  },
+
+  // 本页现在是 tabBar 页：switchTab 不会重跑 onLoad，上下文只能在这里读
+  onShow() {
+    // 消费掉外部塞进来的题目上下文，否则每次切回 tab 都会被重复触发
     const ctxRaw = (app.globalData && app.globalData.aiChatContext) || '';
+    if (ctxRaw) app.globalData.aiChatContext = '';
+
+    // 普通切 tab（无新上下文）时保留当前会话，只有从错题进来才重开会话
+    if (!ctxRaw && this._activeContext !== null) return;
+    if (ctxRaw === this._activeContext) return;
+
+    this.startConversation(ctxRaw);
+  },
+
+  startConversation(ctxRaw) {
+    this._activeContext = ctxRaw;
+    this._sessionSaved = false;
+
     const ctxDisplay = formatLatex(ctxRaw);
     const preview = ctxDisplay.length > 50 ? ctxDisplay.slice(0, 50) + '…' : ctxDisplay;
-    const defaultGreeting = buildGreeting(ctxRaw, null);
-
-    this._sessionSaved = false;
+    const greeting = buildGreeting(ctxRaw, null);
 
     this.setData({
       questionContext: ctxDisplay,
       questionContextRaw: ctxRaw,
       questionParas: parseQuestionParas(ctxDisplay),
       questionPreview: preview,
+      contextVisible: false,
+      scrollToId: '',
       messages: [
-        { id: 'm0', role: 'assistant', content: defaultGreeting, display: defaultGreeting }
+        { id: 'm' + Date.now(), role: 'assistant', content: greeting, display: greeting }
       ]
     });
+    this.setTitle(ctxRaw);
     this.scrollToBottom();
     this.loadMemoryGreeting(ctxRaw);
+  },
+
+  // 通用问答 vs 针对某道错题的讲解，用标题区分
+  setTitle(ctxRaw) {
+    wx.setNavigationBarTitle({ title: ctxRaw ? '错题讲解' : '对话助手' });
   },
 
   loadMemoryGreeting(ctxRaw) {
@@ -154,7 +195,6 @@ Page({
 
   onUnload() {
     this.persistSessionMemory();
-    if (app.globalData) app.globalData.aiChatContext = '';
   },
 
   showContext() {

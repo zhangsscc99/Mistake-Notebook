@@ -1,5 +1,6 @@
 <!--pages/aiChat/aiChat.wxml-->
-<view class="ai-chat-page">
+<!-- 高度由 JS 按 windowHeight 给出；量不到时留空，回退到 wxss 的 100vh -->
+<view class="ai-chat-page" style="{{pageHeight > 0 ? 'height:' + pageHeight + 'px' : ''}}">
 
   <!-- 题目上下文条（点击弹出完整题目浮窗） -->
   <view class="context-bar" wx:if="{{questionContext}}" bindtap="showContext">

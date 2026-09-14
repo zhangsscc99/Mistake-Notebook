@@ -374,7 +374,8 @@ Page({
   openAIChat(e) {
     const content = e.currentTarget.dataset.content || '';
     app.globalData.aiChatContext = content;
-    wx.navigateTo({ url: '/pages/aiChat/aiChat' });
+    // aiChat 现在是 tabBar 页，只能用 switchTab 跳转；题目上下文由它的 onShow 读取
+    wx.switchTab({ url: '/pages/aiChat/aiChat' });
   },
 
   previewImage(e) {
