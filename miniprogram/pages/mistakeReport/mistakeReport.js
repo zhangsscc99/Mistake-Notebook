@@ -28,8 +28,8 @@ Page({
   },
 
   generateReport(ids) {
-    if (ids.length < 2) {
-      this.setData({ loading: false, error: '错因分析至少需要 2 道错题' });
+    if (ids.length < 1) {
+      this.setData({ loading: false, error: '请至少选择 1 道错题' });
       return;
     }
     this.setData({ loading: true, error: '', questionCount: ids.length });

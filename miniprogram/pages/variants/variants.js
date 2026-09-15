@@ -108,7 +108,7 @@ Page({
         if (result.success && result.data && result.data.savedCount > 0) {
           this.setData({ saved: true });
           wx.showToast({ title: `已保存 ${result.data.savedCount} 道`, icon: 'success' });
-          setTimeout(() => wx.navigateBack(), 1200);
+          setTimeout(() => wx.redirectTo({ url: '/pages/variantList/variantList' }), 1200);
         } else {
           wx.showToast({ title: result.error || '保存失败，请重试', icon: 'none' });
         }

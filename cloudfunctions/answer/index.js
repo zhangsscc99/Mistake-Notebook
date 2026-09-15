@@ -21,7 +21,7 @@ const LEARNING_REPORTS_COLLECTION = 'learning_reports';
 // 错因分析 / 变式题的输入题数上限：防御客户端塞巨数组，也控制 prompt 长度
 const MAX_REPORT_QUESTIONS = 20;
 const MAX_VARIANT_QUESTIONS = 10;
-const MIN_MULTI_QUESTIONS = 2;
+const MIN_MULTI_QUESTIONS = 1;
 const MIN_LEARNING_QUESTIONS = 1;
 const LEARNING_SAMPLE_SIZE = 30;
 const MIN_VARIANT_QUESTIONS = 1;
@@ -614,9 +614,9 @@ ${text}
   return { success: true, data: result };
 }
 
-// ─── 错因深度分析（多题 → 报告，保存历史）────────────────────────────────────
+// ─── 错因深度分析（1 题或多题 → 报告，保存历史）────────────────────────────
 //
-// 需要至少 2 篇错题：单题没有「模式」可分析。报告保存到 mistake_reports
+// 单题分析这道题本身的错因；多题再归纳共性。报告保存到 mistake_reports
 // （按 openid 归属），前端有历史列表可回看。
 
 function truncate(text, maxLen) {
@@ -669,7 +669,18 @@ async function generateMistakeReport(event, context) {
     return { success: false, error: `错因分析至少需要 ${MIN_MULTI_QUESTIONS} 道错题` };
   }
 
-  const prompt = `你是一位资深学习诊断专家。下面是一位学生的 ${questions.length} 道错题，请做一份「错因深度分析报告」，找出错题背后的共性问题，而不是逐题复述解析。
+  const prompt = questions.length === 1
+    ? `你是一位资深学习诊断专家。下面是一位学生的 1 道错题，请做一份针对这道题的「错因分析」，不要只复述解析。
+
+${buildQuestionBlock(questions)}
+
+请严格按以下结构输出（每节用【】开头，不要使用 markdown 代码块，总长度 800 字以内）：
+【总体诊断】用 2-3 句话说明这道题暴露的问题。
+【错因归类】判断主要错误原因（如：概念不清 / 计算失误 / 审题偏差 / 方法不会 / 知识遗忘等），说明具体表现。
+【薄弱知识点】列出需要补强的知识点，按优先级排序。
+【改进建议】给出 3-5 条可执行的针对性建议（具体到什么类型的练习、怎么练）。
+【攻克顺序】建议接下来先练什么、再练什么，1-2 句话。`
+    : `你是一位资深学习诊断专家。下面是一位学生的 ${questions.length} 道错题，请做一份「错因深度分析报告」，找出错题背后的共性问题，而不是逐题复述解析。
 
 ${buildQuestionBlock(questions)}
 

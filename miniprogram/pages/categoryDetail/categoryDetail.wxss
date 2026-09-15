@@ -135,9 +135,28 @@
   margin-top: 10px;
 }
 
+.history-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 16rpx;
+}
+
+.history-link {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2459ff;
+}
+
+.history-link-dot {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.25);
+}
+
 .action-buttons-ai .action-btn {
   letter-spacing: 0 !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
 }
 
 .action-btn {
@@ -147,14 +166,15 @@
   justify-content: center !important;
   height: 88rpx !important;
   min-height: 88rpx !important;
-  padding: 0 !important;
-  font-size: 30rpx !important;
+  padding: 0 8rpx !important;
+  font-size: 28rpx !important;
   font-weight: 700 !important;
   line-height: 1 !important;
   border-radius: 14px !important;
-  letter-spacing: 1px !important;
+  letter-spacing: 0 !important;
   box-sizing: border-box !important;
   text-align: center !important;
+  white-space: nowrap !important;
 }
 
 .action-btn::after {
@@ -478,6 +498,42 @@
 
 .ai-toggle-btn::after {
   border: none !important;
+}
+
+.q-tool-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 12px;
+}
+
+.q-tool-btn {
+  flex: 1;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #2459ff !important;
+  border: none !important;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30) !important;
+  box-sizing: border-box !important;
+}
+
+.q-tool-btn::after {
+  border: none !important;
+}
+
+.q-tool-btn-fill {
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 20px rgba(31, 91, 255, 0.26) !important;
 }
 
 .ai-toggle-btn.active {
@@ -904,12 +960,19 @@
   box-shadow: inset 0 0 0 2rpx rgba(11, 22, 51, 0.10) !important;
 }
 
+.detail-ai-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  margin-top: 20rpx;
+}
+
 .variant-detail-btn {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   width: 100% !important;
-  margin: 16rpx 0 0 !important;
+  margin: 0 !important;
   height: 80rpx !important;
   min-height: 80rpx !important;
   padding: 0 !important;
@@ -926,4 +989,10 @@
 
 .variant-detail-btn::after {
   border: none !important;
+}
+
+.variant-detail-btn-secondary {
+  background: #ffffff !important;
+  color: #2459ff !important;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30) !important;
 }

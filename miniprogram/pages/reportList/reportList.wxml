@@ -22,7 +22,7 @@
   <!-- 空状态 -->
   <view class="list-empty" wx:else>
     <view class="list-empty-title">还没有错因分析报告</view>
-    <view class="list-empty-sub">进入分类详情，勾选 2 道以上错题即可生成深度分析</view>
+    <view class="list-empty-sub">进入分类详情点「错因分析」即可生成（1 道也可以）。生成后的报告会自动保存在这里。</view>
     <button class="list-empty-btn" bindtap="goCategories">去选择错题</button>
   </view>
 </view>

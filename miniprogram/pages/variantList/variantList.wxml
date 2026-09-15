@@ -1,0 +1,44 @@
+<!--pages/variantList/variantList.wxml-->
+<view class="variant-list-page">
+
+  <view class="list-loading" wx:if="{{loading}}">加载中…</view>
+
+  <block wx:elif="{{list.length > 0}}">
+    <view class="hint-card">
+      <text class="hint-title">共 {{list.length}} 道已保存的变式题</text>
+      <text class="hint-sub">这里只显示勾选后加入错题本的题目，未保存的生成结果不会留下</text>
+    </view>
+
+    <view class="variant-card" wx:for="{{list}}" wx:key="id">
+      <view class="v-index-tag">{{item.index}}</view>
+      <view class="v-body">
+        <view class="v-meta">
+          <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+          <text class="v-kp" wx:if="{{item.category}}">{{item.category}}</text>
+          <text class="v-time" wx:if="{{item.createdAtText}}">{{item.createdAtText}}</text>
+        </view>
+        <text class="v-content">{{item.content}}</text>
+        <view class="v-answer-toggle" bindtap="toggleAnswer" data-id="{{item.id}}">
+          {{item.showAnswer ? '收起答案' : '查看答案与解析'}}
+        </view>
+        <view class="v-answer-box" wx:if="{{item.showAnswer}}">
+          <text class="v-answer-label">答案</text>
+          <text class="v-answer-text">{{item.aiAnswer || '暂无答案'}}</text>
+          <text class="v-answer-label">解析</text>
+          <text class="v-answer-text">{{item.aiAnalysis || '暂无解析'}}</text>
+        </view>
+        <view class="v-actions">
+          <text class="v-link" bindtap="goCategory" data-categoryid="{{item.categoryId}}" data-category="{{item.category}}">去分类查看</text>
+          <text class="v-delete" catchtap="deleteVariant" data-id="{{item.id}}">删除</text>
+        </view>
+      </view>
+    </view>
+    <view class="list-footer-hint">变式题会同时出现在对应分类里，标签为「变式题」</view>
+  </block>
+
+  <view class="list-empty" wx:else>
+    <view class="list-empty-title">还没有保存过变式题</view>
+    <view class="list-empty-sub">进入分类，勾选错题生成变式题，再点「加入错题本」才会出现在这里</view>
+    <button class="list-empty-btn" bindtap="goCategories">去选择错题</button>
+  </view>
+</view>

@@ -531,6 +531,14 @@ Page({
     wx.navigateTo({ url: '/pages/learningReport/learningReport' });
   },
 
+  goMistakeReports: function () {
+    wx.navigateTo({ url: '/pages/reportList/reportList' });
+  },
+
+  goVariantList: function () {
+    wx.navigateTo({ url: '/pages/variantList/variantList' });
+  },
+
   onInviteTap: function () {
     this._inviteToken = Date.now();
     const token = this._inviteToken;

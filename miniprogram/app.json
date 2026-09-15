@@ -16,7 +16,8 @@
     "pages/learningReportView/learningReportView",
     "pages/mistakeReport/mistakeReport",
     "pages/reportList/reportList",
-    "pages/variants/variants"
+    "pages/variants/variants",
+    "pages/variantList/variantList"
   ],
   "window": {
     "backgroundTextStyle": "dark",

@@ -690,19 +690,44 @@ Page({
     });
   },
 
-  // ─── 多题 AI 功能入口（错因分析 / 变式题，至少 2 题）──────────────────────
+  openQuestionTools(id, kind) {
+    if (!id) {
+      wx.showToast({ title: '题目信息缺失', icon: 'none' });
+      return;
+    }
+    const path = kind === 'variants'
+      ? '/pages/variants/variants'
+      : '/pages/mistakeReport/mistakeReport';
+    wx.navigateTo({ url: `${path}?ids=${encodeURIComponent(String(id))}` });
+  },
+
+  goReportHistory() {
+    wx.navigateTo({ url: '/pages/reportList/reportList' });
+  },
+
+  goVariantHistory() {
+    wx.navigateTo({ url: '/pages/variantList/variantList' });
+  },
+
+  startMistakeReportFromCard(e) {
+    this.openQuestionTools(e.currentTarget.dataset.id, 'report');
+  },
+
+  startVariantsFromCard(e) {
+    this.openQuestionTools(e.currentTarget.dataset.id, 'variants');
+  },
 
   enterEditMode() {
     if (!this.data.editMode) this.toggleEditMode();
   },
 
   startMistakeReport() {
-    if (this.getSelectedQuestions().length >= 2) {
+    if (this.getSelectedQuestions().length >= 1) {
       this.goMistakeReport();
       return;
     }
     this.enterEditMode();
-    wx.showToast({ title: '请勾选至少 2 道错题', icon: 'none' });
+    wx.showToast({ title: '请勾选至少 1 道错题', icon: 'none' });
   },
 
   startVariants() {
@@ -716,8 +741,8 @@ Page({
 
   goMistakeReport() {
     const selected = this.getSelectedQuestions();
-    if (selected.length < 2) {
-      wx.showToast({ title: '错因分析至少选择 2 道题', icon: 'none' });
+    if (selected.length < 1) {
+      wx.showToast({ title: '请至少选择 1 道题', icon: 'none' });
       return;
     }
     const ids = selected.map(q => q.id).join(',');
@@ -732,6 +757,16 @@ Page({
     }
     const ids = selected.map(q => q.id).join(',');
     wx.navigateTo({ url: `/pages/variants/variants?ids=${encodeURIComponent(ids)}` });
+  },
+
+  generateMistakeReportFromDetail() {
+    const dq = this.data.detailQuestion;
+    if (!dq || !dq.id) {
+      wx.showToast({ title: '题目信息缺失', icon: 'none' });
+      return;
+    }
+    this.closeDetailModal();
+    wx.navigateTo({ url: `/pages/mistakeReport/mistakeReport?ids=${encodeURIComponent(String(dq.id))}` });
   },
 
   generateVariantsFromDetail() {

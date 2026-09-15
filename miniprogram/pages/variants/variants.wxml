@@ -18,7 +18,7 @@
   <block wx:else>
     <view class="hint-card">
       <text class="hint-title">已生成 {{variants.length}} 道变式题</text>
-      <text class="hint-sub">勾选要加入错题本的题目，确认后才会入库</text>
+      <text class="hint-sub">勾选后点「加入错题本」才会保存。之后可在「我的 → 已保存的变式题」回看</text>
     </view>
 
     <view class="variant-card {{item.selected ? 'selected' : ''}}"

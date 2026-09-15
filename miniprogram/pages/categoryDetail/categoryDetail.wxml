@@ -21,18 +21,23 @@
       <!-- 操作按钮 -->
       <view class="action-buttons-row">
         <button class="btn btn-primary action-btn" bindtap="startPractice" wx:if="{{!isPaperSelectMode}}">开始练习</button>
-        <button class="btn {{isPaperSelectMode ? 'btn-primary' : 'btn-secondary'}} action-btn" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '加入组卷'}}</button>
+        <button class="btn {{isPaperSelectMode ? 'btn-primary' : 'btn-secondary'}} action-btn" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '批量加入组卷'}}</button>
       </view>
       <view class="action-buttons-row action-buttons-ai" wx:if="{{!isPaperSelectMode}}">
-        <button class="btn btn-secondary action-btn" bindtap="startMistakeReport">错因分析</button>
-        <button class="btn btn-secondary action-btn" bindtap="startVariants">生成变式题</button>
+        <button class="btn btn-secondary action-btn" bindtap="startMistakeReport">批量错因分析</button>
+        <button class="btn btn-secondary action-btn" bindtap="startVariants">批量生成变式题</button>
+      </view>
+      <view class="history-links" wx:if="{{!isPaperSelectMode}}">
+        <text class="history-link" bindtap="goReportHistory">查看错因报告</text>
+        <text class="history-link-dot">·</text>
+        <text class="history-link" bindtap="goVariantHistory">查看已保存变式题</text>
       </view>
     </view>
   </view>
 
   <!-- 编辑工具栏（仅保留选择相关操作） -->
   <view class="edit-toolbar">
-    <text class="edit-hint" wx:if="{{editMode}}">勾选题目后可生成变式题，错因分析需 2 道以上</text>
+    <text class="edit-hint" wx:if="{{editMode}}">勾选题目后可生成变式题或错因分析，1 道即可</text>
     <text class="edit-action" wx:if="{{editMode}}" bindtap="toggleSelectAll">{{isAllSelected ? '取消全选' : '全选'}}</text>
     <text class="edit-action" bindtap="toggleEditMode">{{editMode ? '完成' : '编辑'}}</text>
   </view>
@@ -100,6 +105,10 @@
               </view>
             </view>
             <button class="ai-toggle-btn" wx:if="{{!editMode}}" catchtap="openAIChat" data-content="{{qitem.content}}">AI答疑</button>
+            <view class="q-tool-row" wx:if="{{!editMode && !isPaperSelectMode}}">
+              <button class="q-tool-btn" catchtap="startMistakeReportFromCard" data-id="{{qitem.id}}">错因分析</button>
+              <button class="q-tool-btn q-tool-btn-fill" catchtap="startVariantsFromCard" data-id="{{qitem.id}}">生成变式题</button>
+            </view>
             <view class="ai-box" wx:if="{{qitem.showAI && !editMode}}">
               <view class="ai-title">AI 标准答案与解析</view>
               <view class="ai-subtitle">标准答案：</view>
@@ -154,6 +163,10 @@
             </view>
           </view>
           <button class="ai-toggle-btn" wx:if="{{!editMode}}" catchtap="openAIChat" data-content="{{item.content}}">AI答疑</button>
+          <view class="q-tool-row" wx:if="{{!editMode && !isPaperSelectMode}}">
+            <button class="q-tool-btn" catchtap="startMistakeReportFromCard" data-id="{{item.id}}">错因分析</button>
+            <button class="q-tool-btn q-tool-btn-fill" catchtap="startVariantsFromCard" data-id="{{item.id}}">生成变式题</button>
+          </view>
 
           <view class="ai-box" wx:if="{{item.showAI && !editMode}}">
             <view class="ai-title">AI 标准答案与解析</view>
@@ -207,6 +220,10 @@
       <view class="detail-section detail-section-ai">
         <text class="detail-section-title">AI 解析</text>
         <text class="detail-section-body {{detailQuestion.aiStatus === 'pending' && !detailQuestion.hasAiAnalysis ? 'detail-placeholder' : ''}}">{{detailQuestion.aiAnalysis}}</text>
+        <view class="detail-ai-actions">
+          <button class="variant-detail-btn variant-detail-btn-secondary" catchtap="generateMistakeReportFromDetail">错因分析</button>
+          <button class="variant-detail-btn" catchtap="generateVariantsFromDetail">生成变式题</button>
+        </view>
       </view>
 
       <!-- 我的笔记：每人对每题一条，仅自己可见 -->
@@ -218,7 +235,6 @@
         <textarea class="detail-note-input" value="{{detailNote}}" placeholder="记录你的错因、心得或提醒…"
           maxlength="2000" auto-height bindinput="onDetailNoteInput" />
         <button class="note-save-btn" bindtap="saveDetailNote" disabled="{{noteSaving}}">{{noteSaving ? '保存中…' : '保存笔记'}}</button>
-        <button class="variant-detail-btn" catchtap="generateVariantsFromDetail">生成变式题</button>
       </view>
 
       <view class="detail-section" wx:if="{{detailQuestion.tags && detailQuestion.tags.length > 0}}">

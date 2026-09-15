@@ -202,6 +202,14 @@
         <text class="cell-label">查询你的个性化学习报告</text>
         <text class="cell-arrow">›</text>
       </view>
+      <view class="cell" bindtap="goMistakeReports">
+        <text class="cell-label">错因分析报告</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="goVariantList">
+        <text class="cell-label">已保存的变式题</text>
+        <text class="cell-arrow">›</text>
+      </view>
       <view class="cell" bindtap="onInviteTap">
         <text class="cell-label">邀请同学一起用</text>
         <text class="cell-arrow">›</text>
