@@ -1,3 +1,4 @@
+<!--pages/login/login.wxml-->
 <view class="login-page">
   <view class="hero">
     <view class="mark">错</view>
@@ -10,25 +11,39 @@
     <view class="card-desc" wx:if="{{returning}}">已识别到你的微信，点击即可进入原账号</view>
     <view class="card-desc" wx:else>第一次使用会自动注册，之后换手机也能找回</view>
 
-    <view class="nick-row" wx:if="{{!returning}}">
-      <text class="nick-label">昵称（选填）</text>
+    <button class="avatar-btn" bindtap="onPickAvatar">
+      <image
+        class="avatar-img"
+        src="{{avatarTempPath || avatarFileID || '/images/default-avatar.png'}}"
+        mode="aspectFill"></image>
+      <view class="avatar-badge">+</view>
+    </button>
+
+    <view class="nick-row">
+      <text class="nick-label">昵称</text>
       <input
         class="nick-input"
         type="nickname"
-        placeholder="点击填写微信昵称"
+        placeholder="匿名用户"
         maxlength="20"
         value="{{nickName}}"
         bindinput="onNickInput"
+        bindblur="onNickBlur"
+        bindnicknamereview="onNickReview"
       />
     </view>
 
-    <button class="login-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="onLogin">
+    <button
+      class="login-btn"
+      loading="{{submitting}}"
+      disabled="{{submitting}}"
+      bindtap="onLogin">
       <text class="login-btn-label">{{submitting ? '正在进入…' : (returning ? '进入错题本' : '微信一键登录')}}</text>
     </button>
   </view>
 
   <view class="hints">
     <view class="hint">登录后才能看到自己的错题、分类与组卷</view>
-    <view class="hint">头像、学段可在「我的」里随时修改</view>
+    <view class="hint">头像、昵称、学段之后也可在「我的」里修改</view>
   </view>
 </view>

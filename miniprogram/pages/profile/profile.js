@@ -10,7 +10,8 @@ const {
 } = require('../../utils/profile');
 const { clearSession } = require('../../utils/auth');
 const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
-const { renderInvitePoster, savePosterToAlbum } = require('../../utils/invitePoster');
+const { renderInvitePoster, savePosterToAlbum, saveFailHint } = require('../../utils/invitePoster');
+const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
 const { buildAchievements, EMPTY_ACH } = require('../../utils/achievements');
 
 const MAX_NICKNAME_LEN = 20;
@@ -271,11 +272,14 @@ Page({
       .catch(() => {});
   },
 
-  // chooseAvatar 给的是临时路径（约 2 小时失效），必须立刻转存云存储换永久 fileID
-  onChooseAvatar: function (e) {
-    const tempFilePath = e.detail && e.detail.avatarUrl;
-    if (!tempFilePath) return;
-    this.uploadAvatar(tempFilePath);
+  onPickAvatar: function () {
+    if (this.data.uploadingAvatar) return;
+    pickAvatarPhoto()
+      .then((path) => this.uploadAvatar(path))
+      .catch((err) => {
+        if (isCancel(err)) return;
+        wx.showToast({ title: '选图失败，请重试', icon: 'none' });
+      });
   },
 
   uploadAvatar: function (tempFilePath) {
@@ -490,7 +494,8 @@ Page({
       confirmText: '退出',
       success: (res) => {
         if (!res.confirm) return;
-        clearProfileCache();
+        // 只清本地登录态。资料缓存留给登录页展示头像昵称，
+        // 同一微信下次进来仍是「欢迎回来」，不是一份空白新账号。
         clearSession();
         app.globalData.selectedPaperQuestions = [];
         app.globalData.recognitionDraft = null;
@@ -569,16 +574,15 @@ Page({
       });
       return;
     }
-    wx.showLoading({ title: '保存中', mask: true });
+    // 不能先出 loading 遮罩：系统相册授权弹窗会被挡住，点了就像保存失败。
     savePosterToAlbum(path)
       .then(() => {
-        wx.hideLoading();
         wx.showToast({ title: '已保存到相册', icon: 'success' });
       })
       .catch((err) => {
-        wx.hideLoading();
-        if (err && err.message === 'cancel') return;
-        wx.showToast({ title: '保存失败', icon: 'none' });
+        const hint = saveFailHint(err);
+        if (!hint) return;
+        wx.showToast({ title: hint, icon: 'none', duration: 2500 });
       });
   },
 

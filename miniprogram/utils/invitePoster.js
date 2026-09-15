@@ -218,7 +218,8 @@ function exportCanvas(canvas) {
     wx.canvasToTempFilePath({
       canvas: canvas,
       fileType: 'png',
-      quality: 1,
+      destWidth: POSTER_W,
+      destHeight: POSTER_H,
       success: function (res) {
         if (!res.tempFilePath) {
           reject(new Error('export empty'));
@@ -251,58 +252,122 @@ function renderInvitePoster(canvasId, opts) {
   });
 }
 
-function ensureAlbumAuth() {
-  return new Promise((resolve, reject) => {
-    wx.getSetting({
-      success: function (res) {
-        const flag = res.authSetting && res.authSetting['scope.writePhotosAlbum'];
-        if (flag) {
-          resolve();
-          return;
+function errMsgOf(err) {
+  return String((err && (err.errMsg || err.message)) || '');
+}
+
+function isAuthFail(err) {
+  const msg = errMsgOf(err).toLowerCase();
+  return msg.indexOf('auth deny') !== -1
+    || msg.indexOf('authorize') !== -1
+    || msg.indexOf('permission') !== -1;
+}
+
+function isPrivacyFail(err) {
+  return errMsgOf(err).toLowerCase().indexOf('privacy') !== -1;
+}
+
+function persistTempFile(filePath) {
+  return new Promise((resolve) => {
+    if (!filePath || typeof wx.getFileSystemManager !== 'function') {
+      resolve(filePath);
+      return;
+    }
+    try {
+      wx.getFileSystemManager().saveFile({
+        tempFilePath: filePath,
+        success: function (res) {
+          resolve(res.savedFilePath || filePath);
+        },
+        fail: function () {
+          resolve(filePath);
         }
-        if (flag === false) {
-          wx.showModal({
-            title: '需要相册权限',
-            content: '保存邀请图到相册，请打开「保存到相册」权限',
-            confirmText: '去设置',
-            success: function (m) {
-              if (!m.confirm) {
-                reject(new Error('cancel'));
-                return;
-              }
-              wx.openSetting({
-                success: function (s) {
-                  if (s.authSetting && s.authSetting['scope.writePhotosAlbum']) resolve();
-                  else reject(new Error('denied'));
-                },
-                fail: reject
-              });
-            }
-          });
-          return;
-        }
-        wx.authorize({
-          scope: 'scope.writePhotosAlbum',
-          success: resolve,
-          fail: reject
-        });
-      },
-      fail: reject
-    });
+      });
+    } catch (e) {
+      resolve(filePath);
+    }
   });
 }
 
-function savePosterToAlbum(filePath) {
-  return ensureAlbumAuth().then(() => new Promise((resolve, reject) => {
+function callSave(filePath) {
+  return new Promise((resolve, reject) => {
     wx.saveImageToPhotosAlbum({
       filePath: filePath,
       success: resolve,
       fail: reject
     });
-  }));
+  });
+}
+
+function askOpenAlbumSetting() {
+  return new Promise((resolve, reject) => {
+    wx.showModal({
+      title: '需要相册权限',
+      content: '保存邀请图到相册，请打开「保存到相册」权限',
+      confirmText: '去设置',
+      success: function (m) {
+        if (!m.confirm) {
+          reject(new Error('cancel'));
+          return;
+        }
+        wx.openSetting({
+          success: function (s) {
+            if (s.authSetting && s.authSetting['scope.writePhotosAlbum']) resolve();
+            else reject(new Error('denied'));
+          },
+          fail: reject
+        });
+      }
+    });
+  });
+}
+
+function requirePrivacyIfNeeded() {
+  return new Promise((resolve, reject) => {
+    if (typeof wx.requirePrivacyAuthorize !== 'function') {
+      resolve();
+      return;
+    }
+    wx.requirePrivacyAuthorize({
+      success: resolve,
+      fail: function (err) {
+        if (errMsgOf(err).indexOf('authorized') !== -1) resolve();
+        else reject(err);
+      }
+    });
+  });
+}
+
+// 不要先 wx.authorize：新基础库对相册不再弹授权窗，authorize 会直接失败。
+// 也不要在保存前 showLoading(mask)：系统授权弹窗会被挡住。
+function savePosterToAlbum(filePath) {
+  return persistTempFile(filePath).then((path) => {
+    return callSave(path).catch((err) => {
+      if (isPrivacyFail(err)) {
+        return requirePrivacyIfNeeded().then(() => callSave(path));
+      }
+      if (isAuthFail(err)) {
+        return askOpenAlbumSetting().then(() => callSave(path));
+      }
+      return Promise.reject(err);
+    });
+  });
+}
+
+function saveFailHint(err) {
+  if (err && err.message === 'cancel') return '';
+  const platform = ((wx.getSystemInfoSync() || {}).platform) || '';
+  if (platform === 'devtools') {
+    return '开发者工具写不了系统相册，请用真机预览后再保存';
+  }
+  if (err && err.message === 'denied') return '未打开相册权限';
+  if (isAuthFail(err)) return '没有相册权限';
+  if (isPrivacyFail(err)) return '请先同意隐私协议';
+  return '保存失败';
 }
 
 module.exports = {
   renderInvitePoster,
-  savePosterToAlbum
+  savePosterToAlbum,
+  saveFailHint
 };

@@ -3,18 +3,27 @@
     <text class="tips-text">已自动选中疑难题目，可点击勾选或取消</text>
   </view>
 
+  <scroll-view class="page-tabs" scroll-x wx:if="{{pageCount > 1}}">
+    <view
+      class="page-tab {{currentPageIndex === index ? 'active' : ''}}"
+      wx:for="{{pages}}"
+      wx:key="fileID"
+      bindtap="switchPage"
+      data-index="{{index}}"
+    >第{{index + 1}}页</view>
+  </scroll-view>
+
   <view class="image-section image-overlay-wrap" wx:if="{{imagePath}}">
     <image class="preview-image" src="{{imagePath}}" mode="widthFix"></image>
     <view
       class="question-overlay {{item.selected ? 'selected' : ''}}"
-      wx:for="{{questions}}"
+      wx:for="{{currentOverlays}}"
       wx:key="id"
-      wx:if="{{item.bounds}}"
       style="top: {{item.bounds.top}}%; left: {{item.bounds.left}}%; width: {{item.bounds.width}}%; height: {{item.bounds.height}}%;"
       catchtap="toggleQuestionOverlay"
       data-id="{{item.id}}"
     >
-      <text class="overlay-index">{{index + 1}}</text>
+      <text class="overlay-index">{{item.id}}</text>
     </view>
   </view>
 
@@ -26,6 +35,7 @@
           <view class="question-meta">
             <text class="question-index">第{{index + 1}}题</text>
             <text class="question-type" wx:if="{{item.type}}">{{item.type}}</text>
+            <text class="cross-badge" wx:if="{{item.isCrossPage}}">{{item.crossPageLabel}}</text>
             <text class="confidence-badge" wx:if="{{item.confidence}}">{{item.confidenceLabel}}</text>
           </view>
           <text class="question-text">{{item.text}}</text>
@@ -67,6 +77,7 @@
           wx:key="name"
           bindtap="onTempCategorySelect"
           data-name="{{item.name}}"
+          data-id="{{item._id || item.id}}"
         >{{item.name}}</view>
       </scroll-view>
     </view>

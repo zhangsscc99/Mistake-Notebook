@@ -3,11 +3,10 @@
 
   <!-- 顶部身份卡 -->
   <view class="hero">
-    <!-- 必须是 <button open-type="chooseAvatar">，用 view/image 包裹不生效 -->
+    <!-- 点头像从相册选或拍照，再裁成方形。不用 chooseAvatar（那是微信头像通道）。 -->
     <button
       class="avatar-btn"
-      open-type="chooseAvatar"
-      bindchooseavatar="onChooseAvatar"
+      bindtap="onPickAvatar"
       disabled="{{uploadingAvatar}}">
       <image class="avatar-img" src="{{avatarFileID || '/images/default-avatar.png'}}" mode="aspectFill"></image>
       <view class="avatar-badge">✎</view>

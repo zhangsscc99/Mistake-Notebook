@@ -16,6 +16,42 @@
   color: #2459ff;
 }
 
+.page-tabs {
+  white-space: nowrap;
+  margin: 16rpx 24rpx 0;
+}
+
+.page-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12rpx;
+  padding: 10rpx 24rpx;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: #ffffff;
+  box-shadow: 0 6rpx 16rpx rgba(11, 22, 51, 0.06);
+}
+
+.page-tab.active {
+  color: #fff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  box-shadow: 0 6px 16px rgba(31, 91, 255, 0.28);
+}
+
+.cross-badge {
+  font-size: 20rpx;
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.12);
+  border-radius: 20rpx;
+  padding: 2rpx 12rpx;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .image-section {
   margin: 24rpx;
   border-radius: 20rpx;
@@ -82,7 +118,9 @@
 
 .question-meta {
   display: flex;
-  gap: 16rpx;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
   margin-bottom: 12rpx;
 }
 

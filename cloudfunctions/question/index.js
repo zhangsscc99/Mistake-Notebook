@@ -39,40 +39,37 @@ async function loadOwnedQuestion(openId, id) {
   }
 }
 
-async function findOrCreateCategory(openId, categoryId, categoryName) {
-  if (categoryId) {
-    try {
-      const result = await db.collection('categories').doc(String(categoryId)).get();
-      if (result.data && !result.data.isDeleted && result.data.openid === openId) {
-        return result.data;
-      }
-    } catch (e) {
-      // fall through to name lookup
-    }
-  }
-
-  const name = String(categoryName || '').trim();
-  if (!name) return null;
-
-  const byName = await db.collection('categories')
-    .where({ openid: openId, name, isDeleted: false })
-    .limit(1)
+async function listUserCategories(openId) {
+  const result = await db.collection('categories')
+    .where({ openid: openId })
+    .limit(100)
     .get();
-  if (byName.data[0]) return byName.data[0];
+  return (result.data || []).filter((cat) => !cat.isDeleted);
+}
 
-  const now = new Date().toISOString();
-  const add = await db.collection('categories').add({
-    data: {
-      name,
-      description: '',
-      color: '#4A90E2',
-      openid: openId,
-      isDeleted: false,
-      createdAt: now,
-      updatedAt: now
-    }
-  });
-  return { _id: add._id, name, openid: openId };
+function categoryNameKey(name) {
+  return String(name || '').replace(/\s+/g, '').toLowerCase();
+}
+
+function matchExistingCategory(list, categoryId, categoryName) {
+  if (!list || !list.length) return null;
+  if (categoryId) {
+    const byId = list.find((cat) => String(cat._id) === String(categoryId));
+    if (byId) return byId;
+  }
+  const want = categoryNameKey(categoryName);
+  if (!want) return null;
+  const exact = list.find((cat) => categoryNameKey(cat.name) === want);
+  if (exact) return exact;
+  return list.find((cat) => {
+    const n = categoryNameKey(cat.name);
+    return n && (want.indexOf(n) !== -1 || n.indexOf(want) !== -1);
+  }) || null;
+}
+
+async function findExistingCategory(openId, categoryId, categoryName) {
+  const list = await listUserCategories(openId);
+  return matchExistingCategory(list, categoryId, categoryName) || list[0] || null;
 }
 
 exports.main = async (event, context) => {
@@ -137,7 +134,7 @@ async function createQuestion(event) {
 
   const { content, imageUrl, category, difficulty, tags, aiAnswer, aiAnalysis } = event;
 
-  const cat = await findOrCreateCategory(openId, event.categoryId, category);
+  const cat = await findExistingCategory(openId, event.categoryId, category);
   const categoryId = cat ? cat._id : '';
   const categoryName = (cat && cat.name) || category || '';
 
@@ -147,6 +144,8 @@ async function createQuestion(event) {
     openid: openId,
     content: content || '',
     imageUrl: imageUrl || '',
+    pageFileIDs: Array.isArray(event.pageFileIDs) ? event.pageFileIDs : [],
+    pageSpans: Array.isArray(event.pageSpans) ? event.pageSpans : [],
     categoryId: categoryId || '',
     category: categoryName,
     difficulty: difficulty || 'MEDIUM',
@@ -1029,13 +1028,12 @@ async function batchSaveQuestions(event) {
 
   const saved = await Promise.all(
     prepared.map(async ({ item, text }) => {
-      let finalCategory = category || item.subject || '';
       let finalDifficulty = baseDifficulty;
       let tags = [];
       let aiConfidence = item.confidence || 0;
 
       if (item.type) tags.push(item.type);
-      if (item.subject && item.subject !== finalCategory) tags.push(item.subject);
+      if (item.subject) tags.push(item.subject);
 
       if (generateAi) {
         const classifyRes = await invokeFunction('classify', {
@@ -1043,7 +1041,6 @@ async function batchSaveQuestions(event) {
           text
         });
         if (classifyRes.success && classifyRes.data) {
-          finalCategory = classifyRes.data.category || finalCategory;
           tags = Array.from(new Set([...(classifyRes.data.tags || []), ...tags]));
           if (classifyRes.data.difficulty) {
             finalDifficulty = classifyRes.data.difficulty;
@@ -1054,8 +1051,11 @@ async function batchSaveQuestions(event) {
 
       const createRes = await createQuestion({
         content: text,
-        imageUrl: imageUrl || '',
-        category: finalCategory,
+        imageUrl: item.imageUrl || imageUrl || '',
+        pageFileIDs: Array.isArray(item.pageFileIDs) ? item.pageFileIDs : [],
+        pageSpans: Array.isArray(item.pageSpans) ? item.pageSpans : [],
+        categoryId: event.categoryId,
+        category: category,
         difficulty: finalDifficulty,
         tags,
         aiConfidence,

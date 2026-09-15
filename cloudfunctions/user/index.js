@@ -110,7 +110,7 @@ const DEFAULT_CATEGORIES = [
 function emptyUserFields(openId) {
   return {
     openId,
-    nickName: '',
+    nickName: '匿名用户',
     avatarFileID: '',
     stage: '',
     coins: 0,
@@ -546,7 +546,7 @@ async function checkin(openId) {
     await db.collection(COLLECTION).doc(openId).set({
       data: {
         openId,
-        nickName: '',
+        nickName: '匿名用户',
         avatarFileID: '',
         stage: '',
         vipExpireAt: '',

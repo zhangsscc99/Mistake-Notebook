@@ -13,27 +13,23 @@ function getCallerOpenId() {
   return wxContext.OPENID || wxContext.FROM_OPENID || '';
 }
 
-async function findOrCreateCategory(openId, name) {
+async function findExistingCategory(openId, name) {
   const trimmed = String(name || '').trim();
-  if (!trimmed) return null;
-  const found = await db.collection('categories')
-    .where({ openid: openId, name: trimmed, isDeleted: false })
-    .limit(1)
+  const result = await db.collection('categories')
+    .where({ openid: openId })
+    .limit(100)
     .get();
-  if (found.data && found.data[0]) return found.data[0];
-  const now = new Date().toISOString();
-  const add = await db.collection('categories').add({
-    data: {
-      name: trimmed,
-      description: '',
-      color: '#4A90E2',
-      openid: openId,
-      isDeleted: false,
-      createdAt: now,
-      updatedAt: now
-    }
-  });
-  return { _id: add._id, name: trimmed, openid: openId };
+  const list = (result.data || []).filter((cat) => !cat.isDeleted);
+  if (trimmed) {
+    const exact = list.find((cat) => String(cat.name || '').trim() === trimmed);
+    if (exact) return exact;
+    const fuzzy = list.find((cat) => {
+      const n = String(cat.name || '').trim();
+      return n && (trimmed.indexOf(n) !== -1 || n.indexOf(trimmed) !== -1);
+    });
+    if (fuzzy) return fuzzy;
+  }
+  return list[0] || null;
 }
 
 function callDashScope(messages, temperature = 0.2) {
@@ -197,13 +193,10 @@ ${recognizedText}
     }
   }
 
-  // Step 5: Map category name to this user's category
+  // Step 5: Map category name to this user's existing category (never create new ones)
   const targetCategory = classification.category || category;
-  let categoryId = '';
-  if (targetCategory) {
-    const cat = await findOrCreateCategory(openId, targetCategory);
-    if (cat) categoryId = cat._id;
-  }
+  const cat = await findExistingCategory(openId, targetCategory);
+  const categoryId = cat ? cat._id : '';
 
   // Step 6: Save to database
   const now = new Date().toISOString();
@@ -212,7 +205,7 @@ ${recognizedText}
     content: recognizedText,
     imageUrl: fileID,
     categoryId,
-    category: targetCategory || '',
+    category: (cat && cat.name) || '',
     difficulty: classification.difficulty || 'MEDIUM',
     tags: classification.tags || [],
     ocrConfidence,

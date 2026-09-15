@@ -31,7 +31,7 @@ function decorateOverview(raw) {
     checkinTotalDays: o.checkinTotalDays || 0,
     stage: o.stage || '',
     canGenerate: !!o.canGenerate,
-    minQuestions: o.minQuestions || 1;
+    minQuestions: o.minQuestions || 1
   };
 }
 

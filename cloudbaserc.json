@@ -4,8 +4,8 @@
   "functions": [
     {
       "name": "segment",
-      "timeout": 60,
-      "memorySize": 256,
+      "timeout": 300,
+      "memorySize": 512,
       "runtime": "Nodejs16.13"
     },
     {
