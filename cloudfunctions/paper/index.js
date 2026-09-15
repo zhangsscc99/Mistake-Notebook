@@ -13,19 +13,30 @@ function normalizePaper(record) {
   };
 }
 
+function getOpenId() {
+  const wxContext = cloud.getWXContext();
+  return wxContext.OPENID || wxContext.FROM_OPENID || '';
+}
+
+function noOpenId() {
+  return { success: false, error: 'NO_OPENID', data: { message: '登录状态异常，请重新登录' } };
+}
+
 exports.main = async (event) => {
   const { action } = event;
+  const openId = getOpenId();
+  if (!openId) return noOpenId();
 
   try {
     switch (action) {
       case 'list':
-        return await listPapers(event);
+        return await listPapers(openId);
       case 'save':
-        return await savePaper(event);
+        return await savePaper(openId, event);
       case 'get':
-        return await getPaper(event);
+        return await getPaper(openId, event);
       case 'delete':
-        return await deletePaper(event);
+        return await deletePaper(openId, event);
       default:
         return { success: false, error: `Unknown action: ${action}` };
     }
@@ -35,13 +46,7 @@ exports.main = async (event) => {
   }
 };
 
-function getOpenId() {
-  const wxContext = cloud.getWXContext();
-  return wxContext.OPENID || wxContext.FROM_OPENID || 'anonymous';
-}
-
-async function listPapers() {
-  const openId = getOpenId();
+async function listPapers(openId) {
   const result = await db.collection('papers')
     .where({ openId, isDeleted: false })
     .orderBy('createdAt', 'desc')
@@ -53,21 +58,21 @@ async function listPapers() {
   };
 }
 
-async function getPaper(event) {
+async function getPaper(openId, event) {
   const { id } = event;
   if (!id) {
     return { success: false, error: 'Missing paper id' };
   }
 
   const result = await db.collection('papers').doc(id).get();
-  if (!result.data || result.data.isDeleted) {
+  if (!result.data || result.data.isDeleted || result.data.openId !== openId) {
     return { success: false, error: 'Paper not found' };
   }
 
   return { success: true, data: normalizePaper(result.data) };
 }
 
-async function savePaper(event) {
+async function savePaper(openId, event) {
   const { paper } = event;
   if (!paper || !paper.title) {
     return { success: false, error: 'Missing paper title' };
@@ -76,7 +81,6 @@ async function savePaper(event) {
     return { success: false, error: 'Missing paper questions' };
   }
 
-  const openId = getOpenId();
   const now = new Date().toISOString();
   const data = {
     openId,
@@ -106,10 +110,15 @@ async function savePaper(event) {
   };
 }
 
-async function deletePaper(event) {
+async function deletePaper(openId, event) {
   const { id } = event;
   if (!id) {
     return { success: false, error: 'Missing paper id' };
+  }
+
+  const existing = await db.collection('papers').doc(id).get();
+  if (!existing.data || existing.data.isDeleted || existing.data.openId !== openId) {
+    return { success: false, error: 'Paper not found' };
   }
 
   await db.collection('papers').doc(id).update({

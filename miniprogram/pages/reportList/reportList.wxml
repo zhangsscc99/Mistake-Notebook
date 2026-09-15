@@ -1,0 +1,28 @@
+<!--pages/reportList/reportList.wxml-->
+<view class="report-list-page">
+
+  <view class="list-loading" wx:if="{{loading}}">加载中…</view>
+
+  <block wx:elif="{{list.length > 0}}">
+    <view class="report-card" wx:for="{{list}}" wx:key="reportId"
+      bindtap="openReport" data-id="{{item.reportId}}">
+      <view class="report-card-main">
+        <view class="report-card-title">{{item.title}}</view>
+        <view class="report-card-preview">{{item.preview}}</view>
+        <view class="report-card-meta">
+          <text class="report-card-pill">{{item.questionCount}} 题</text>
+          <text class="report-card-time">{{item.createdAtText}}</text>
+        </view>
+      </view>
+      <view class="report-card-delete" catchtap="deleteReport" data-id="{{item.reportId}}">删除</view>
+    </view>
+    <view class="list-footer-hint">报告由 AI 生成，仅供参考</view>
+  </block>
+
+  <!-- 空状态 -->
+  <view class="list-empty" wx:else>
+    <view class="list-empty-title">还没有错因分析报告</view>
+    <view class="list-empty-sub">进入分类详情点「错因分析」即可生成（1 道也可以）。生成后的报告会自动保存在这里。</view>
+    <button class="list-empty-btn" bindtap="goCategories">去选择错题</button>
+  </view>
+</view>

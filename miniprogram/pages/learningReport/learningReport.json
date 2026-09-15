@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "查询你的个性化学习报告",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "enablePullDownRefresh": true
+}

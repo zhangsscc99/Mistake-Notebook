@@ -3,18 +3,18 @@
 
   <!-- 顶部身份卡 -->
   <view class="hero">
-    <!-- 必须是 <button open-type="chooseAvatar">，用 view/image 包裹不生效 -->
+    <!-- 点头像从相册选或拍照，再裁成方形。不用 chooseAvatar（那是微信头像通道）。 -->
     <button
       class="avatar-btn"
-      open-type="chooseAvatar"
-      bindchooseavatar="onChooseAvatar"
+      bindtap="onPickAvatar"
       disabled="{{uploadingAvatar}}">
       <image class="avatar-img" src="{{avatarFileID || '/images/default-avatar.png'}}" mode="aspectFill"></image>
       <view class="avatar-badge">✎</view>
     </button>
 
     <view class="hero-name">{{nickName || '未设置昵称'}}</view>
-    <view class="hero-sub">智能错题本 · 终身免费版</view>
+    <view class="hero-level">Lv.{{ach.level}} {{ach.levelName}}</view>
+    <view class="hero-sub">智卷错题通 · 终身免费版</view>
 
     <view class="hero-stats">
       <view class="stat-block">
@@ -27,6 +27,117 @@
         <text class="stat-lab">分类数</text>
       </view>
     </view>
+  </view>
+
+  <!-- 学习打卡 / 金币 / 会员 -->
+  <view class="section-group">
+    <view class="section-title">学习打卡</view>
+    <view class="cell-list checkin-card">
+
+      <block wx:if="{{walletLoaded}}">
+        <!-- 最近 7 天，左旧右新 -->
+        <view class="week-row">
+          <view class="week-cell {{item.checked ? 'on' : ''}} {{item.isToday ? 'today' : ''}}"
+            wx:for="{{wallet.recentDays}}" wx:key="dayKey">
+            <view class="week-dot">{{item.checked ? '✓' : item.day}}</view>
+          </view>
+        </view>
+
+        <view class="checkin-stats">
+          <view class="mini-stat">
+            <text class="mini-num">{{wallet.checkinStreak}}</text>
+            <text class="mini-lab">连续天数</text>
+          </view>
+          <view class="mini-divider"></view>
+          <view class="mini-stat">
+            <text class="mini-num">{{wallet.checkinTotalDays}}</text>
+            <text class="mini-lab">累计打卡</text>
+          </view>
+          <view class="mini-divider"></view>
+          <view class="mini-stat">
+            <text class="mini-num">{{wallet.coins}}</text>
+            <text class="mini-lab">金币</text>
+          </view>
+        </view>
+
+        <!-- 今日加成预览。必须在按打卡「之前」就能看到，
+             否则「先学习再打卡金币更多」是个暗箱，用户没机会据此安排顺序 -->
+        <view class="bonus-preview" wx:if="{{!wallet.todayChecked}}">
+          <text class="bonus-title">今日可得 {{wallet.todayBonus.total}} 金币</text>
+          <view class="bonus-chips">
+            <text class="bonus-chip on">签到 +{{wallet.todayBonus.base}}</text>
+            <text class="bonus-chip {{wallet.todayBonus.chat ? 'on' : ''}}">对话 +{{wallet.todayBonus.chat ? wallet.todayBonus.chat : 5}}</text>
+            <text class="bonus-chip {{wallet.todayBonus.paper ? 'on' : ''}}">组卷 +{{wallet.todayBonus.paper ? wallet.todayBonus.paper : 5}}</text>
+          </view>
+          <text class="bonus-hint">先学习再打卡，加成更多</text>
+        </view>
+
+        <view class="form-actions">
+          <button class="save-btn" bindtap="onCheckin"
+            disabled="{{!walletLoaded || wallet.todayChecked || checkingIn}}">
+            {{wallet.todayChecked ? '今日已打卡' : (checkingIn ? '打卡中…' : '今日打卡')}}
+          </button>
+        </view>
+
+        <!-- 必须是 <button open-type="share">：onShareAppMessage 只在右上角菜单和
+             这种按钮上触发，绑 bindtap 调什么都不可能弹出转发面板。
+             刻意不发任何金币 —— 微信《滥用分享行为》2.1 点名禁止「完成分享操作
+             立即可获得积分/金币」，且金币属于规则定义里的「虚拟奖品/利益」，
+             处罚是阶梯封禁分享能力直至封号。分享的动机只能是内容本身 -->
+        <view class="form-actions share-actions">
+          <button class="share-btn" open-type="share" data-kind="checkin">分享我的打卡</button>
+        </view>
+
+        <!-- 会员 -->
+        <view class="vip-row">
+          <view class="vip-info">
+            <text class="vip-title">{{wallet.isVip ? '对话会员' : '对话会员 · 未开通'}}</text>
+            <text class="vip-sub" wx:if="{{wallet.isVip}}">有效期至 {{wallet.vipExpireText}}</text>
+            <text class="vip-sub" wx:else>每次兑换 {{wallet.vipDays}} 天，期间 AI 对话不限量</text>
+          </view>
+          <button class="redeem-btn" bindtap="onRedeemVip" disabled="{{redeeming}}">
+            {{wallet.isVip ? '续期' : '兑换'}} {{wallet.vipCost}} 金币
+          </button>
+        </view>
+      </block>
+
+      <!-- 失败时不摆一堆 0 冒充满钱包 -->
+      <view class="wallet-fallback" wx:else>
+        <text class="wallet-fallback-text">{{walletError || '正在加载…'}}</text>
+        <text class="wallet-retry" wx:if="{{walletError}}" bindtap="loadWallet">重试</text>
+      </view>
+
+    </view>
+    <view class="section-hint">每天打卡得金币，金币可兑换对话会员。会员期间 AI 对话不限量。</view>
+  </view>
+
+  <!-- 等级与勋章 -->
+  <view class="section-group">
+    <view class="section-title">成就</view>
+    <view class="cell-list ach-card">
+      <view class="ach-level-row">
+        <view class="ach-level-main">
+          <text class="ach-level-num">Lv.{{ach.level}}</text>
+          <text class="ach-level-name">{{ach.levelName}}</text>
+        </view>
+        <text class="ach-level-xp">{{ach.xp}} 经验</text>
+      </view>
+      <view class="ach-bar">
+        <view class="ach-bar-fill" style="width: {{ach.progressPct}}%;"></view>
+      </view>
+      <view class="ach-bar-hint" wx:if="{{!ach.maxed}}">还差 {{ach.remainXp}} 经验升到 Lv.{{ach.nextLevel}} {{ach.nextName}}</view>
+      <view class="ach-bar-hint" wx:else>已满级</view>
+      <view class="ach-count">已点亮 {{ach.unlocked}} / {{ach.total}} 枚勋章</view>
+      <view class="medal-grid">
+        <view class="medal {{item.unlocked ? 'on' : ''}}"
+          wx:for="{{ach.medals}}" wx:key="id"
+          bindtap="onMedalTap" data-id="{{item.id}}">
+          <view class="medal-mark">{{item.mark}}</view>
+          <text class="medal-name">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="section-hint">打卡、整理错题、写笔记、组卷都能涨经验。点勋章可看点亮条件。</view>
   </view>
 
   <!-- 资料编辑 -->
@@ -89,8 +200,30 @@
         <text class="cell-label">我的错题</text>
         <text class="cell-arrow">›</text>
       </view>
-      <view class="cell" bindtap="goSettings">
-        <text class="cell-label">功能设置</text>
+      <view class="cell" bindtap="goCategories">
+        <text class="cell-label">我的收藏</text>
+        <text class="cell-value" wx:if="{{walletLoaded}}">收藏 {{wallet.favoriteCount}} · 置顶 {{wallet.pinnedCount}}</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="goLeaderboard">
+        <text class="cell-label">排行榜</text>
+        <text class="cell-value" wx:if="{{walletLoaded && wallet.checkinStreak > 0}}">连续 {{wallet.checkinStreak}} 天</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="goLearningReport">
+        <text class="cell-label">查询你的个性化学习报告</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="goMistakeReports">
+        <text class="cell-label">错因分析报告</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="goVariantList">
+        <text class="cell-label">已保存的变式题</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="onInviteTap">
+        <text class="cell-label">邀请同学一起用</text>
         <text class="cell-arrow">›</text>
       </view>
     </view>
@@ -100,12 +233,16 @@
   <view class="section-group">
     <view class="section-title">账号</view>
     <view class="cell-list">
+      <view class="cell" bindtap="onLogout">
+        <text class="cell-label">退出登录</text>
+        <text class="cell-arrow">›</text>
+      </view>
       <view class="cell" bindtap="onDeleteAccount">
         <text class="cell-label cell-label-danger">注销账号</text>
         <text class="cell-arrow">›</text>
       </view>
     </view>
-    <view class="section-hint">清除云端保存的头像、昵称、学段、对话记忆与试卷。错题本身为公共题库，不在删除范围。</view>
+    <view class="section-hint">退出登录只离开本机会话。注销会删除你名下的错题、分类、资料与学习记录。</view>
   </view>
 
   <!-- 关于 -->
@@ -120,6 +257,33 @@
         <text class="cell-label">关于错题本</text>
         <text class="cell-arrow">›</text>
       </view>
+    </view>
+  </view>
+
+  <canvas type="2d" id="invitePoster" class="invite-canvas-off"></canvas>
+
+  <view class="invite-mask" wx:if="{{inviteOpen}}" catchtap="closeInvite" catchtouchmove="noop">
+    <view class="invite-sheet" catchtap="noop">
+      <view class="invite-handle"></view>
+      <view class="invite-title">邀请同学一起用</view>
+      <view class="invite-preview">
+        <image
+          wx:if="{{invitePosterPath}}"
+          class="invite-preview-img"
+          src="{{invitePosterPath}}"
+          mode="aspectFit"></image>
+        <view class="invite-preview-busy" wx:if="{{invitePosterBusy}}">正在生成邀请图…</view>
+        <view class="invite-preview-busy" wx:elif="{{!invitePosterPath}}">邀请图生成失败，仍可转发</view>
+      </view>
+      <button
+        class="invite-btn invite-btn-save"
+        bindtap="onSaveInvitePoster"
+        disabled="{{invitePosterBusy || !invitePosterPath}}">保存图片</button>
+      <button
+        class="invite-btn invite-btn-share"
+        open-type="share"
+        data-kind="invite">转发到群聊</button>
+      <view class="invite-cancel" bindtap="closeInvite">取消</view>
     </view>
   </view>
 

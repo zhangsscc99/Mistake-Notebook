@@ -277,23 +277,6 @@
   text-align: center;
 }
 
-.empty-illustration {
-  width: 100px;
-  height: 100px;
-  border-radius: 28px;
-  background: linear-gradient(145deg, rgba(36,89,255,0.10) 0%, rgba(82,183,255,0.10) 100%);
-  border: 1.5px dashed rgba(36,89,255,0.22);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 22px;
-}
-
-.empty-emoji {
-  font-size: 44px;
-  line-height: 1;
-}
-
 .empty-title {
   font-size: 18px;
   font-weight: 700;

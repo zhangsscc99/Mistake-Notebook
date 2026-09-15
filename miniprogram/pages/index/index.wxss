@@ -54,16 +54,24 @@
   text-overflow: ellipsis;
 }
 
-.top-bar-settings {
-  width: 56rpx;
+.top-bar-share {
+  flex-shrink: 0;
+  width: auto !important;
   height: 56rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 36rpx;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.7);
-  box-shadow: 0 2rpx 12rpx rgba(36,89,255,0.1);
+  line-height: 56rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: #ffffff;
+  box-shadow: 0 6rpx 16rpx rgba(11, 22, 51, 0.08);
+}
+
+.top-bar-share::after {
+  border: none;
 }
 
 /* 多色流光光晕（完全复刻 Camera.vue 的 radial-gradient blobs） */
@@ -264,6 +272,13 @@
   gap: 16px;
 }
 
+.preview-hint {
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(11, 22, 51, 0.55);
+}
+
 .image-item {
   position: relative;
   aspect-ratio: 1;
@@ -271,6 +286,64 @@
   overflow: hidden;
   border: 1px solid rgba(47, 107, 255, 0.14);
   box-shadow: 0 10px 35px rgba(31, 91, 255, 0.08);
+}
+
+.add-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px dashed rgba(36, 89, 255, 0.35);
+  box-shadow: none;
+}
+
+.add-plus {
+  font-size: 28px;
+  line-height: 1;
+  color: #2459ff;
+  font-weight: 300;
+}
+
+.add-text {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.55);
+  font-weight: 600;
+}
+
+.page-order {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: linear-gradient(180deg, transparent, rgba(11, 22, 51, 0.55));
+}
+
+.page-no {
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.order-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #2459ff;
+  font-size: 16px;
+  line-height: 20px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.order-btn.disabled {
+  opacity: 0.35;
 }
 
 .preview-image {

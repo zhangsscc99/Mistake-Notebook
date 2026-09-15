@@ -23,7 +23,7 @@ function normalize(data) {
     nickName: d.nickName || '',
     avatarFileID: d.avatarFileID || '',
     stage: d.stage || '',
-    hasProfile: !!d.exists
+    hasProfile: !!(d.exists || d.hasProfile)
   };
 }
 

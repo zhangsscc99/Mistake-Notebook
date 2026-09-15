@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "错因分析报告",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "enablePullDownRefresh": true
+}

@@ -1,0 +1,217 @@
+/* pages/mistakeReport/mistakeReport.wxss */
+.report-page {
+  min-height: 100vh;
+  padding: 16px 16px 40px;
+  box-sizing: border-box;
+  background-color: #eef3fb;
+  background-image:
+    radial-gradient(circle 420rpx at 100% 0%, rgba(82, 183, 255, 0.12) 0%, transparent 60%),
+    radial-gradient(circle 360rpx at 0% 4%, rgba(182, 166, 255, 0.10) 0%, transparent 55%),
+    linear-gradient(rgba(11, 22, 51, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 22, 51, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 44rpx 44rpx, 44rpx 44rpx;
+}
+
+/* 加载 / 失败状态卡 */
+.state-card {
+  margin-top: 80px;
+  background: #ffffff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  border-radius: 22px;
+  padding: 40px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
+}
+
+.state-spinner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 3px solid rgba(36, 89, 255, 0.15);
+  border-top-color: #2459ff;
+  animation: report-spin 0.9s linear infinite;
+  margin-bottom: 18px;
+}
+
+@keyframes report-spin {
+  to { transform: rotate(360deg); }
+}
+
+.state-title {
+  display: block;
+  width: 100%;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0b1633;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.state-sub {
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  color: rgba(11, 22, 51, 0.50);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.state-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 40rpx auto 0 !important;
+  width: 360rpx !important;
+  height: 80rpx !important;
+  min-height: 80rpx !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 28rpx !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  box-shadow: 0 10px 24px rgba(31, 91, 255, 0.30) !important;
+}
+
+.state-btn::after {
+  border: none !important;
+}
+
+/* 报告头卡 */
+.report-header-card {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  border-radius: 22px;
+  padding: 24px 20px 18px;
+  margin-bottom: 14px;
+  box-shadow: 0 18px 50px rgba(31, 91, 255, 0.10);
+  overflow: hidden;
+}
+
+.report-header-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
+}
+
+.report-title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #0b1633;
+  letter-spacing: -0.3px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.report-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.report-pill {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.08);
+  border: 1px solid rgba(36, 89, 255, 0.12);
+  padding: 3px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.report-time {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+/* 报告分节 */
+.report-block {
+  background: #ffffff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  border-radius: 18px;
+  padding: 18px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
+}
+
+.report-block-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0b1633;
+  margin-bottom: 10px;
+}
+
+.report-block-bar {
+  width: 6rpx;
+  height: 28rpx;
+  border-radius: 3rpx;
+  background: linear-gradient(180deg, #2459ff, #52b7ff);
+  flex-shrink: 0;
+}
+
+.report-block-body {
+  display: block;
+  font-size: 14px;
+  line-height: 1.8;
+  color: rgba(11, 22, 51, 0.78);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 底部 */
+.report-footer {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.report-footer-hint {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.45);
+}
+
+.history-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 400rpx !important;
+  height: 80rpx !important;
+  min-height: 80rpx !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  line-height: 1 !important;
+  font-size: 28rpx !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #2459ff !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30) !important;
+}
+
+.history-btn::after {
+  border: none !important;
+}

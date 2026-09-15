@@ -1,6 +1,7 @@
 // pages/paperBuilder/paperBuilder.js
 const app = getApp();
 const { normalizePaperQuestion } = require('../../utils/paper.js');
+const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share.js');
 
 Page({
   data: {
@@ -9,6 +10,7 @@ Page({
   },
 
   onShow: function () {
+    enableShareMenu();
     app.globalData.selectedPaperQuestions = [];
     this.loadSavedPapers();
   },
@@ -207,5 +209,13 @@ Page({
         });
       }
     });
+  },
+
+  onShareAppMessage: function () {
+    return inviteCard();
+  },
+
+  onShareTimeline: function () {
+    return timelineCard();
   }
 });

@@ -1,6 +1,7 @@
 const app = getApp();
 const { formatLatex } = require('../../utils/latex');
 const { getProfile, getCachedProfile } = require('../../utils/profile');
+const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
 
 // 把题目文本拆成结构化段落：题干段（逐段独立）+ 各小问块
 function parseQuestionParas(text) {
@@ -87,35 +88,25 @@ Page({
     sending: false,
     scrollToId: '',
     inputBottom: 0,
-    pageHeight: 0,
     // 头像放在页面级，不塞进 messages 的每一项 ——
     // messages 在好几处被手工重建（:135/:159/:234/:237/:267），
     // 逐条挂字段迟早漏掉某处；页面级读一次，本轮所有用户气泡都对
     avatarFileID: '',
-    nickName: ''
+    nickName: '',
+    // 今日免费额度。remaining 为 -1 表示会员、不限量（与云函数约定一致）
+    quotaRemaining: -1,
+    quotaLimit: 0,
+    isVip: false
   },
 
   onLoad() {
     this._sessionSaved = false;
     this._activeContext = null;
-    this.measurePageHeight();
-  },
-
-  // tabBar 页的「可使用窗口高度」不含 tab 栏，拿它定高最稳妥，不用去猜 tab 栏多高
-  measurePageHeight() {
-    try {
-      const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-      if (info && info.windowHeight) {
-        this.setData({ pageHeight: info.windowHeight });
-      }
-    } catch (e) {
-      // 量不到就退回 wxss 里的 100vh 兜底
-      console.warn('[aiChat] 量取窗口高度失败:', e);
-    }
   },
 
   // 本页现在是 tabBar 页：switchTab 不会重跑 onLoad，上下文只能在这里读
   onShow() {
+    enableShareMenu();
     // 必须先于下面所有提前 return —— 否则切回本 tab 时头像昵称不会刷新
     this.loadProfile();
 
@@ -183,8 +174,14 @@ Page({
       config: { timeout: 15000 },
       data: { action: 'getMemoryStatus' },
       success: (res) => {
-        const data = res.result && res.result.data;
-        if (!res.result || !res.result.success || !data || !data.hasMemory) return;
+        const result = res.result || {};
+        const data = result.data;
+
+        // 额度先处理，且必须放在 hasMemory 的提前 return **之前** ——
+        // 刚上手、还没有任何对话记忆的用户恰恰最需要看到剩余条数
+        this.applyQuota(data && data.quota);
+
+        if (!result.success || !data || !data.hasMemory) return;
         // 这里再读一次 nickName：onShow 里那次异步刷新多半已经落地，
         // 拿到的比 startConversation 时更准
         const greeting = buildGreeting(ctxRaw, data, this.data.nickName);
@@ -194,6 +191,17 @@ Page({
           this.setData({ messages });
         }
       }
+    });
+  },
+
+  // quota 是云函数 answer 的统一形状：{ isVip, limit, used, remaining }，
+  // remaining 为 -1 表示会员不限量
+  applyQuota(quota) {
+    if (!quota) return;
+    this.setData({
+      isVip: !!quota.isVip,
+      quotaLimit: quota.limit || 0,
+      quotaRemaining: typeof quota.remaining === 'number' ? quota.remaining : -1
     });
   },
 
@@ -286,8 +294,21 @@ Page({
       },
       success: (res) => {
         const result = res.result || {};
-        const reply = (result.success && result.data && result.data.reply)
-          ? result.data.reply
+        const data = result.data || {};
+
+        // 额度用尽必须单独判，否则会掉进下面那句「出了点问题」——
+        // 用户看到的就成了一次莫名其妙的技术故障，而不是「该去兑换会员了」
+        if (!result.success && result.error === 'QUOTA_EXCEEDED') {
+          this.applyQuota({ isVip: false, limit: data.limit, remaining: 0 });
+          this.replaceTyping(typingId,
+            data.message || '今日免费对话已用完，可在「我的」用金币兑换会员');
+          return;
+        }
+
+        if (result.success) this.applyQuota(data.quota);
+
+        const reply = (result.success && data.reply)
+          ? data.reply
           : '抱歉，我这边出了点问题，请稍后再试。';
         this.replaceTyping(typingId, reply);
       },
@@ -305,5 +326,13 @@ Page({
     ));
     this.setData({ messages, sending: false });
     this.scrollToBottom();
+  },
+
+  onShareAppMessage() {
+    return inviteCard();
+  },
+
+  onShareTimeline() {
+    return timelineCard();
   }
 });

@@ -2,5 +2,8 @@
   "navigationBarTitleText": "对话助手",
   "navigationBarBackgroundColor": "#eaf3ff",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#eef3fb"
+  "backgroundColor": "#eef3fb",
+  "disableScroll": true,
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
 }

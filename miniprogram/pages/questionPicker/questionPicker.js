@@ -25,13 +25,34 @@ function getConfidenceLabel(confidence) {
   return '困难';
 }
 
+function overlaysForPage(questions, pageIndex) {
+  const overlays = [];
+  (questions || []).forEach((q) => {
+    const spans = q.pageSpans || [];
+    const hit = spans.filter((span) => Number(span.pageIndex) === pageIndex && span.bounds);
+    if (!hit.length && pageIndex === 0 && q.bounds && (!q.pageIndexes || !q.pageIndexes.length)) {
+      overlays.push({ id: q.id, selected: q.selected, bounds: q.bounds });
+      return;
+    }
+    hit.forEach((span) => {
+      overlays.push({ id: q.id, selected: q.selected, bounds: span.bounds });
+    });
+  });
+  return overlays.filter((item) => item.bounds);
+}
+
 Page({
   data: {
     imagePath: '',
     fileID: '',
+    pages: [],
+    pageCount: 0,
+    currentPageIndex: 0,
+    currentOverlays: [],
     questions: [],
     categories: [],
-    selectedCategory: '数学',
+    selectedCategory: '',
+    selectedCategoryId: '',
     selectedDifficulty: '中等',
     selectedPeriod: DEFAULT_PERIOD,
     difficulties: ['简单', '中等', '困难'],
@@ -40,7 +61,8 @@ Page({
     selectedCount: 0,
     saving: false,
     showPickerModal: false,
-    tempCategory: '数学',
+    tempCategory: '',
+    tempCategoryId: '',
     tempDifficulty: '中等',
     tempPeriod: DEFAULT_PERIOD
   },
@@ -58,8 +80,27 @@ Page({
       return;
     }
 
+    const pages = Array.isArray(draft.pages) && draft.pages.length
+      ? draft.pages.map((page) => ({
+          tempFilePath: page.tempFilePath || page.path || '',
+          fileID: page.fileID || ''
+        }))
+      : [{
+          tempFilePath: draft.tempFilePath || '',
+          fileID: draft.fileID || ''
+        }];
+    const fileIDs = Array.isArray(draft.fileIDs) && draft.fileIDs.length
+      ? draft.fileIDs
+      : pages.map((page) => page.fileID);
+
     const questions = draft.segments.map((segment, index) => {
       const conf = segment.confidence || 0;
+      const pageSpans = Array.isArray(segment.pageSpans) && segment.pageSpans.length
+        ? segment.pageSpans
+        : [{ pageIndex: 0, bounds: segment.bounds || null }];
+      const pageIndexes = pageSpans.map((span) => Number(span.pageIndex) || 0);
+      const firstPage = pageIndexes[0] || 0;
+      const isCrossPage = pageIndexes.length > 1;
       return {
         id: String(index + 1),
         text: segment.content || segment.text || '',
@@ -67,24 +108,60 @@ Page({
         subject: segment.subject || '',
         confidence: conf,
         confidenceLabel: getConfidenceLabel(conf),
-        bounds: segment.bounds || null,
+        bounds: (pageSpans[0] && pageSpans[0].bounds) || segment.bounds || null,
+        pageSpans,
+        pageIndexes,
+        isCrossPage,
+        crossPageLabel: isCrossPage ? ('跨' + pageIndexes.length + '页') : '',
+        imageUrl: fileIDs[firstPage] || draft.fileID || '',
+        pageFileIDs: pageIndexes.map((i) => fileIDs[i]).filter(Boolean),
         selected: segment.isDifficult !== undefined
           ? !!segment.isDifficult
           : isDifficultQuestion(segment)
       };
     }).filter((q) => q.text);
 
-    const defaultCategory = questions[0] && questions[0].subject ? questions[0].subject : '数学';
-
     this.setData({
-      imagePath: draft.tempFilePath || '',
-      fileID: draft.fileID || '',
+      imagePath: (pages[0] && pages[0].tempFilePath) || draft.tempFilePath || '',
+      fileID: (pages[0] && pages[0].fileID) || draft.fileID || '',
+      pages,
+      pageCount: pages.length,
+      currentPageIndex: 0,
+      currentOverlays: overlaysForPage(questions, 0),
       questions,
-      selectedCategory: defaultCategory,
       selectedCount: questions.filter((q) => q.selected).length
     });
 
     this.fetchCategories();
+  },
+
+  pickFromExistingCategories: function (categories, hint) {
+    const list = categories || [];
+    if (!list.length) return { name: '', id: '' };
+    const want = String(hint || '').replace(/\s+/g, '');
+    if (want) {
+      const exact = list.find((c) => String(c.name || '').replace(/\s+/g, '') === want);
+      if (exact) return { name: exact.name, id: exact._id || exact.id || '' };
+      const fuzzy = list.find((c) => {
+        const n = String(c.name || '').replace(/\s+/g, '');
+        return n && (want.indexOf(n) !== -1 || n.indexOf(want) !== -1);
+      });
+      if (fuzzy) return { name: fuzzy.name, id: fuzzy._id || fuzzy.id || '' };
+    }
+    const first = list[0];
+    return { name: first.name, id: first._id || first.id || '' };
+  },
+
+  applyCategoryList: function (categories) {
+    const hint = (this.data.questions[0] && this.data.questions[0].subject) || this.data.selectedCategory;
+    const picked = this.pickFromExistingCategories(categories, hint);
+    this.setData({
+      categories,
+      selectedCategory: picked.name,
+      selectedCategoryId: picked.id,
+      tempCategory: picked.name,
+      tempCategoryId: picked.id
+    });
   },
 
   fetchCategories: function () {
@@ -93,24 +170,27 @@ Page({
       data: { action: 'list' },
       success: (res) => {
         if (res.result && res.result.success && res.result.data.length) {
-          this.setData({ categories: res.result.data });
+          this.applyCategoryList(res.result.data);
         } else {
-          this.setData({
-            categories: [
-              { name: '数学' }, { name: '物理' }, { name: '化学' },
-              { name: '英语' }, { name: '语文' }
-            ]
-          });
+          this.applyCategoryList([]);
         }
       },
       fail: () => {
-        this.setData({
-          categories: [
-            { name: '数学' }, { name: '物理' }, { name: '化学' },
-            { name: '英语' }, { name: '语文' }
-          ]
-        });
+        this.applyCategoryList([]);
       }
+    });
+  },
+
+  switchPage: function (e) {
+    const index = Number(e.currentTarget.dataset.index);
+    if (Number.isNaN(index) || index === this.data.currentPageIndex) return;
+    const page = this.data.pages[index];
+    if (!page) return;
+    this.setData({
+      currentPageIndex: index,
+      imagePath: page.tempFilePath || '',
+      fileID: page.fileID || this.data.fileID,
+      currentOverlays: overlaysForPage(this.data.questions, index)
     });
   },
 
@@ -121,7 +201,8 @@ Page({
     ));
     this.setData({
       questions,
-      selectedCount: questions.filter((q) => q.selected).length
+      selectedCount: questions.filter((q) => q.selected).length,
+      currentOverlays: overlaysForPage(questions, this.data.currentPageIndex)
     });
   },
 
@@ -133,12 +214,16 @@ Page({
     }));
     this.setData({
       questions,
-      selectedCount: selectedIds.length
+      selectedCount: selectedIds.length,
+      currentOverlays: overlaysForPage(questions, this.data.currentPageIndex)
     });
   },
 
   selectCategory: function (e) {
-    this.setData({ selectedCategory: e.currentTarget.dataset.name });
+    this.setData({
+      selectedCategory: e.currentTarget.dataset.name,
+      selectedCategoryId: e.currentTarget.dataset.id || ''
+    });
   },
 
   selectDifficulty: function (e) {
@@ -149,6 +234,7 @@ Page({
     this.setData({
       showPickerModal: true,
       tempCategory: this.data.selectedCategory,
+      tempCategoryId: this.data.selectedCategoryId,
       tempDifficulty: this.data.selectedDifficulty,
       tempPeriod: this.data.selectedPeriod
     });
@@ -159,7 +245,10 @@ Page({
   },
 
   onTempCategorySelect: function (e) {
-    this.setData({ tempCategory: e.currentTarget.dataset.name });
+    this.setData({
+      tempCategory: e.currentTarget.dataset.name,
+      tempCategoryId: e.currentTarget.dataset.id || ''
+    });
   },
 
   onTempDifficultySelect: function (e) {
@@ -173,6 +262,7 @@ Page({
   confirmPickerModal: function () {
     this.setData({
       selectedCategory: this.data.tempCategory,
+      selectedCategoryId: this.data.tempCategoryId,
       selectedDifficulty: this.data.tempDifficulty,
       selectedPeriod: this.data.tempPeriod,
       showPickerModal: false
@@ -198,12 +288,26 @@ Page({
       return;
     }
 
+    if (!this.data.selectedCategory) {
+      wx.showToast({ title: '请选择已有分类', icon: 'none' });
+      return;
+    }
+
     this.setData({ saving: true });
     wx.showLoading({ title: '正在保存...', mask: true });
 
     this.callQuestion('batchSave', {
-      questions: selectedQuestions,
+      questions: selectedQuestions.map((q) => ({
+        text: q.text,
+        type: q.type,
+        subject: q.subject,
+        confidence: q.confidence,
+        imageUrl: q.imageUrl || this.data.fileID,
+        pageFileIDs: q.pageFileIDs || [],
+        pageSpans: q.pageSpans || []
+      })),
       category: this.data.selectedCategory,
+      categoryId: this.data.selectedCategoryId,
       difficulty: this.data.selectedDifficulty,
       imageUrl: this.data.fileID
     }, 20000).then((saveRes) => {

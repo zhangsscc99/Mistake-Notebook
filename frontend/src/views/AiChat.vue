@@ -279,9 +279,12 @@ export default {
 
 <style scoped>
 .ai-chat-page {
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: #eef3fb;
 }
 
@@ -498,6 +501,8 @@ export default {
 
 .input-bar {
   display: flex;
+  align-items: center;
+  flex-shrink: 0;
   gap: 10px;
   padding: 12px 16px;
   background: #fff;

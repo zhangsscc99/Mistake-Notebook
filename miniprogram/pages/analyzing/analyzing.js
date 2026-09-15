@@ -1,5 +1,5 @@
 // pages/analyzing/analyzing.js
-const { startPendingWatch, closePendingWatch, fetchPendingQuestions } = require('../../utils/aiPendingWatch.js');
+const { startPendingWatch, closePendingWatch, fetchPendingQuestions, kickAnswerWorker } = require('../../utils/aiPendingWatch.js');
 
 function decorateItem(item, index) {
   const status = item.aiStatus || 'pending';
@@ -25,6 +25,7 @@ Page({
   onShow() {
     this.loadPending();
     this.startWatch();
+    kickAnswerWorker({ action: 'processPending' });
   },
 
   onPullDownRefresh() {
@@ -86,6 +87,7 @@ Page({
         wx.hideLoading();
         if (res.result && res.result.success) {
           wx.showToast({ title: '已重新排队', icon: 'none' });
+          kickAnswerWorker({ action: 'generate', docId: id });
           this.loadPending();
         } else {
           wx.showToast({ title: (res.result && res.result.error) || '重试失败', icon: 'none' });

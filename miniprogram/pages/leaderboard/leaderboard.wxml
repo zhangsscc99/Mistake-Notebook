@@ -1,0 +1,62 @@
+<!--pages/leaderboard/leaderboard.wxml-->
+<view class="board-page">
+
+  <view class="board-hero">
+    <view class="hero-copy">
+      <view class="hero-title">排行榜</view>
+      <view class="hero-sub" wx:if="{{metric === 'checkin'}}">按连续打卡天数排名 · 昨天或今天打过卡才上榜</view>
+      <view class="hero-sub" wx:else>按已整理错题数量排名</view>
+    </view>
+    <button class="hero-share" open-type="share">分享成绩</button>
+  </view>
+
+  <view class="chip-row">
+    <view class="chip {{metric === 'checkin' ? 'active' : ''}}" bindtap="setMetric" data-value="checkin">连续打卡</view>
+    <view class="chip {{metric === 'questions' ? 'active' : ''}}" bindtap="setMetric" data-value="questions">错题整理</view>
+  </view>
+
+  <view class="me-card" wx:if="{{!loading && !error && me && !me.onBoard}}">
+    <view class="me-left">
+      <image class="me-avatar" src="{{me.avatarFileID || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="me-info">
+        <view class="me-name">{{me.name || '未设置昵称'}}</view>
+        <view class="me-sub">{{me.rank ? '第 ' + me.rank + ' 名' : '还没上榜'}}</view>
+      </view>
+    </view>
+    <view class="me-right">
+      <view class="me-streak">{{me.scoreText}}</view>
+      <view class="me-lab" wx:if="{{me.subLabel}}">{{me.subLabel}}</view>
+    </view>
+  </view>
+
+  <view class="list" wx:if="{{!loading && !error && rows.length > 0}}">
+    <view class="row {{item.isMe ? 'row-me' : ''}}" wx:for="{{rows}}" wx:key="rank">
+      <view class="rank {{item.rank <= 3 ? 'rank-' + item.rank : ''}}">{{item.rank}}</view>
+      <image class="avatar" src="{{item.avatarFileID || '/images/default-avatar.png'}}" mode="aspectFill"></image>
+      <view class="row-main">
+        <view class="row-name">{{item.name}}</view>
+        <view class="row-sub" wx:if="{{item.subLabel}}">{{item.subLabel}}</view>
+      </view>
+      <view class="row-right">
+        <view class="row-streak">{{item.scoreText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="state" wx:if="{{loading}}">
+    <view class="state-text">加载中…</view>
+  </view>
+
+  <view class="state" wx:elif="{{error}}">
+    <view class="state-text">{{error}}</view>
+    <view class="state-sub">下拉可以重试</view>
+  </view>
+
+  <view class="state" wx:elif="{{rows.length === 0}}">
+    <view class="state-text">还没有人上榜</view>
+    <view class="state-sub" wx:if="{{metric === 'checkin'}}">去「我的」打卡，成为第一个</view>
+    <view class="state-sub" wx:else>去拍一道错题，成为第一个</view>
+    <view class="state-btn" bindtap="goEmptyAction">{{metric === 'checkin' ? '去打卡' : '去整理'}}</view>
+  </view>
+
+</view>

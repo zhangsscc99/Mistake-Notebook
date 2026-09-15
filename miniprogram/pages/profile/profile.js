@@ -8,6 +8,11 @@ const {
   setCachedProfile,
   clearProfileCache
 } = require('../../utils/profile');
+const { clearSession } = require('../../utils/auth');
+const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
+const { renderInvitePoster, savePosterToAlbum, saveFailHint } = require('../../utils/invitePoster');
+const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
+const { buildAchievements, EMPTY_ACH } = require('../../utils/achievements');
 
 const MAX_NICKNAME_LEN = 20;
 
@@ -19,13 +24,60 @@ const FAILED_LABELS = {
   papers: '试卷',
   users: '个人资料',
   'users:read': '个人资料',
-  avatarFile: '头像图片'
+  avatarFile: '头像图片',
+  questionNotes: '错题笔记',
+  mistakeReports: '错因分析报告',
+  learningReports: '学习报告',
+  checkins: '打卡记录',
+  coinLogs: '金币流水',
+  chatUsage: '对话配额',
+  questionMarks: '错题收藏',
+  questions: '错题',
+  categories: '分类'
 };
 
 function failedLabel(item) {
   const target = (item && item.target) || '';
   return FAILED_LABELS[target] || target || '未知项目';
 }
+
+// 云函数返回的是 UTC ISO，这里按北京时间显示。
+// +8 之后取 UTC 字段，不能取本地字段 —— 用户手机时区不一定在北京
+function formatCnDate(iso) {
+  const ms = Date.parse(iso || '');
+  if (!ms) return '';
+  const d = new Date(ms + 8 * 60 * 60 * 1000);
+  return `${d.getUTCMonth() + 1} 月 ${d.getUTCDate()} 日`;
+}
+
+// 在钱包对象上补几个展示用派生字段，省得 wxml 里塞计算和日期逻辑
+function decorateWallet(raw) {
+  const w = { ...(raw || {}) };
+  w.vipExpireText = formatCnDate(w.vipExpireAt);
+  w.coinGap = Math.max(0, (w.vipCost || 0) - (w.coins || 0));
+  w.canRedeem = !!w.isVip || w.coinGap === 0;
+  return w;
+}
+
+const EMPTY_WALLET = {
+  coins: 0,
+  isVip: false,
+  vipExpireAt: '',
+  vipExpireText: '',
+  vipCost: 0,
+  vipDays: 0,
+  checkinStreak: 0,
+  checkinTotalDays: 0,
+  todayChecked: false,
+  todayBonus: { base: 0, chat: 0, paper: 0, total: 0 },
+  recentDays: [],
+  favoriteCount: 0,
+  pinnedCount: 0,
+  questionCount: 0,
+  paperCount: 0,
+  noteCount: 0,
+  reportCount: 0
+};
 
 Page({
   data: {
@@ -42,18 +94,36 @@ Page({
     deleting: false,
     totalQuestions: 0,
     totalCategories: 0,
-    appVersion: '1.0.0 (2026版)'
+    appVersion: '1.0.0 (2026版)',
+
+    // 打卡 / 金币 / 会员
+    wallet: EMPTY_WALLET,
+    // 加载失败时不显示一堆 0 冒充满钱包 —— 那会让用户以为金币真的没了
+    walletLoaded: false,
+    walletError: '',
+    checkingIn: false,
+    redeeming: false,
+    ach: EMPTY_ACH,
+
+    inviteOpen: false,
+    invitePosterPath: '',
+    invitePosterBusy: false
   },
 
   onShow: function () {
+    enableShareMenu();
     this._nickDraft = '';
     // 先用缓存铺上，否则每次切回本页头像昵称都会空一下再出现
     this.applyProfile(getCachedProfile());
     this.loadProfile();
     this.loadStats();
+    this.loadWallet();
   },
 
   applyProfile: function (p) {
+    // 已落库的昵称单独记一份：输入框绑定的 nickName 会随打字变，
+    // 保存时不能拿它判断「有没有改」，否则必命中「昵称没有变化」
+    this._savedNickName = p.nickName || '';
     this.setData({
       openId: p.openId,
       nickName: p.nickName,
@@ -61,6 +131,100 @@ Page({
       stage: p.stage,
       hasProfile: p.hasProfile
     });
+  },
+
+  // 打卡与金币。纯读，不发币
+  loadWallet: function () {
+    this.setData({ walletError: '' });
+    return this.callCloud('user', { action: 'getWallet' }, 20000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '读取失败');
+        this.setData({
+          wallet: decorateWallet(res.data),
+          walletLoaded: true,
+          ach: buildAchievements(res.data)
+        });
+      })
+      .catch((err) => {
+        console.error('[profile] 读取钱包失败', err);
+        this.setData({
+          walletLoaded: false,
+          walletError: isAccessTokenError(err)
+            ? '云开发未登录，请重进小程序'
+            : '打卡与金币加载失败'
+        });
+      });
+  },
+
+  onCheckin: function () {
+    if (this.data.checkingIn || !this.data.walletLoaded) return;
+    this.setData({ checkingIn: true });
+
+    this.callCloud('user', { action: 'checkin' }, 30000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '打卡失败');
+        const d = res.data || {};
+        this.setData({
+          wallet: decorateWallet(d),
+          checkingIn: false,
+          ach: buildAchievements(d)
+        });
+        if (d.alreadyChecked) {
+          // 并发连点时后到的那次会走到这里，不是错误，如实说就行
+          wx.showToast({ title: '今天已经打过卡了', icon: 'none' });
+        } else {
+          wx.showToast({ title: `打卡成功 +${d.rewarded} 金币`, icon: 'success' });
+        }
+      })
+      .catch((err) => {
+        this.setData({ checkingIn: false });
+        console.error('[profile] 打卡失败', err);
+        wx.showToast({ title: err.message || '打卡失败，请重试', icon: 'none' });
+      });
+  },
+
+  onRedeemVip: function () {
+    const w = this.data.wallet || {};
+    if (this.data.redeeming || !this.data.walletLoaded) return;
+
+    if (!w.canRedeem) {
+      wx.showToast({ title: `还差 ${w.coinGap} 金币`, icon: 'none' });
+      return;
+    }
+
+    // 花金币是不可逆的，兑换前把消耗和得到说清楚
+    wx.showModal({
+      title: w.isVip ? '续期会员' : '兑换会员',
+      content: `消耗 ${w.vipCost} 金币，兑换 ${w.vipDays} 天对话会员。\n\n会员期间 AI 对话不限量。\n\n当前金币：${w.coins}`,
+      confirmText: '兑换',
+      success: (res) => {
+        if (res.confirm) this.doRedeemVip();
+      }
+    });
+  },
+
+  doRedeemVip: function () {
+    this.setData({ redeeming: true });
+    wx.showLoading({ title: '兑换中...', mask: true });
+
+    this.callCloud('user', { action: 'redeemVip' }, 30000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '兑换失败');
+        wx.hideLoading();
+        this.setData({ redeeming: false });
+        wx.showToast({
+          title: `会员已到 ${formatCnDate(res.data.vipExpireAt)}`,
+          icon: 'success'
+        });
+        // 重新拉一次拿完整的钱包状态（余额、到期时间都变了）
+        this.loadWallet();
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        this.setData({ redeeming: false });
+        console.error('[profile] 兑换会员失败', err);
+        wx.showToast({ title: err.message || '兑换失败，请重试', icon: 'none' });
+      });
   },
 
   // 与 pages/index/index.js:157-177 同款包装（项目没有统一封装，各页内联是既有约定）
@@ -108,11 +272,14 @@ Page({
       .catch(() => {});
   },
 
-  // chooseAvatar 给的是临时路径（约 2 小时失效），必须立刻转存云存储换永久 fileID
-  onChooseAvatar: function (e) {
-    const tempFilePath = e.detail && e.detail.avatarUrl;
-    if (!tempFilePath) return;
-    this.uploadAvatar(tempFilePath);
+  onPickAvatar: function () {
+    if (this.data.uploadingAvatar) return;
+    pickAvatarPhoto()
+      .then((path) => this.uploadAvatar(path))
+      .catch((err) => {
+        if (isCancel(err)) return;
+        wx.showToast({ title: '选图失败，请重试', icon: 'none' });
+      });
   },
 
   uploadAvatar: function (tempFilePath) {
@@ -184,7 +351,12 @@ Page({
   onSaveProfile: function (e) {
     if (this.data.saving) return;
 
-    const nickName = ((e.detail.value && e.detail.value.nickName) || '').trim();
+    // type="nickname" 在部分基础库里不进 form 的 detail.value，
+    // 点键盘昵称条时 bindinput 也不保证触发。三路兜底，取到再 trim。
+    const fromForm = ((e.detail.value && e.detail.value.nickName) || '').trim();
+    const fromLive = (this.data.nickName || '').trim();
+    const fromDraft = (this._nickDraft || '').trim();
+    const nickName = fromForm || fromLive || fromDraft;
 
     if (!nickName) {
       wx.showToast({ title: '请输入昵称', icon: 'none' });
@@ -194,7 +366,7 @@ Page({
       wx.showToast({ title: `昵称不能超过 ${MAX_NICKNAME_LEN} 个字`, icon: 'none' });
       return;
     }
-    if (nickName === this.data.nickName && this.data.hasProfile) {
+    if (nickName === (this._savedNickName || '').trim()) {
       wx.showToast({ title: '昵称没有变化', icon: 'none' });
       return;
     }
@@ -248,12 +420,9 @@ Page({
   onDeleteAccount: function () {
     if (this.data.deleting) return;
 
-    // 第一步：说清楚删什么、不删什么。
-    // 「题目不删」必须写在这里 —— 题目是全局共享的（写入时就没有归属字段），
-    // 注销确实动不了它，含糊过去等于虚假承诺。
     wx.showModal({
       title: '注销账号',
-      content: '将永久删除：\n· 个人资料（头像、昵称、学段）\n· 全部 AI 对话记忆\n· 全部试卷\n\n不会删除：\n· 错题本身（题目为公共题库，不归属个人）\n\n删除后无法恢复。',
+      content: '将永久删除本账号下的：\n· 个人资料（头像、昵称、学段）\n· 全部错题与分类\n· 全部 AI 对话记忆\n· 全部试卷\n· 打卡记录、金币与会员\n· 错题收藏、置顶与笔记\n· 学习报告\n\n删除后无法恢复。',
       confirmText: '继续',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -265,7 +434,7 @@ Page({
   confirmDeleteAccount: function () {
     wx.showModal({
       title: '最后确认',
-      content: '再次确认删除全部云端数据？\n\n注意：微信账号本身不受影响，下次进入仍可正常使用，只是资料是空白的。',
+      content: '再次确认删除全部云端数据？\n\n微信账号不受影响。下次进入需要重新登录，将是一份空白错题本。',
       confirmText: '确认删除',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -287,6 +456,7 @@ Page({
         // 定点清理，不用 wx.clearStorageSync() —— 那会连 appSettings
         // （自动分类 / 图片质量 / 自动备份）一起抹掉，而用户只是想删账号数据。
         clearProfileCache();
+        clearSession();
         try {
           wx.removeStorageSync('savedPapers');
         } catch (err) {
@@ -294,28 +464,19 @@ Page({
         }
         app.globalData.selectedPaperQuestions = [];
         app.globalData.recognitionDraft = null;
-
-        // openId 要留着：微信不给撤销 openid，用户还是同一个人，
-        // 后面点头像换头像还得靠它拼归属路径
-        this.setData({
-          nickName: '',
-          avatarFileID: '',
-          stage: '',
-          hasProfile: false,
-          deleting: false
-        });
+        this.setData({ deleting: false });
         wx.hideLoading();
 
         if (failed.length) {
-          // 部分失败必须说出来。静默当成成功，用户会以为删干净了 ——
-          // 这是本功能最危险的失败模式
           wx.showModal({
             title: '部分数据未能清除',
             content: '以下项目删除失败：' + failed.map(failedLabel).join('、') + '\n请稍后重试。',
-            showCancel: false
+            showCancel: false,
+            success: () => wx.reLaunch({ url: '/pages/login/login' })
           });
         } else {
-          wx.showToast({ title: '云端数据已清除', icon: 'success' });
+          wx.showToast({ title: '账号已注销', icon: 'success' });
+          setTimeout(() => wx.reLaunch({ url: '/pages/login/login' }), 400);
         }
       })
       .catch((err) => {
@@ -326,42 +487,125 @@ Page({
       });
   },
 
-  // settings 不是 tab 页，这里必须用 navigateTo；反过来 settings 跳回本页要用 switchTab
-  goSettings: function () {
-    wx.navigateTo({ url: '/pages/settings/settings' });
+  onLogout: function () {
+    wx.showModal({
+      title: '退出登录',
+      content: '退出后不会删除云端数据。下次用微信登录仍是同一个错题本。',
+      confirmText: '退出',
+      success: (res) => {
+        if (!res.confirm) return;
+        // 只清本地登录态。资料缓存留给登录页展示头像昵称，
+        // 同一微信下次进来仍是「欢迎回来」，不是一份空白新账号。
+        clearSession();
+        app.globalData.selectedPaperQuestions = [];
+        app.globalData.recognitionDraft = null;
+        wx.reLaunch({ url: '/pages/login/login' });
+      }
+    });
+  },
+
+  onMedalTap: function (e) {
+    const id = e.currentTarget.dataset.id;
+    const medals = (this.data.ach && this.data.ach.medals) || [];
+    const medal = medals.filter((m) => m.id === id)[0];
+    if (!medal) return;
+    wx.showModal({
+      title: medal.name,
+      content: medal.unlocked
+        ? medal.desc + '\n\n已点亮'
+        : medal.desc + '\n\n未点亮：' + medal.hint,
+      showCancel: false,
+      confirmText: '知道了'
+    });
   },
 
   goCategories: function () {
     wx.switchTab({ url: '/pages/categories/categories' });
   },
 
-  goTeacher: function () {
-    wx.navigateTo({ url: '/pages/teacher/teacher' });
+  goLeaderboard: function () {
+    wx.navigateTo({ url: '/pages/leaderboard/leaderboard' });
   },
 
-  joinClass: function () {
-    wx.showModal({
-      title: '加入教师班级',
-      editable: true,
-      placeholderText: '输入 6 位班级加入码',
-      confirmText: '加入',
-      success: (res) => {
-        if (!res.confirm || !res.content.trim()) return;
-        wx.cloud.callFunction({
-          name: 'teacher',
-          data: { action: 'joinClass', joinCode: res.content.trim() },
-          success: (result) => {
-            const body = result.result || {};
-            wx.showToast({ title: body.success ? (body.data.alreadyJoined ? '你已在班级中' : '加入成功') : (body.error || '加入失败'), icon: body.success ? 'success' : 'none' });
-          },
-          fail: () => wx.showToast({ title: '加入失败，请稍后重试', icon: 'none' })
+  goLearningReport: function () {
+    wx.navigateTo({ url: '/pages/learningReport/learningReport' });
+  },
+
+  goMistakeReports: function () {
+    wx.navigateTo({ url: '/pages/reportList/reportList' });
+  },
+
+  goVariantList: function () {
+    wx.navigateTo({ url: '/pages/variantList/variantList' });
+  },
+
+  onInviteTap: function () {
+    this._inviteToken = Date.now();
+    const token = this._inviteToken;
+    this.setData({
+      inviteOpen: true,
+      invitePosterPath: '',
+      invitePosterBusy: true
+    }, () => {
+      const opts = {
+        nickName: this.data.nickName || '同学',
+        avatarFileID: this.data.avatarFileID || '',
+        levelName: (this.data.ach && this.data.ach.levelName) || ''
+      };
+      renderInvitePoster('invitePoster', opts)
+        .then((path) => {
+          if (this._inviteToken !== token || !this.data.inviteOpen) return;
+          this.setData({ invitePosterPath: path, invitePosterBusy: false });
+        })
+        .catch((err) => {
+          console.error('[profile] 生成邀请图失败', err);
+          if (this._inviteToken !== token) return;
+          this.setData({ invitePosterBusy: false });
+          wx.showToast({ title: '邀请图生成失败，仍可转发', icon: 'none' });
         });
-      }
     });
   },
 
-  goClasses: function () {
-    wx.navigateTo({ url: '/pages/classes/classes' });
+  closeInvite: function () {
+    this._inviteToken = 0;
+    this.setData({ inviteOpen: false, invitePosterBusy: false });
+  },
+
+  noop: function () {},
+
+  onSaveInvitePoster: function () {
+    const path = this.data.invitePosterPath;
+    if (!path) {
+      wx.showToast({
+        title: this.data.invitePosterBusy ? '正在生成邀请图…' : '邀请图还没好',
+        icon: 'none'
+      });
+      return;
+    }
+    // 不能先出 loading 遮罩：系统相册授权弹窗会被挡住，点了就像保存失败。
+    savePosterToAlbum(path)
+      .then(() => {
+        wx.showToast({ title: '已保存到相册', icon: 'success' });
+      })
+      .catch((err) => {
+        const hint = saveFailHint(err);
+        if (!hint) return;
+        wx.showToast({ title: hint, icon: 'none', duration: 2500 });
+      });
+  },
+
+  // 打卡分享。分享的动机必须是内容本身，不能是奖励 ——
+  // 微信《滥用分享行为》2.1 明确禁止「完成分享操作立即可获得积分/金币」。
+  onShareAppMessage: function (res) {
+    const streak = (this.data.wallet || {}).checkinStreak || 0;
+    const kind = res && res.target && res.target.dataset && res.target.dataset.kind;
+    if (kind === 'checkin') return checkinCard(streak);
+    if (kind === 'invite') {
+      const card = inviteCard();
+      if (this.data.invitePosterPath) card.imageUrl = this.data.invitePosterPath;
+      return card;
+    }
+    return streak > 0 ? checkinCard(streak) : inviteCard();
   },
 
   showVersionInfo: function () {

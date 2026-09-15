@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/login/login",
     "pages/index/index",
     "pages/categories/categories",
     "pages/categoryDetail/categoryDetail",
@@ -10,11 +11,13 @@
     "pages/settings/settings",
     "pages/aiChat/aiChat",
     "pages/profile/profile",
-    "pages/teacher/teacher",
-    "pages/classes/classes",
-    "pages/teacherNotebook/teacherNotebook"
-    ,"pages/teacherAssignments/teacherAssignments"
-    ,"pages/assignment/assignment"
+    "pages/leaderboard/leaderboard",
+    "pages/learningReport/learningReport",
+    "pages/learningReportView/learningReportView",
+    "pages/mistakeReport/mistakeReport",
+    "pages/reportList/reportList",
+    "pages/variants/variants",
+    "pages/variantList/variantList"
   ],
   "window": {
     "backgroundTextStyle": "dark",
@@ -64,5 +67,10 @@
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
-  "sitemapLocation": "sitemap.json"
+  "sitemapLocation": "sitemap.json",
+  "permission": {
+    "scope.writePhotosAlbum": {
+      "desc": "用于把邀请海报保存到相册，方便发给同学"
+    }
+  }
 }

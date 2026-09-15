@@ -2,25 +2,22 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
-const DEFAULT_CATEGORIES = [
-  { name: '数学', description: '数学相关题目', color: '#E8A855' },
-  { name: '物理', description: '物理相关题目', color: '#4A90E2' },
-  { name: '化学', description: '化学相关题目', color: '#7ED321' },
-  { name: '英语', description: '英语相关题目', color: '#F5A623' },
-  { name: '语文', description: '语文相关题目', color: '#BD10E0' },
-  { name: '生物', description: '生物相关题目', color: '#50E3C2' },
-  { name: '历史', description: '历史相关题目', color: '#D0021B' },
-  { name: '地理', description: '地理相关题目', color: '#8B572A' },
-  { name: '计算机/编程', description: '计算机与编程相关题目', color: '#2A9D8F' },
-  { name: '政治', description: '政治相关题目', color: '#C471ED' }
-];
-
 const MEMORY_COLLECTION = 'chat_memories';
-// 所有业务集合统一在首次启动时创建，避免开发者工具逐个手动建库。
+// question_marks / checkins / coin_logs / chat_usage 的 _id 全部是确定性拼接
+// （见各自云函数），所以不需要事务也不会写重
 const COLLECTIONS = [
-  'categories', 'questions', 'papers', MEMORY_COLLECTION, 'users',
-  'classes', 'class_members', 'teacher_messages', 'class_notebooks',
-  'assignments', 'assignment_submissions', 'parent_reports'
+  'categories',
+  'questions',
+  'papers',
+  MEMORY_COLLECTION,
+  'users',
+  'question_marks',
+  'question_notes',
+  'mistake_reports',
+  'learning_reports',
+  'checkins',
+  'coin_logs',
+  'chat_usage'
 ];
 
 async function ensureCollection(name) {
@@ -91,41 +88,9 @@ async function getInitStatus() {
 
 async function seedCategories(force) {
   const collections = await ensureCollections();
-  const existing = await db.collection('categories').count();
-  if (existing.total > 0 && !force) {
-    return {
-      success: true,
-      message: '数据库已初始化，无需重复创建',
-      data: { created: 0, total: existing.total, collections }
-    };
-  }
-
-  const now = new Date().toISOString();
-  let created = 0;
-
-  for (const cat of DEFAULT_CATEGORIES) {
-    const found = await db.collection('categories')
-      .where({ name: cat.name, isDeleted: false })
-      .get();
-
-    if (found.data.length === 0) {
-      await db.collection('categories').add({
-        data: {
-          ...cat,
-          isDeleted: false,
-          createdAt: now,
-          updatedAt: now
-        }
-      });
-      created += 1;
-    }
-  }
-
-  const total = await db.collection('categories').count();
-
   return {
     success: true,
-    message: `已创建 ${created} 个分类`,
-    data: { created, total: total.total, collections }
+    message: '集合已就绪。默认分类在用户登录时按账号创建',
+    data: { created: 0, collections, force: !!force }
   };
 }

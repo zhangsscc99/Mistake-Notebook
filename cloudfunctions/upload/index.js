@@ -8,6 +8,64 @@ const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/co
 
 const DASHSCOPE_MODEL = 'qwen3-vl-flash';
 
+function getCallerOpenId() {
+  const wxContext = cloud.getWXContext();
+  return wxContext.OPENID || wxContext.FROM_OPENID || '';
+}
+
+const DEFAULT_CATEGORY_NAMES = [
+  '数学', '物理', '化学', '英语', '语文', '生物', '历史', '地理', '计算机/编程', '政治'
+];
+
+async function seedPersonalCategories(openId) {
+  const now = new Date().toISOString();
+  for (const name of DEFAULT_CATEGORY_NAMES) {
+    const found = await db.collection('categories')
+      .where({ openid: openId, name, isDeleted: false })
+      .limit(1)
+      .get();
+    if (found.data && found.data.length) continue;
+    await db.collection('categories').add({
+      data: {
+        name,
+        description: name + '相关题目',
+        color: '#4A90E2',
+        openid: openId,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+  }
+}
+
+async function findExistingCategory(openId, name) {
+  const trimmed = String(name || '').trim();
+  let result = await db.collection('categories')
+    .where({ openid: openId })
+    .limit(100)
+    .get();
+  let list = (result.data || []).filter((cat) => !cat.isDeleted);
+  if (!list.length) {
+    await seedPersonalCategories(openId);
+    result = await db.collection('categories')
+      .where({ openid: openId })
+      .limit(100)
+      .get();
+    list = (result.data || []).filter((cat) => !cat.isDeleted);
+  }
+  if (trimmed) {
+    const exact = list.find((cat) => String(cat.name || '').trim() === trimmed);
+    if (exact) return exact;
+    const fuzzy = list.find((cat) => {
+      const n = String(cat.name || '').trim();
+      return n && (trimmed.indexOf(n) !== -1 || n.indexOf(trimmed) !== -1);
+    });
+    if (fuzzy) return fuzzy;
+  }
+  return list[0] || null;
+}
+
 function callDashScope(messages, temperature = 0.2) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
@@ -64,6 +122,11 @@ exports.main = async (event, context) => {
 };
 
 async function processQuestionPipeline(event) {
+  const openId = getCallerOpenId();
+  if (!openId) {
+    return { success: false, error: 'NO_OPENID', data: { message: '登录状态异常，请重新登录' } };
+  }
+
   const { fileID, category } = event;
 
   if (!fileID) {
@@ -164,28 +227,19 @@ ${recognizedText}
     }
   }
 
-  // Step 5: Map category name to categoryId
+  // Step 5: Map category name to this user's existing category (never create new ones)
   const targetCategory = classification.category || category;
-  let categoryId = '';
-  if (targetCategory) {
-    const catResult = await db.collection('categories')
-      .where({
-        name: targetCategory,
-        isDeleted: false
-      })
-      .get();
-    if (catResult.data.length > 0) {
-      categoryId = catResult.data[0]._id;
-    }
-  }
+  const cat = await findExistingCategory(openId, targetCategory);
+  const categoryId = cat ? cat._id : '';
 
   // Step 6: Save to database
   const now = new Date().toISOString();
   const questionData = {
+    openid: openId,
     content: recognizedText,
     imageUrl: fileID,
     categoryId,
-    category: targetCategory || '',
+    category: (cat && cat.name) || '',
     difficulty: classification.difficulty || 'MEDIUM',
     tags: classification.tags || [],
     ocrConfidence,

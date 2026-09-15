@@ -3,5 +3,12 @@
     "openapi": []
   },
   "timeout": 120,
-  "memorySize": 256
+  "memorySize": 256,
+  "triggers": [
+    {
+      "name": "answerWorkerTimer",
+      "type": "timer",
+      "config": "0 */2 * * * * *"
+    }
+  ]
 }

@@ -70,6 +70,21 @@
   letter-spacing: 0.5rpx;
 }
 
+.hero-level {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: #ffffff;
+  white-space: nowrap;
+}
+
 .hero-sub {
   margin-top: 8rpx;
   font-size: 22rpx;
@@ -108,9 +123,339 @@
   background: rgba(255, 255, 255, 0.35);
 }
 
+/* 学习打卡卡片 */
+.checkin-card {
+  /* 自带内边距，所以里面的 .form-actions 要清掉横向间距 ——
+     否则打卡按钮会被缩进两次，比上面的 7 天格子窄一圈 */
+  padding: 26rpx 28rpx 10rpx;
+}
+
+.checkin-card .form-actions {
+  padding: 20rpx 0 16rpx;
+}
+
+/* 最近 7 天，左旧右新。顺序由云函数 buildWallet 定，前端不再排序 */
+.week-row {
+  display: flex;
+  gap: 10rpx;
+}
+
+.week-cell {
+  flex: 1;
+  min-width: 0;
+}
+
+.week-dot {
+  height: 64rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: rgba(11, 22, 51, 0.4);
+  background: #f1f4fb;
+}
+
+/* 今天但还没打卡：空心描边，示意「就差这一天」。
+   必须排在 .on 之前 —— 两条规则特异性相同（都是三层的类选择器），
+   今天已打卡时两条同时命中，靠书写顺序决定谁赢，实心格要赢。
+   所以这里不能用 :not(.on) 回避顺序问题：WXSS 对 :not() 的支持
+   依基础库/渲染引擎而异，顺序取胜是零风险的写法 */
+.week-cell.today .week-dot {
+  color: #2459ff;
+  font-weight: 700;
+  background: rgba(36, 89, 255, 0.06);
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.35);
+}
+
+/* 打过卡的那天：实心 */
+.week-cell.on .week-dot {
+  color: #ffffff;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+  box-shadow: 0 6rpx 14rpx rgba(31, 91, 255, 0.28);
+}
+
+.checkin-stats {
+  display: flex;
+  align-items: center;
+  margin-top: 24rpx;
+  padding: 20rpx 0;
+  border-top: 1rpx solid rgba(11, 22, 51, 0.06);
+  border-bottom: 1rpx solid rgba(11, 22, 51, 0.06);
+}
+
+.mini-stat {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mini-num {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #2459ff;
+  line-height: 1;
+  margin-bottom: 8rpx;
+}
+
+.mini-lab {
+  font-size: 21rpx;
+  color: rgba(11, 22, 51, 0.45);
+}
+
+.mini-divider {
+  flex-shrink: 0;
+  width: 1rpx;
+  height: 44rpx;
+  background: rgba(11, 22, 51, 0.08);
+}
+
+/* 打卡前的加成预览。必须在按钮之前就能看到 ——
+   否则「先学习再打卡金币更多」是个暗箱，用户没机会据此安排顺序 */
+.bonus-preview {
+  display: flex;
+  flex-direction: column;
+  margin-top: 22rpx;
+}
+
+.bonus-title {
+  font-size: 25rpx;
+  font-weight: 700;
+  color: #0b1633;
+}
+
+.bonus-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+/* 未达成的加成是浅灰而不是空白：文案里照样带着金额（对话 +5），
+   点亮之后变成实心。灰色说的是「还没拿到」，不是「不存在」 */
+.bonus-chip {
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.38);
+  background: rgba(11, 22, 51, 0.04);
+}
+
+.bonus-chip.on {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+}
+
+.bonus-hint {
+  margin-top: 12rpx;
+  font-size: 21rpx;
+  color: rgba(11, 22, 51, 0.4);
+}
+
+/* 会员行 */
+.vip-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 22rpx 0 24rpx;
+  border-top: 1rpx solid rgba(11, 22, 51, 0.06);
+}
+
+.vip-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.vip-title {
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #0b1633;
+}
+
+.vip-sub {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.45);
+}
+
+/* width 必须是 auto !important，这里**不能**照抄 .save-btn 的 100%。
+   同一个坑（app.json:60 的 "style": "v2" 盖掉 wxss 给 <button> 的宽度，
+   按钮缩回 UA 的约 280px 再被 UA 的 margin:auto 居中），但这一行是
+   「文字 + 按钮」的横向布局：补 100% 会让按钮撑满整行、把 .vip-info 挤没。
+   这里要的是「按内容宽度收缩」，所以补 auto。 */
+.redeem-btn {
+  flex-shrink: 0;
+  width: auto !important;
+  height: 64rpx;
+  line-height: 64rpx;
+  /* 清掉 UA 的 margin:auto 与 14px 横向内边距，改用下面的 padding 定形 */
+  margin: 0;
+  padding: 0 28rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+  border: none;
+  box-shadow: 0 6rpx 16rpx rgba(31, 91, 255, 0.28);
+}
+
+.redeem-btn::after {
+  border: none;
+}
+
+.redeem-btn[disabled] {
+  background: rgba(36, 89, 255, 0.30);
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
+}
+
+/* 钱包读失败时的占位。刻意不渲染一排 0 —— 那看起来就是「你的金币没了」，
+   而实际只是没读到。横向内边距交给 .checkin-card，这里只补竖向 */
+.wallet-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 44rpx 0;
+}
+
+.wallet-fallback-text {
+  font-size: 25rpx;
+  color: rgba(11, 22, 51, 0.45);
+}
+
+.wallet-retry {
+  margin-top: 18rpx;
+  padding: 12rpx 44rpx;
+  border-radius: 999rpx;
+  font-size: 25rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.1);
+}
+
 /* 分组 */
 .section-group {
   margin: 24rpx 24rpx 0;
+}
+
+.ach-card {
+  padding: 28rpx 28rpx 20rpx;
+}
+
+.ach-level-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ach-level-main {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.ach-level-num {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #2459ff;
+  white-space: nowrap;
+}
+
+.ach-level-name {
+  margin-left: 12rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0b1633;
+  white-space: nowrap;
+}
+
+.ach-level-xp {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+}
+
+.ach-bar {
+  margin-top: 16rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: rgba(36, 89, 255, 0.12);
+  overflow: hidden;
+}
+
+.ach-bar-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+}
+
+.ach-bar-hint,
+.ach-count {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.ach-count {
+  margin-top: 20rpx;
+  font-weight: 700;
+  color: #0b1633;
+}
+
+.medal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 8rpx;
+}
+
+.medal {
+  width: 25%;
+  box-sizing: border-box;
+  padding: 16rpx 4rpx 8rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.38;
+}
+
+.medal.on {
+  opacity: 1;
+}
+
+.medal-mark {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  background: #eef2fa;
+  color: rgba(11, 22, 51, 0.35);
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 72rpx;
+  text-align: center;
+}
+
+.medal.on .medal-mark {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+  box-shadow: 0 8rpx 18rpx rgba(31, 91, 255, 0.28);
+}
+
+.medal-name {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #0b1633;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .section-title {
@@ -238,6 +583,39 @@
   padding: 16rpx 28rpx 26rpx;
 }
 
+/* 分享按钮与上面那块 .form-actions 是同一个卡片里的第二个，
+   必须清掉上内边距，否则两个按钮之间会空一大截。
+   特异性得写到三层（.checkin-card .form-actions.share-actions）：
+   单写 .share-actions 只有一层，会被 .checkin-card .form-actions 那两层压过去 */
+.checkin-card .form-actions.share-actions {
+  padding: 0 0 16rpx;
+}
+
+.share-btn {
+  /* width 必须 !important —— 同 .save-btn 的 "style": "v2" 坑，那里有完整说明。
+     做成描边幽灵样式：分享是次要动作，不该和「今日打卡」抢主按钮的位置，
+     也避免任何「这个按钮有好处」的视觉暗示（诱导分享红线） */
+  display: block;
+  width: 100% !important;
+  height: 80rpx;
+  /* 78 而不是 80：box-sizing 是 border-box，上下各 1px 边框占掉 2rpx，
+     写 80 会让文字下沉 1px */
+  line-height: 78rpx;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  font-size: 27rpx;
+  font-weight: 600;
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.08);
+  border: 1px solid rgba(36, 89, 255, 0.22);
+}
+
+.share-btn::after {
+  border: none;
+}
+
 .save-btn {
   /* width 必须 !important：app.json:60 开了 "style": "v2"，新版组件样式会盖掉 wxss
      给 <button> 的 width —— 按钮缩回 UA 默认宽度，再被 UA 的 margin:auto 居中，
@@ -268,4 +646,133 @@
   background: rgba(36, 89, 255, 0.30);
   color: rgba(255, 255, 255, 0.85);
   box-shadow: none;
+}
+
+/* 邀请：底部弹出，保存图片 / 转发到群聊。
+   转发必须是 <button open-type="share">，不能用 actionSheet 点完再调接口。 */
+.invite-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 300;
+  background: rgba(11, 22, 51, 0.42);
+  display: flex;
+  align-items: flex-end;
+}
+
+.invite-sheet {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12rpx 28rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: #ffffff;
+  border-radius: 28rpx 28rpx 0 0;
+  box-shadow: 0 -12rpx 36rpx rgba(11, 22, 51, 0.08);
+}
+
+.invite-handle {
+  width: 72rpx;
+  height: 8rpx;
+  margin: 8rpx auto 16rpx;
+  border-radius: 999rpx;
+  background: rgba(11, 22, 51, 0.12);
+}
+
+.invite-title {
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #0b1633;
+  margin-bottom: 20rpx;
+}
+
+.invite-preview {
+  position: relative;
+  width: 420rpx;
+  height: 588rpx;
+  margin: 0 auto 28rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  background: #eef3fb;
+  border: 1rpx solid rgba(11, 22, 51, 0.06);
+  box-shadow: 0 12rpx 36rpx rgba(11, 22, 51, 0.06);
+}
+
+.invite-preview-img {
+  width: 420rpx;
+  height: 588rpx;
+  display: block;
+}
+
+/* type=2d 的 canvas 不能 display:none，否则导出会是空白。
+   固定在屏幕内、透明、不拦截点击，只负责出图。 */
+.invite-canvas-off {
+  position: fixed;
+  left: 0;
+  top: -10000px;
+  width: 300px;
+  height: 420px;
+  opacity: 1;
+  pointer-events: none;
+}
+
+.invite-preview-busy {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(238, 243, 251, 0.72);
+  color: rgba(11, 22, 51, 0.5);
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.invite-btn {
+  display: block;
+  width: 100% !important;
+  height: 80rpx;
+  margin: 0 0 16rpx;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  line-height: 78rpx;
+}
+
+.invite-btn::after {
+  border: none !important;
+}
+
+.invite-btn-save {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+  border: none;
+  box-shadow: 0 10px 24px rgba(31, 91, 255, 0.30);
+}
+
+.invite-btn-save[disabled] {
+  background: rgba(36, 89, 255, 0.30);
+  color: rgba(255, 255, 255, 0.85);
+  box-shadow: none;
+}
+
+.invite-btn-share {
+  color: #2459ff;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30), 0 8rpx 20rpx rgba(11, 22, 51, 0.04);
+}
+
+.invite-cancel {
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: rgba(11, 22, 51, 0.45);
 }
