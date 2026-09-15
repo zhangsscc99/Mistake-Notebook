@@ -61,17 +61,15 @@ function clearSession() {
   memoryLoggedIn = false;
   try {
     const app = getApp();
-    if (app && app.globalData) {
-      app.globalData.loggedIn = false;
-      app.globalData.profile = null;
-    }
+    if (app && app.globalData) app.globalData.loggedIn = false;
   } catch (e) {
     // ignore
   }
+  // 只清登录态，不动 profileCache：昵称头像在云端 users 档里，
+  // 缓存留给登录页展示「欢迎回来 + 昵称」。注销账号时由 profile 页单独 clearProfileCache()。
   try {
     wx.removeStorageSync(SESSION_KEY);
     wx.setStorageSync(LOGOUT_KEY, true);
-    wx.removeStorageSync('profileCache');
   } catch (e) {
     // ignore
   }

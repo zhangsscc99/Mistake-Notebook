@@ -75,8 +75,8 @@
             @click="viewCategory(category)"
           >
             <div class="category-header">
-              <div class="category-icon">
-                <van-icon :name="category.icon" :color="category.color" size="24" />
+              <div class="category-icon" :style="{ color: category.color, background: (category.color || '#2459ff') + '18' }">
+                <span class="category-mark">{{ category.mark }}</span>
               </div>
               <div class="category-info">
                 <h3 class="category-title">{{ category.name }}</h3>
@@ -125,11 +125,7 @@
 
 
     <!-- 底部导航 -->
-    <van-tabbar route>
-      <van-tabbar-item icon="home-o" to="/homepage">首页</van-tabbar-item>
-      <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
-      <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
-    </van-tabbar>
+    <AppTabBar />
   </div>
 </template>
 
@@ -138,9 +134,12 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import categoryAPI from '../api/category'
 import { startPendingPoll, fetchPendingQuestions } from '../utils/pendingQuestions'
+import { categoryMark } from '../utils/categoryMark'
+import AppTabBar from '../components/AppTabBar.vue'
 
 export default {
   name: 'Categories',
+  components: { AppTabBar },
   setup() {
     const router = useRouter()
     const route = useRoute()
@@ -248,7 +247,7 @@ export default {
             id: cat.id,
             name: cat.name,
             description: cat.description || '暂无描述',
-            icon: cat.icon || 'apps-o',
+            mark: categoryMark(cat.name),
             color: cat.color || '#2459ff',
             count: cat.questionCount || 0,
             tags: (() => {
@@ -361,7 +360,7 @@ export default {
 .categories-page {
   min-height: 100vh;
   background: var(--bg-primary);
-  padding-bottom: 60px;
+  padding-bottom: 90px;
   position: relative;
 }
 
@@ -526,9 +525,21 @@ export default {
 
 .category-icon {
   margin-right: 12px;
-  padding: 8px;
-  background: #f5f5f5;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.category-mark {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .category-info {

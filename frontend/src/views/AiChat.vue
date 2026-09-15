@@ -1,6 +1,6 @@
 <template>
   <div class="ai-chat-page">
-    <van-nav-bar title="AI 答疑" left-arrow @click-left="goBack" fixed placeholder />
+    <van-nav-bar title="AI 答疑" :left-arrow="!!questionContext" @click-left="goBack" fixed placeholder />
 
     <div v-if="questionContext" class="context-bar" @click="contextVisible = true">
       <div class="context-icon">题</div>
@@ -56,32 +56,43 @@
       </div>
     </div>
 
+    <div
+      v-if="quotaText"
+      class="quota-bar"
+      :class="{ warn: quotaBlocked }"
+    >
+      <span>{{ quotaText }}</span>
+      <button v-if="quotaBlocked" class="quota-link" @click="$router.push('/profile')">去开通会员</button>
+    </div>
+
     <div class="input-bar">
       <input
         v-model="inputValue"
         class="chat-input"
         placeholder="输入你的问题…"
-        :disabled="sending"
+        :disabled="sending || quotaBlocked"
         @keyup.enter="sendMessage"
       />
       <button
         class="send-btn"
-        :class="{ 'send-btn-active': inputValue.trim() && !sending }"
-        :disabled="!inputValue.trim() || sending"
+        :class="{ 'send-btn-active': inputValue.trim() && !sending && !quotaBlocked }"
+        :disabled="!inputValue.trim() || sending || quotaBlocked"
         @click="sendMessage"
       >
         发送
       </button>
     </div>
+    <AppTabBar v-if="!questionContext" />
   </div>
 </template>
 
 <script>
-import { ref, reactive, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import answerAPI from '../api/answer'
 import { formatLatex } from '../utils/latex'
 import { parseQuestionParas } from '../utils/questionFormat'
+import AppTabBar from '../components/AppTabBar.vue'
 
 function buildGreeting(ctxRaw, memoryStatus) {
   if (memoryStatus?.hasMemory) {
@@ -155,6 +166,7 @@ function formatWeaknessHint(weaknesses) {
 
 export default {
   name: 'AiChat',
+  components: { AppTabBar },
   setup() {
     const router = useRouter()
     const route = useRoute()
@@ -168,6 +180,14 @@ export default {
     const messages = reactive([])
     const inputValue = ref('')
     const sending = ref(false)
+    const quota = ref({ remaining: -1, isVip: false, allowed: true })
+    const quotaBlocked = computed(() => quota.value.allowed === false)
+    const quotaText = computed(() => {
+      if (quota.value.isVip) return '会员对话不限量'
+      if (quota.value.remaining == null || quota.value.remaining < 0) return ''
+      if (quota.value.allowed === false) return '今日免费对话次数已用完'
+      return `今日剩余 ${quota.value.remaining} 次免费对话`
+    })
     let sessionSaved = false
 
     const scrollToBottom = () => {
@@ -194,7 +214,7 @@ export default {
 
     const sendMessage = async () => {
       const text = (inputValue.value || '').trim()
-      if (!text || sending.value) return
+      if (!text || sending.value || quotaBlocked.value) return
 
       const userId = 'u' + Date.now()
       messages.push({ id: userId, role: 'user', content: text, display: formatLatex(text) })
@@ -209,6 +229,17 @@ export default {
       const apiMessages = getApiMessages()
       try {
         const result = await answerAPI.chat(apiMessages, questionContextRaw.value)
+        if (result.quota) {
+          quota.value = { ...quota.value, allowed: false, remaining: 0 }
+        } else if (result.remaining != null) {
+          const remaining = Number(result.remaining)
+          quota.value = {
+            ...quota.value,
+            remaining,
+            isVip: !!result.isVip,
+            allowed: result.isVip || remaining !== 0
+          }
+        }
         const reply = result.reply || '抱歉，我这边出了点问题，请稍后再试。'
         replaceTyping(typingId, reply)
       } catch {
@@ -255,6 +286,8 @@ export default {
           messages[idx] = { id: 'm0', role: 'assistant', content: greeting, display: greeting }
         }
       }
+      const q = await answerAPI.getQuota()
+      quota.value = q
     })
 
     onBeforeUnmount(() => {
@@ -270,6 +303,8 @@ export default {
       messages,
       inputValue,
       sending,
+      quotaText,
+      quotaBlocked,
       goBack,
       sendMessage
     }
@@ -499,12 +534,27 @@ export default {
   40% { transform: translateY(-4px); }
 }
 
+.quota-bar {
+  margin: 8px 16px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #eef3fb;
+  font-size: 12px;
+  color: rgba(11,22,51,0.65);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.quota-bar.warn { background: #fff1f2; color: #e11d48; }
+.quota-link { border: none; background: none; color: #2459ff; font-weight: 700; }
+
 .input-bar {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   gap: 10px;
-  padding: 12px 16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  margin-bottom: 50px;
   background: #fff;
   border-top: 1px solid rgba(11, 22, 51, 0.06);
 }

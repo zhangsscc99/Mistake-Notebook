@@ -24,9 +24,15 @@ public class Category {
     private Long id;
 
     /**
-     * 分类名称
+     * 所属用户。网页端每人一份默认十科；旧的全局分类 userId 为空。
      */
-    @Column(name = "name", length = 50, nullable = false, unique = true)
+    @Column(name = "user_id")
+    private Long userId;
+
+    /**
+     * 分类名称。不再全局唯一，每人都可以有「数学」。
+     */
+    @Column(name = "name", length = 50, nullable = false)
     private String name;
 
     /**

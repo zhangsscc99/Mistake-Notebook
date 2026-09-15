@@ -18,20 +18,19 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
      */
     Optional<Category> findByName(String name);
 
-    /**
-     * 根据名称和删除状态查找分类
-     */
+    Optional<Category> findByUserIdAndNameAndIsDeleted(Long userId, String name, Boolean isDeleted);
+
     Optional<Category> findByNameAndIsDeleted(String name, Boolean isDeleted);
 
-    /**
-     * 查找所有未删除的分类
-     */
     @Query("SELECT c FROM Category c WHERE c.isDeleted = false ORDER BY c.id ASC")
     java.util.List<Category> findAllActive();
 
-    /**
-     * 统计未删除的分类数量
-     */
+    java.util.List<Category> findByUserIdAndIsDeletedFalseOrderByIdAsc(Long userId);
+
     @Query("SELECT COUNT(c) FROM Category c WHERE c.isDeleted = false")
     long countActive();
+
+    long countByUserIdAndIsDeletedFalse(Long userId);
+
+    void deleteByUserId(Long userId);
 }

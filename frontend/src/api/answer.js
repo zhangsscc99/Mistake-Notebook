@@ -20,18 +20,45 @@ const answerAPI = {
   getClientId,
 
   async chat(messages, questionContext = '') {
-    const res = await apiClient.post('/answer/chat', {
-      messages,
-      questionContext,
-      clientId: getClientId()
-    })
-    const body = res.data
-    if (body?.success && body?.data?.reply) {
-      return { success: true, reply: body.data.reply }
+    try {
+      const res = await apiClient.post('/answer/chat', {
+        messages,
+        questionContext,
+        clientId: getClientId()
+      })
+      const body = res.data
+      if (body?.success && body?.data?.reply) {
+        return {
+          success: true,
+          reply: body.data.reply,
+          remaining: body.data.remaining,
+          isVip: body.data.isVip === 'true' || body.data.isVip === true
+        }
+      }
+      return {
+        success: false,
+        quota: body?.errorCode === 'QUOTA_EXCEEDED',
+        reply: body?.message || '抱歉，我这边出了点问题，请稍后再试。'
+      }
+    } catch (e) {
+      const body = e.response?.data
+      if (e.response?.status === 429 || body?.errorCode === 'QUOTA_EXCEEDED') {
+        return {
+          success: false,
+          quota: true,
+          reply: body?.message || '今日免费对话次数已用完，开通会员可不限量'
+        }
+      }
+      throw e
     }
-    return {
-      success: false,
-      reply: body?.message || '抱歉，我这边出了点问题，请稍后再试。'
+  },
+
+  async getQuota() {
+    try {
+      const res = await apiClient.get('/answer/quota')
+      return res.data?.data || { remaining: -1, isVip: false, allowed: true }
+    } catch {
+      return { remaining: -1, isVip: false, allowed: true }
     }
   },
 

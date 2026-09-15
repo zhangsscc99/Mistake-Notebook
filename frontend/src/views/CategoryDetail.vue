@@ -27,8 +27,8 @@
     <div class="category-info-section">
       <div class="category-info-card">
         <div class="info-header">
-          <div class="category-icon">
-            <van-icon :name="categoryInfo.icon" :color="categoryInfo.color" size="32" />
+          <div class="category-icon" :style="{ color: categoryInfo.color, background: (categoryInfo.color || '#2459ff') + '18' }">
+            <span class="category-mark">{{ categoryInfo.mark }}</span>
           </div>
           <div class="info-details">
             <h2 class="category-name">{{ categoryInfo.name }}</h2>
@@ -48,6 +48,10 @@
           <van-button :type="isPaperSelectMode ? 'primary' : 'default'" size="small" @click="addToExam">
             {{ isPaperSelectMode ? '确认组卷' : '加入组卷' }}
           </van-button>
+        </div>
+        <div class="history-links">
+          <span @click="$router.push('/report-list')">错因分析历史</span>
+          <span @click="$router.push('/variant-list')">已保存变式题</span>
         </div>
       </div>
     </div>
@@ -118,12 +122,17 @@
                 <span class="q-index">#{{ question.displayIndex }}</span>
                 <span class="q-difficulty" :class="'diff-' + question.difficulty">{{ getDifficultyText(question.difficulty) }}</span>
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
+                <span v-if="question.hasNote" class="note-flag">📝</span>
               </div>
               <div class="meta-right" v-if="editMode">
                 <van-checkbox 
                   v-model="question.selected"
                   @click.stop="toggleSelection(question)"
                 />
+              </div>
+              <div class="meta-right" v-else>
+                <button class="mark-btn" :class="{ on: question.favorite }" @click.stop="toggleFavorite(question)">{{ question.favorite ? '★' : '☆' }}</button>
+                <button class="mark-btn" :class="{ on: question.pinned }" @click.stop="togglePin(question)">📌</button>
               </div>
             </div>
             <van-button
@@ -136,6 +145,13 @@
             >
               AI答疑
             </van-button>
+            <QuestionStudyTools
+              :question="question"
+              :edit-mode="editMode"
+              @mistake="openMistake"
+              @variants="openVariants"
+              @note="openNote"
+            />
             <div v-if="question.showAI && !editMode" class="ai-box">
               <div class="ai-title">AI 标准答案与解析</div>
               <div class="ai-subtitle">标准答案：</div>
@@ -203,12 +219,17 @@
                 <span class="q-index">#{{ question.displayIndex }}</span>
                 <span class="q-difficulty" :class="'diff-' + question.difficulty">{{ getDifficultyText(question.difficulty) }}</span>
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
+                <span v-if="question.hasNote" class="note-flag">📝</span>
               </div>
               <div class="meta-right" v-if="editMode">
                 <van-checkbox 
                   v-model="question.selected"
                   @click.stop="toggleSelection(question)"
                 />
+              </div>
+              <div class="meta-right" v-else>
+                <button class="mark-btn" :class="{ on: question.favorite }" @click.stop="toggleFavorite(question)">{{ question.favorite ? '★' : '☆' }}</button>
+                <button class="mark-btn" :class="{ on: question.pinned }" @click.stop="togglePin(question)">📌</button>
               </div>
             </div>
             <van-button
@@ -221,6 +242,13 @@
             >
               AI答疑
             </van-button>
+            <QuestionStudyTools
+              :question="question"
+              :edit-mode="editMode"
+              @mistake="openMistake"
+              @variants="openVariants"
+              @note="openNote"
+            />
             <div v-if="question.showAI && !editMode" class="ai-box">
               <div class="ai-title">AI 标准答案与解析</div>
               <div class="ai-subtitle">标准答案：</div>
@@ -237,7 +265,7 @@
           <!-- 空状态 -->
           <van-empty 
             v-if="!loading && filteredQuestions.length === 0" 
-            description="该分类暂无题目"
+            :description="filterBy === 'favorite' ? '还没有收藏的错题，点题目右下角的 ☆ 即可收藏' : '该分类暂无题目'"
             image="search"
           />
         </van-list>
@@ -251,6 +279,8 @@
       </div>
       <div class="batch-buttons">
         <van-button size="small" type="primary" @click="savePaper">保存为试卷</van-button>
+        <van-button v-if="!isPaperSelectMode" size="small" @click="batchMistake">错因分析</van-button>
+        <van-button v-if="!isPaperSelectMode" size="small" @click="batchVariants">变式题</van-button>
         <van-button size="small" type="danger" @click="batchDelete">删除</van-button>
       </div>
     </div>
@@ -299,6 +329,11 @@
               {{ detailQuestion.aiAnalysis }}
             </p>
           </div>
+          <div class="detail-section">
+            <div class="detail-section-title">批注与笔记</div>
+            <p class="detail-section-body">{{ detailQuestion.noteContent || '还没有笔记' }}</p>
+            <van-button size="small" plain type="primary" @click="openNote(detailQuestion)">编辑笔记</van-button>
+          </div>
           <div v-if="detailQuestion.tags?.length" class="detail-section">
             <div class="detail-section-title">标签</div>
             <van-tag v-for="tag in detailQuestion.tags" :key="tag" size="mini" class="custom-tag">{{ tag }}</van-tag>
@@ -310,7 +345,20 @@
         </div>
         <div class="detail-modal-footer">
           <van-button type="primary" block @click="openAIChat(detailQuestion)">AI 答疑</van-button>
+          <van-button block class="ghost-btn" @click="openMistake(detailQuestion)">错因分析</van-button>
+          <van-button block class="ghost-btn" @click="openVariants(detailQuestion)">变式题</van-button>
         </div>
+      </div>
+    </van-popup>
+
+    <van-popup v-model:show="showNoteModal" position="bottom" round :style="{ height: '46%' }">
+      <div class="note-modal">
+        <div class="detail-modal-header">
+          <span class="detail-modal-title">错题批注与笔记</span>
+          <van-icon name="cross" @click="showNoteModal = false" />
+        </div>
+        <textarea v-model="noteDraft" class="note-input" maxlength="2000" placeholder="写下这道题的错因、思路或提醒…"></textarea>
+        <van-button type="primary" block @click="saveNote">保存笔记</van-button>
       </div>
     </van-popup>
 
@@ -333,10 +381,13 @@ import {
   isPendingQuestion
 } from '../utils/questionFormat'
 import QuestionText from '../components/QuestionText.vue'
+import QuestionStudyTools from '../components/QuestionStudyTools.vue'
+import studyAPI from '../api/study'
+import { categoryMark } from '../utils/categoryMark'
 
 export default {
   name: 'CategoryDetail',
-  components: { QuestionText },
+  components: { QuestionText, QuestionStudyTools },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -355,13 +406,16 @@ export default {
     const isPaperSelectMode = computed(() => route.query.mode === 'paper-select')
     const showDetailModal = ref(false)
     const detailQuestion = ref(null)
+    const showNoteModal = ref(false)
+    const noteDraft = ref('')
+    const noteQuestionId = ref(null)
 
 
     const categoryInfo = reactive({
       id: '',
       name: '',
       description: '',
-      icon: 'apps-o',
+      mark: '题',
       color: '#1976d2'
     })
 
@@ -378,6 +432,7 @@ export default {
     // 筛选选项
     const filterOptions = [
       { text: '全部', value: 'all' },
+      { text: '收藏', value: 'favorite' },
       { text: '简单', value: 'easy' },
       { text: '中等', value: 'medium' },
       { text: '困难', value: 'hard' }
@@ -404,7 +459,9 @@ export default {
       let filtered = [...questions]
       
       // 筛选
-      if (filterBy.value !== 'all') {
+      if (filterBy.value === 'favorite') {
+        filtered = filtered.filter(q => q.favorite)
+      } else if (filterBy.value !== 'all') {
         filtered = filtered.filter(q => q.difficulty === filterBy.value)
       }
 
@@ -431,6 +488,8 @@ export default {
           filtered.sort((a, b) => difficultyOrder[b.difficulty] - difficultyOrder[a.difficulty])
           break
       }
+
+      filtered.sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned))
       
       return filtered
     })
@@ -622,6 +681,21 @@ export default {
         path: '/ai-chat',
         query: { context: encodeURIComponent(content) }
       })
+    }
+
+    const openMistake = async (question) => {
+      try {
+        const res = await studyAPI.generateMistakeReport(question.id)
+        showDetailModal.value = false
+        router.push('/mistake-report/' + res.data.id)
+      } catch (e) {
+        showToast({ type: 'fail', message: e.response?.data?.message || '生成失败' })
+      }
+    }
+
+    const openVariants = (question) => {
+      showDetailModal.value = false
+      router.push({ path: '/variants', query: { ids: String(question.id) } })
     }
 
     const toggleShowAI = (question) => {
@@ -908,7 +982,7 @@ export default {
             id: category.id,
             name: category.name || '未知分类',
             description: category.description || '暂无描述',
-            icon: category.icon || 'apps-o',
+            mark: categoryMark(category.name),
             color: category.color || '#2459ff'
           })
         } else {
@@ -950,12 +1024,17 @@ export default {
               createdAt: new Date(question.createdAt).getTime(),
               isCorrect: question.isCorrect || false,
               selected: false,
-              showAI: false
+              showAI: false,
+              favorite: false,
+              pinned: false,
+              hasNote: false,
+              noteContent: ''
             }
             return buildDetailQuestion(base, index)
           })
           
           questions.splice(0, questions.length, ...apiQuestions)
+          await applyMarksAndNotes()
           console.log('成功加载题目数据:', apiQuestions)
         } else {
           console.log('该分类暂无题目，响应:', response)
@@ -966,6 +1045,102 @@ export default {
         showToast('加载题目失败')
         questions.splice(0, questions.length) // 清空数组
       }
+    }
+
+    const applyMarksAndNotes = async () => {
+      const ids = questions.map(q => q.id).filter(Boolean)
+      if (!ids.length) return
+      try {
+        const [marksRes, notesRes] = await Promise.all([
+          studyAPI.listMarks(ids),
+          studyAPI.listNotes(ids)
+        ])
+        const marks = marksRes.data || []
+        const notes = notesRes.data || []
+        const markMap = {}
+        marks.forEach(m => { markMap[m.questionId] = m })
+        const noteMap = {}
+        notes.forEach(n => { noteMap[n.questionId] = n.content || '' })
+        questions.forEach(q => {
+          const m = markMap[q.id]
+          q.favorite = !!m?.favorite
+          q.pinned = !!m?.pinned
+          q.noteContent = noteMap[q.id] || ''
+          q.hasNote = !!q.noteContent.trim()
+        })
+      } catch (e) {
+        console.warn('加载收藏/笔记失败', e)
+      }
+    }
+
+    const applyMark = async (question, field, value) => {
+      question[field] = value
+      try {
+        await studyAPI.updateMark({ questionId: question.id, [field]: value })
+      } catch (e) {
+        question[field] = !value
+        showToast({ type: 'fail', message: e.response?.data?.message || '操作失败' })
+      }
+    }
+
+    const toggleFavorite = (question) => applyMark(question, 'favorite', !question.favorite)
+    const togglePin = (question) => applyMark(question, 'pinned', !question.pinned)
+
+    const openNote = (question) => {
+      noteQuestionId.value = question.id
+      noteDraft.value = question.noteContent || ''
+      showNoteModal.value = true
+    }
+
+    const saveNote = async () => {
+      const id = noteQuestionId.value
+      if (!id) return
+      try {
+        await studyAPI.saveNote(id, noteDraft.value)
+        const q = questions.find(item => item.id === id)
+        if (q) {
+          q.noteContent = noteDraft.value
+          q.hasNote = !!noteDraft.value.trim()
+        }
+        if (detailQuestion.value?.id === id) {
+          detailQuestion.value.noteContent = noteDraft.value
+          detailQuestion.value.hasNote = !!noteDraft.value.trim()
+        }
+        showNoteModal.value = false
+        showToast({ type: 'success', message: '笔记已保存' })
+      } catch (e) {
+        showToast({ type: 'fail', message: e.response?.data?.message || '保存失败' })
+      }
+    }
+
+    const batchMistake = async () => {
+      const selected = selectedQuestions.value
+      if (!selected.length) {
+        showToast('请至少选择 1 道题')
+        return
+      }
+      try {
+        if (selected.length === 1) {
+          await openMistake(selected[0])
+          return
+        }
+        showToast('正在生成错因分析…')
+        for (const q of selected) {
+          await studyAPI.generateMistakeReport(q.id)
+        }
+        router.push('/report-list')
+      } catch (e) {
+        showToast({ type: 'fail', message: e.response?.data?.message || '生成失败' })
+      }
+    }
+
+    const batchVariants = () => {
+      const ids = selectedQuestions.value.map(q => q.id)
+      if (!ids.length) {
+        showToast('请先选择题目')
+        return
+      }
+      router.push({ path: '/variants', query: { ids: ids.join(',') } })
     }
 
     // 组件挂载时加载数据
@@ -1019,7 +1194,17 @@ export default {
       showDetailModal,
       detailQuestion,
       openAIChat,
-      toggleShowAI
+      openMistake,
+      openVariants,
+      toggleShowAI,
+      toggleFavorite,
+      togglePin,
+      openNote,
+      saveNote,
+      showNoteModal,
+      noteDraft,
+      batchMistake,
+      batchVariants
     }
   }
 }
@@ -1259,10 +1444,21 @@ export default {
 
 .category-icon {
   margin-right: 16px;
-  padding: 12px;
-  background: #f5f5f5;
-  border-radius: 12px;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border-radius: 14px;
   align-self: flex-start;
+  min-width: 52px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.category-mark {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .info-details {
@@ -1303,6 +1499,42 @@ export default {
 .action-buttons {
   display: flex;
   gap: 12px;
+}
+
+.history-links {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #2459ff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mark-btn {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  padding: 0 4px;
+  opacity: 0.45;
+}
+.mark-btn.on { opacity: 1; }
+.note-flag { margin-left: 6px; }
+.note-modal { padding: 16px; }
+.note-input {
+  width: 100%;
+  height: 160px;
+  margin: 12px 0;
+  border: none;
+  background: #f4f7fb;
+  border-radius: 12px;
+  padding: 12px;
+  resize: none;
+}
+.meta-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .filter-section {

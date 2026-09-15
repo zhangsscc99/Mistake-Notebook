@@ -6,6 +6,7 @@ import okhttp3.*;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.net.Proxy;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +23,7 @@ public class SimpleOpenAIClient {
     private final ObjectMapper objectMapper;
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .proxy(Proxy.NO_PROXY)
             .connectTimeout(60, TimeUnit.SECONDS)
             .readTimeout(180, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)

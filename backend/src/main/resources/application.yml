@@ -78,6 +78,12 @@ ai:
     payment-model: ${AI_ALIYUN_PAYMENT_MODEL:qwen-plus}
     payment-system-content: ${AI_ALIYUN_PAYMENT_SYSTEM_CONTENT:你是一个有用的AI助手}
 
+# 网页端登录
+app:
+  auth:
+    secret: ${AUTH_SECRET:mistake-notebook-web-dev-secret}
+    expire-days: 30
+
 # 文件存储配置
 file:
   upload:

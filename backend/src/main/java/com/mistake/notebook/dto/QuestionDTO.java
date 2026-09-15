@@ -20,6 +20,8 @@ public class QuestionDTO {
     private String content;
     private String imageUrl;
     private String category;
+    private Long categoryId;
+    private Boolean isVariant;
     private String difficulty;
     private List<String> tags;
     private Double ocrConfidence;
@@ -40,6 +42,8 @@ public class QuestionDTO {
         dto.setContent(question.getContent());
         dto.setImageUrl(question.getImageUrl());
         dto.setCategory(question.getCategory());
+        dto.setCategoryId(question.getCategoryId());
+        dto.setIsVariant(Boolean.TRUE.equals(question.getIsVariant()));
         dto.setDifficulty(question.getDifficulty().name().toLowerCase());
         dto.setTags(question.getTags());
         dto.setOcrConfidence(question.getOcrConfidence());
@@ -85,6 +89,7 @@ public class QuestionDTO {
         question.setAiAnswer(this.aiAnswer);
         question.setAiAnalysis(this.aiAnalysis);
         question.setIsDeleted(false);
+        question.setIsVariant(Boolean.TRUE.equals(this.isVariant));
 
         if (this.aiStatus != null && !this.aiStatus.isBlank()) {
             try {

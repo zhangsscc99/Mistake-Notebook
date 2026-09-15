@@ -14,6 +14,16 @@
       </van-nav-bar>
     </div>
 
+    <div v-if="pages.length > 1" class="page-tabs">
+      <button
+        v-for="(_, i) in pages"
+        :key="i"
+        type="button"
+        :class="{ on: i === pageIndex }"
+        @click="switchPage(i)"
+      >第 {{ i + 1 }} 页</button>
+    </div>
+
     <!-- 提示区域 -->
     <div class="tips-section">
       <div class="tips-content">
@@ -27,8 +37,18 @@
 
     <!-- 图片和题目识别区域 -->
     <div class="main-content">
-      <div class="image-container">
+        <div class="image-container">
         <img :src="originalImage" alt="原图" class="original-image" />
+        <div
+          v-if="showCrop"
+          class="crop-box"
+          :style="{
+            top: crop.top + '%',
+            left: crop.left + '%',
+            width: crop.width + '%',
+            height: crop.height + '%'
+          }"
+        ></div>
         
         <!-- 题目选择框 -->
         <div class="questions-overlay">
@@ -149,6 +169,18 @@
         </div>
       </div>
     </van-popup>
+
+    <van-popup v-model:show="showCrop" position="bottom" round :style="{ height: '58%' }">
+      <div class="crop-panel">
+        <h3>调整图片</h3>
+        <p>拖动边距，裁掉无关区域后再识别。</p>
+        <label>上 {{ crop.top }}%<input v-model.number="crop.top" type="range" min="0" max="40" /></label>
+        <label>左 {{ crop.left }}%<input v-model.number="crop.left" type="range" min="0" max="40" /></label>
+        <label>宽 {{ crop.width }}%<input v-model.number="crop.width" type="range" min="40" max="100" /></label>
+        <label>高 {{ crop.height }}%<input v-model.number="crop.height" type="range" min="40" max="100" /></label>
+        <van-button type="primary" block :loading="cropping" @click="confirmCrop">裁剪并重新识别</van-button>
+      </div>
+    </van-popup>
   </div>
 </template>
 
@@ -181,6 +213,11 @@ export default {
     const originalImage = ref('')
     const serverImageUrl = ref('')
     const questions = reactive([])
+    const pages = reactive([])
+    const pageIndex = ref(0)
+    const showCrop = ref(false)
+    const cropping = ref(false)
+    const crop = reactive({ top: 4, left: 4, width: 92, height: 92 })
     const saving = ref(false)
     const showCategoryModal = ref(false)
     
@@ -197,8 +234,54 @@ export default {
 
     // 计算属性
     const selectedCount = computed(() => {
-      return questions.filter(q => q.selected).length
+      let n = questions.filter(q => q.selected).length
+      pages.forEach((p, i) => {
+        if (i === pageIndex.value) return
+        n += (p.questions || []).filter(q => q.selected).length
+      })
+      return n
     })
+
+    const mapSegments = (segments) => {
+      return (segments || []).map((segment, index) => {
+        const conf = segment.confidence || 0
+        return {
+          id: String(segment.id || index + 1),
+          selected: segment.isDifficult !== undefined ? !!segment.isDifficult : isDifficultQuestion(segment),
+          bounds: segment.bounds || { top: 15 + index * 12, left: 10, width: 80, height: 12 },
+          text: segment.text || segment.content || '',
+          type: segment.type || '',
+          confidence: conf,
+          difficulty: getDifficultyByConfidence(conf)
+        }
+      }).filter(q => q.text)
+    }
+
+    const applyPage = (index) => {
+      const page = pages[index]
+      if (!page) return
+      pageIndex.value = index
+      originalImage.value = page.tempFilePath || resolveImageUrl(page.imageUrl)
+      serverImageUrl.value = page.imageUrl || ''
+      const mapped = page.questions || mapSegments(page.segments)
+      page.questions = mapped
+      questions.splice(0, questions.length, ...mapped)
+      const defaultSubject = (page.segments || [])[0]?.subject
+      if (defaultSubject && categories.length) {
+        const match = categories.find(c => c.name === defaultSubject)
+        if (match) selectedCategory.value = match.id
+      }
+    }
+
+    const persistCurrentPage = () => {
+      if (!pages[pageIndex.value]) return
+      pages[pageIndex.value].questions = questions.map(q => ({ ...q }))
+    }
+
+    const switchPage = (index) => {
+      persistCurrentPage()
+      applyPage(index)
+    }
 
     // 初始化数据
     const initializeData = () => {
@@ -218,35 +301,15 @@ export default {
         return
       }
 
-      const segments = draft.segments || []
-      if (!segments.length) {
+      const list = Array.isArray(draft.pages) && draft.pages.length
+        ? draft.pages
+        : [{ tempFilePath: draft.tempFilePath, imageUrl: draft.imageUrl, segments: draft.segments || [] }]
+      pages.splice(0, pages.length, ...list.map((p) => ({ ...p, questions: null })))
+      const start = Math.max(0, Math.min(draft.pageIndex || 0, pages.length - 1))
+      applyPage(start)
+      if (!questions.length) {
         showToast('无识别结果')
         setTimeout(() => router.back(), 800)
-        return
-      }
-
-      originalImage.value = draft.tempFilePath || resolveImageUrl(draft.imageUrl)
-      serverImageUrl.value = draft.imageUrl || ''
-
-      const mapped = segments.map((segment, index) => {
-        const conf = segment.confidence || 0
-        return {
-          id: String(segment.id || index + 1),
-          selected: segment.isDifficult !== undefined ? !!segment.isDifficult : isDifficultQuestion(segment),
-          bounds: segment.bounds || { top: 15 + index * 12, left: 10, width: 80, height: 12 },
-          text: segment.text || segment.content || '',
-          type: segment.type || '',
-          confidence: conf,
-          difficulty: getDifficultyByConfidence(conf)
-        }
-      }).filter(q => q.text)
-
-      questions.splice(0, questions.length, ...mapped)
-
-      const defaultSubject = segments[0]?.subject
-      if (defaultSubject && categories.length) {
-        const match = categories.find(c => c.name === defaultSubject)
-        if (match) selectedCategory.value = match.id
       }
     }
 
@@ -263,7 +326,52 @@ export default {
     }
 
     const adjustImage = () => {
-      showToast('调整图片功能')
+      showCrop.value = true
+    }
+
+    const confirmCrop = async () => {
+      if (crop.width + crop.left > 100) crop.width = 100 - crop.left
+      if (crop.height + crop.top > 100) crop.height = 100 - crop.top
+      cropping.value = true
+      try {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        await new Promise((resolve, reject) => {
+          img.onload = resolve
+          img.onerror = reject
+          img.src = originalImage.value
+        })
+        const sx = img.width * crop.left / 100
+        const sy = img.height * crop.top / 100
+        const sw = img.width * crop.width / 100
+        const sh = img.height * crop.height / 100
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(sw))
+        canvas.height = Math.max(1, Math.round(sh))
+        canvas.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height)
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92))
+        const file = new File([blob], 'crop.jpg', { type: 'image/jpeg' })
+        const url = URL.createObjectURL(blob)
+        originalImage.value = url
+        const results = await imageRecognitionAPI.recognizeImages([{ file, url }])
+        const payload = results.data || {}
+        const segments = payload.questions || []
+        const mapped = mapSegments(segments)
+        questions.splice(0, questions.length, ...mapped)
+        if (pages[pageIndex.value]) {
+          pages[pageIndex.value].tempFilePath = url
+          pages[pageIndex.value].imageUrl = payload.imageUrl || url
+          pages[pageIndex.value].segments = segments
+          pages[pageIndex.value].questions = mapped
+        }
+        serverImageUrl.value = payload.imageUrl || url
+        showCrop.value = false
+        showToast(mapped.length ? '已按裁剪图重新识别' : '裁剪完成，未识别到题目')
+      } catch (e) {
+        showToast('裁剪失败，请换一张图再试')
+      } finally {
+        cropping.value = false
+      }
     }
 
     const hideTips = () => {
@@ -297,9 +405,13 @@ export default {
     }
 
     const saveSelectedQuestions = async () => {
-      const selectedQuestions = questions.filter(q => q.selected)
-      
-      if (selectedQuestions.length === 0) {
+      persistCurrentPage()
+      const groups = pages.map((p) => ({
+        imageUrl: p.imageUrl || p.tempFilePath || originalImage.value,
+        selected: (p.questions || []).filter(q => q.selected)
+      })).filter(g => g.selected.length)
+
+      if (!groups.length) {
         showToast('请至少选择一道题目')
         return
       }
@@ -307,21 +419,19 @@ export default {
       saving.value = true
 
       try {
-        console.log('开始保存选中的题目...', selectedQuestions) // 调试信息
-        
-        // 调用真实的API保存选中的题目
-        const result = await imageRecognitionAPI.saveSelectedQuestions(
-          selectedQuestions,
-          getCategoryName(selectedCategory.value),
-          selectedDifficulty.value,
-          serverImageUrl.value || originalImage.value
-        )
-
-        const count = result?.data?.savedCount || selectedQuestions.length
+        let count = 0
+        for (const group of groups) {
+          const result = await imageRecognitionAPI.saveSelectedQuestions(
+            group.selected,
+            getCategoryName(selectedCategory.value),
+            selectedDifficulty.value,
+            group.imageUrl
+          )
+          count += result?.data?.savedCount || group.selected.length
+        }
         sessionStorage.removeItem('recognitionDraft')
         showToast(`已保存${count}道，AI解析中`)
         setTimeout(() => router.push('/categories'), 800)
-        
       } catch (error) {
         console.error('保存失败:', error)
         showToast('保存失败，请重试')
@@ -372,6 +482,11 @@ export default {
     return {
       originalImage,
       questions,
+      pages,
+      pageIndex,
+      showCrop,
+      cropping,
+      crop,
       saving,
       showCategoryModal,
       categories,
@@ -384,6 +499,8 @@ export default {
       selectedCount,
       goBack,
       adjustImage,
+      confirmCrop,
+      switchPage,
       hideTips,
       toggleQuestion,
       selectCategory,
@@ -443,6 +560,37 @@ export default {
   font-weight: 600;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
+
+.page-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 0 16px 8px;
+  overflow-x: auto;
+}
+.page-tabs button {
+  border: none;
+  background: #eef3fb;
+  color: #0b1633;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-weight: 700;
+}
+.page-tabs button.on {
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  color: #fff;
+}
+.crop-box {
+  position: absolute;
+  border: 2px dashed #2459ff;
+  box-shadow: 0 0 0 9999px rgba(11, 22, 51, 0.35);
+  pointer-events: none;
+  z-index: 2;
+}
+.crop-panel { padding: 16px 18px 24px; }
+.crop-panel h3 { margin: 0 0 6px; }
+.crop-panel p { margin: 0 0 12px; font-size: 13px; color: rgba(11,22,51,0.5); }
+.crop-panel label { display: block; margin-bottom: 10px; font-size: 13px; }
+.crop-panel input { width: 100%; }
 
 /* 🎨 提示区域 - 现代化设计 */
 .tips-section {

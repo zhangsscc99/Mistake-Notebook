@@ -4,6 +4,7 @@ import com.mistake.notebook.dto.ApiResponse;
 import com.mistake.notebook.entity.Category;
 import com.mistake.notebook.repository.CategoryRepository;
 import com.mistake.notebook.repository.QuestionRepository;
+import com.mistake.notebook.security.AuthContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +28,7 @@ public class CategoryController {
 
     private final CategoryRepository categoryRepository;
     private final QuestionRepository questionRepository;
+    private final com.mistake.notebook.service.CategorySeedService categorySeedService;
 
     /**
      * 获取所有分类列表（包含题目数量）
@@ -34,7 +36,7 @@ public class CategoryController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllCategories() {
         try {
-            List<Category> categories = categoryRepository.findAllActive();
+            List<Category> categories = categorySeedService.listForUser(AuthContext.requireUserId());
             
             List<Map<String, Object>> categoryList = categories.stream().map(category -> {
                 return toCategoryData(category);
@@ -56,6 +58,7 @@ public class CategoryController {
         try {
             return categoryRepository.findById(id)
                     .filter(category -> !Boolean.TRUE.equals(category.getIsDeleted()))
+                    .filter(category -> java.util.Objects.equals(category.getUserId(), AuthContext.requireUserId()))
                     .map(category -> ResponseEntity.ok(ApiResponse.success("获取分类详情成功", toCategoryData(category))))
                     .orElse(ResponseEntity.status(404).body(ApiResponse.error("分类不存在")));
         } catch (Exception e) {
@@ -71,19 +74,14 @@ public class CategoryController {
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<Map<String, Object>>> getCategoryStats() {
         try {
+            long userId = AuthContext.requireUserId();
             Map<String, Object> stats = new HashMap<>();
-            
-            // 总题目数
-            long totalQuestions = questionRepository.countByIsDeleted(false);
+            long totalQuestions = questionRepository.countByUserIdAndIsDeleted(userId, false);
             stats.put("totalQuestions", totalQuestions);
-            
-            // 分类数
-            long totalCategories = categoryRepository.countActive();
+            long totalCategories = categorySeedService.listForUser(userId).size();
             stats.put("totalCategories", totalCategories);
-            
-            // 今日新增题目数（简化版 - 统计今天创建的题目）
             LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0).withNano(0);
-            long todayAdded = questionRepository.countByCreatedAtAfterAndIsDeleted(todayStart, false);
+            long todayAdded = questionRepository.countByUserIdAndCreatedAtAfterAndIsDeleted(userId, todayStart, false);
             stats.put("todayAdded", todayAdded);
             
             log.info("分类统计信息：总题目={}, 分类数={}, 今日新增={}", totalQuestions, totalCategories, todayAdded);
@@ -102,32 +100,33 @@ public class CategoryController {
     private String getCategoryIcon(String categoryName) {
         switch (categoryName) {
             case "数学":
-                return "📐";
+                return "数";
             case "物理":
-                return "⚡";
+                return "物";
             case "化学":
-                return "🧪";
+                return "化";
             case "英语":
-                return "🇬🇧";
+                return "英";
             case "语文":
-                return "📚";
+                return "语";
             case "生物":
-                return "🌱";
+                return "生";
             case "历史":
-                return "🏛️";
+                return "史";
             case "地理":
-                return "🌍";
+                return "地";
             case "计算机/编程":
-                return "💻";
+                return "码";
             case "政治":
-                return "🗳️";
+                return "政";
             default:
-                return "📖";
+                return "题";
         }
     }
 
     private Map<String, Object> toCategoryData(Category category) {
-        long questionCount = questionRepository.countByCategoryIdAndIsDeleted(category.getId(), false);
+        long questionCount = questionRepository.countByUserIdAndCategoryIdAndIsDeleted(
+                AuthContext.requireUserId(), category.getId(), false);
 
         Map<String, Object> categoryData = new HashMap<>();
         categoryData.put("id", category.getId());

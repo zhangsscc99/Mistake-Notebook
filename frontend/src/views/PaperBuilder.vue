@@ -69,7 +69,7 @@
         @click="viewPaper(paper)"
       >
         <div class="paper-header">
-          <div class="paper-icon">📝</div>
+          <div class="paper-icon">卷</div>
           <div class="paper-info">
             <h4 class="paper-title">{{ paper.title }}</h4>
             <p class="paper-meta">{{ paper.questionCount }} 道题 · {{ paper.createdAt }}</p>
@@ -103,11 +103,7 @@
 
 
     <!-- 底部导航 -->
-    <van-tabbar route>
-      <van-tabbar-item icon="home-o" to="/homepage">首页</van-tabbar-item>
-      <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
-      <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
-    </van-tabbar>
+    <AppTabBar />
   </div>
 </template>
 
@@ -120,10 +116,11 @@ import paperAPI from '../api/paper'
 import { apiClient } from '../api/config'
 import { formatQuestionText, formatQuestionHtml } from '../utils/questionFormat'
 import QuestionText from '../components/QuestionText.vue'
+import AppTabBar from '../components/AppTabBar.vue'
 
 export default {
   name: 'PaperBuilder',
-  components: { QuestionText },
+  components: { QuestionText, AppTabBar },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -831,7 +828,7 @@ export default {
 .paper-builder-page {
   min-height: 100vh;
   background: var(--bg-primary);
-  padding-bottom: 60px;
+  padding-bottom: 90px;
   position: relative;
 }
 
@@ -1026,8 +1023,16 @@ export default {
 }
 
 .paper-icon {
-  font-size: 32px;
-  filter: drop-shadow(0 2px 4px rgba(31, 91, 255, 0.3));
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.12);
 }
 
 .paper-delete-icon {

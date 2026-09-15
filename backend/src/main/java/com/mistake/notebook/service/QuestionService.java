@@ -2,8 +2,10 @@ package com.mistake.notebook.service;
 
 import com.mistake.notebook.dto.CreateQuestionRequest;
 import com.mistake.notebook.dto.QuestionDTO;
+import com.mistake.notebook.entity.Category;
 import com.mistake.notebook.entity.Question;
 import com.mistake.notebook.repository.QuestionRepository;
+import com.mistake.notebook.security.AuthContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -28,6 +30,23 @@ public class QuestionService {
 
     private final QuestionRepository questionRepository;
     private final AIAnswerService aiAnswerService;
+    private final CategorySeedService categorySeedService;
+
+    private long uid() {
+        return AuthContext.requireUserId();
+    }
+
+    private void attachOwner(Question question, String categoryName) {
+        Long ctx = AuthContext.getUserId();
+        if (ctx != null) {
+            question.setUserId(ctx);
+            Category cat = categorySeedService.findForUser(ctx, categoryName);
+            if (cat != null) {
+                question.setCategoryId(cat.getId());
+                question.setCategory(cat.getName());
+            }
+        }
+    }
 
     /**
      * 创建题目
@@ -48,6 +67,10 @@ public class QuestionService {
         dto.setAiAnalysis(request.getAiAnalysis());
         
         Question question = dto.toEntity();
+        boolean variant = Boolean.TRUE.equals(request.getIsVariant())
+                || (request.getTags() != null && request.getTags().contains("变式题"));
+        question.setIsVariant(variant);
+        attachOwner(question, request.getCategory());
         Question savedQuestion = questionRepository.save(question);
         
         log.info("题目创建成功，ID：{}", savedQuestion.getId());
@@ -58,8 +81,10 @@ public class QuestionService {
      * 根据ID查询题目
      */
     public Optional<QuestionDTO> getQuestionById(Long id) {
+        Long userId = AuthContext.getUserId();
         return questionRepository.findById(id)
                 .filter(question -> !question.getIsDeleted())
+                .filter(question -> userId == null || userId.equals(question.getUserId()))
                 .map(QuestionDTO::fromEntity);
     }
 
@@ -67,7 +92,7 @@ public class QuestionService {
      * 查询所有题目
      */
     public List<QuestionDTO> getAllQuestions() {
-        return questionRepository.findByIsDeletedFalseOrderByCreatedAtDesc()
+        return questionRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(uid())
                 .stream()
                 .map(QuestionDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -80,7 +105,7 @@ public class QuestionService {
         Sort sort = Sort.by(Sort.Direction.fromString(sortDir), sortBy);
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        return questionRepository.findByIsDeletedFalse(pageable)
+        return questionRepository.findByUserIdAndIsDeletedFalse(uid(), pageable)
                 .map(QuestionDTO::fromEntity);
     }
 
@@ -88,7 +113,7 @@ public class QuestionService {
      * 根据分类查询题目
      */
     public List<QuestionDTO> getQuestionsByCategory(String category) {
-        return questionRepository.findByCategoryAndIsDeletedFalseOrderByCreatedAtDesc(category)
+        return questionRepository.findByUserIdAndCategoryAndIsDeletedFalseOrderByCreatedAtDesc(uid(), category)
                 .stream()
                 .map(QuestionDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -100,7 +125,7 @@ public class QuestionService {
     public List<QuestionDTO> getQuestionsByDifficulty(String difficulty) {
         try {
             Question.DifficultyLevel difficultyLevel = Question.DifficultyLevel.valueOf(difficulty.toUpperCase());
-            return questionRepository.findByDifficultyAndIsDeletedFalseOrderByCreatedAtDesc(difficultyLevel)
+            return questionRepository.findByUserIdAndDifficultyAndIsDeletedFalseOrderByCreatedAtDesc(uid(), difficultyLevel)
                     .stream()
                     .map(QuestionDTO::fromEntity)
                     .collect(Collectors.toList());
@@ -140,17 +165,23 @@ public class QuestionService {
      * 根据标签查询题目
      */
     public List<QuestionDTO> getQuestionsByTag(String tag) {
-        return questionRepository.findByTagAndIsDeletedFalse(tag)
-                .stream()
-                .map(QuestionDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<Question> tagged = questionRepository.findByUserIdAndTagAndIsDeletedFalse(uid(), tag);
+        if (!"变式题".equals(tag)) {
+            return tagged.stream().map(QuestionDTO::fromEntity).collect(Collectors.toList());
+        }
+        java.util.LinkedHashMap<Long, Question> merged = new java.util.LinkedHashMap<>();
+        for (Question q : tagged) merged.put(q.getId(), q);
+        for (Question q : questionRepository.findByUserIdAndIsVariantTrueAndIsDeletedFalseOrderByCreatedAtDesc(uid())) {
+            merged.putIfAbsent(q.getId(), q);
+        }
+        return merged.values().stream().map(QuestionDTO::fromEntity).collect(Collectors.toList());
     }
 
     /**
      * 根据ID列表查询题目（用于试卷生成）
      */
     public List<QuestionDTO> getQuestionsByIds(List<Long> ids) {
-        return questionRepository.findByIdInAndIsDeletedFalseOrderByCreatedAtDesc(ids)
+        return questionRepository.findByUserIdAndIdInAndIsDeletedFalseOrderByCreatedAtDesc(uid(), ids)
                 .stream()
                 .map(QuestionDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -163,6 +194,7 @@ public class QuestionService {
     public Optional<QuestionDTO> updateQuestion(Long id, CreateQuestionRequest request) {
         return questionRepository.findById(id)
                 .filter(question -> !question.getIsDeleted())
+                .filter(question -> java.util.Objects.equals(question.getUserId(), uid()))
                 .map(question -> {
                     question.setContent(request.getContent());
                     question.setImageUrl(request.getImageUrl());
@@ -195,6 +227,7 @@ public class QuestionService {
     public boolean deleteQuestion(Long id) {
         return questionRepository.findById(id)
                 .filter(question -> !question.getIsDeleted())
+                .filter(question -> java.util.Objects.equals(question.getUserId(), uid()))
                 .map(question -> {
                     question.setIsDeleted(true);
                     questionRepository.save(question);
@@ -213,7 +246,7 @@ public class QuestionService {
             return;
         }
         questionRepository.findAllById(ids).forEach(question -> {
-            if (!question.getIsDeleted()) {
+            if (!question.getIsDeleted() && java.util.Objects.equals(question.getUserId(), uid())) {
                 question.setIsDeleted(true);
                 questionRepository.save(question);
                 log.info("批量删除题目，ID：{}", question.getId());
@@ -227,7 +260,7 @@ public class QuestionService {
     public List<QuestionDTO> getQuestionsByCategory(Long categoryId) {
         log.info("根据分类ID {} 查询题目列表", categoryId);
         
-        List<Question> questions = questionRepository.findByCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(categoryId);
+        List<Question> questions = questionRepository.findByUserIdAndCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(uid(), categoryId);
         
         List<QuestionDTO> questionDTOs = questions.stream()
                 .map(QuestionDTO::fromEntity)
@@ -272,6 +305,7 @@ public class QuestionService {
         dto.setAiStatus("pending");
 
         Question question = dto.toEntity();
+        attachOwner(question, request.getCategory());
         question.setAiStatus(Question.AiStatus.PENDING);
         Question saved = questionRepository.save(question);
         log.info("题目已保存(待解析)，ID：{}", saved.getId());
@@ -286,7 +320,7 @@ public class QuestionService {
                 Question.AiStatus.PENDING,
                 Question.AiStatus.PROCESSING,
                 Question.AiStatus.FAILED);
-        return questionRepository.findByAiStatusInAndIsDeletedFalseOrderByCreatedAtDesc(statuses)
+        return questionRepository.findByUserIdAndAiStatusInAndIsDeletedFalseOrderByCreatedAtDesc(uid(), statuses)
                 .stream()
                 .map(QuestionDTO::fromEntity)
                 .collect(Collectors.toList());
@@ -330,7 +364,15 @@ public class QuestionService {
             if (classification != null && classification.isSuccess()) {
                 if (classification.getCategory() != null) {
                     q.setCategory(classification.getCategory());
-                    q.setCategoryId(QuestionDTO.mapCategoryToId(classification.getCategory()));
+                    if (q.getUserId() != null) {
+                        Category cat = categorySeedService.findForUser(q.getUserId(), classification.getCategory());
+                        if (cat != null) {
+                            q.setCategoryId(cat.getId());
+                            q.setCategory(cat.getName());
+                        }
+                    } else {
+                        q.setCategoryId(QuestionDTO.mapCategoryToId(classification.getCategory()));
+                    }
                 }
                 if (classification.getDifficulty() != null) {
                     q.setDifficulty(classification.getDifficulty());

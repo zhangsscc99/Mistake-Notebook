@@ -25,7 +25,7 @@ export const uploadClient = axios.create({
 
 // 通用请求拦截器（添加 token）
 const requestInterceptor = (config) => {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('mn_token') || localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -39,9 +39,11 @@ const responseInterceptor = (response) => {
 
 const errorInterceptor = (error) => {
   if (error.response?.status === 401) {
-    // 清除token并跳转到登录页
+    localStorage.removeItem('mn_token')
     localStorage.removeItem('token')
-    // 这里可以添加路由跳转逻辑
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = '/login'
+    }
   }
   console.error('API请求失败:', error)
   return Promise.reject(error)

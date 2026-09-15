@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 题目数据访问层
@@ -101,6 +102,43 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
      * 根据分类ID查询题目列表
      */
     List<Question> findByCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(Long categoryId);
+
+    List<Question> findByUserIdAndCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, Long categoryId);
+
+    List<Question> findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(Long userId);
+
+    Page<Question> findByUserIdAndIsDeletedFalse(Long userId, Pageable pageable);
+
+    List<Question> findByUserIdAndCategoryAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, String category);
+
+    List<Question> findByUserIdAndDifficultyAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, Question.DifficultyLevel difficulty);
+
+    List<Question> findByUserIdAndAiStatusInAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, List<Question.AiStatus> statuses);
+
+    Optional<Question> findByIdAndUserIdAndIsDeletedFalse(Long id, Long userId);
+
+    long countByUserIdAndIsDeleted(Long userId, Boolean isDeleted);
+
+    long countByUserIdAndCreatedAtAfterAndIsDeleted(Long userId, LocalDateTime createdAt, Boolean isDeleted);
+
+    long countByUserIdAndCategoryIdAndIsDeleted(Long userId, Long categoryId, Boolean isDeleted);
+
+    List<Question> findByUserIdAndIdInAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, List<Long> ids);
+
+    List<Question> findByUserId(Long userId);
+
+    @Query("SELECT DISTINCT q FROM Question q JOIN q.tags t WHERE q.userId = :userId AND t = :tag AND q.isDeleted = false ORDER BY q.createdAt DESC")
+    List<Question> findByUserIdAndTagAndIsDeletedFalse(@Param("userId") Long userId, @Param("tag") String tag);
+
+    List<Question> findByUserIdAndIsVariantTrueAndIsDeletedFalseOrderByCreatedAtDesc(Long userId);
+
+    @Query("SELECT q.category, COUNT(q) FROM Question q WHERE q.userId = :userId AND q.isDeleted = false GROUP BY q.category")
+    List<Object[]> countCategoryByUserId(@Param("userId") Long userId);
+
+    @Query("SELECT q.difficulty, COUNT(q) FROM Question q WHERE q.userId = :userId AND q.isDeleted = false GROUP BY q.difficulty")
+    List<Object[]> countDifficultyByUserId(@Param("userId") Long userId);
+
+    void deleteByUserId(Long userId);
 
     /**
      * 根据AI解析状态查询题目（未删除）—— 用于"解析中"轮询

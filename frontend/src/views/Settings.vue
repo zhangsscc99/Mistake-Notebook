@@ -57,13 +57,7 @@
     <!-- 云服务设置 -->
     <div class="cloud-section">
       <van-cell-group title="云服务配置" inset>
-        <van-cell title="阿里云配置" is-link @click="showCloudConfig = true">
-          <template #value>
-            <van-tag :type="cloudStatus.aliyun ? 'success' : 'default'" size="mini">
-              {{ cloudStatus.aliyun ? '已配置' : '未配置' }}
-            </van-tag>
-          </template>
-        </van-cell>
+        <van-cell title="识别与对话" value="服务端已接入" />
         
         <van-cell title="数据同步" is-link @click="syncData">
           <template #right-icon>
@@ -216,12 +210,16 @@ import {
   closeToast,
   showConfirmDialog
 } from 'vant'
+import { useRouter } from 'vue-router'
 import categoryAPI from '../api/category'
 import { apiClient } from '../api/config'
+import { getProfile } from '../utils/auth'
 
 export default {
   name: 'Settings',
   setup() {
+    const router = useRouter()
+    const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23d9e4f5"/><circle cx="40" cy="30" r="14" fill="%2390a4c4"/><ellipse cx="40" cy="64" rx="22" ry="16" fill="%2390a4c4"/></svg>'
     // 状态管理
     const showLanguagePicker = ref(false)
     const showQualityPicker = ref(false)
@@ -234,7 +232,7 @@ export default {
     const userInfo = reactive({
       name: '错题本用户',
       email: '',
-      avatar: 'https://via.placeholder.com/60x60?text=User'
+      avatar: defaultAvatar
     })
 
     // 统计信息（对齐小程序：错题数 / 分类数）
@@ -344,7 +342,7 @@ export default {
 
     // 编辑个人资料
     const editProfile = () => {
-      showToast('个人资料编辑功能开发中...')
+      router.push('/profile')
     }
 
     // 保存自动分类设置
@@ -537,6 +535,9 @@ export default {
 
     // 组件挂载
     onMounted(() => {
+      const profile = getProfile() || {}
+      userInfo.name = profile.nickName || profile.username || '错题本用户'
+      userInfo.avatar = profile.avatarUrl || defaultAvatar
       loadSettings()
       loadStats()
     })

@@ -2,16 +2,14 @@
 // 使用统一的 API 配置（上传专用，超时时间更长，拦截器已在 config.js 中配置）
 import { uploadClient as apiClient } from './config'
 
-// 响应拦截器（如果需要额外的处理，可以在这里添加）
-apiClient.interceptors.response.use(
-  response => {
-    return response.data
-  },
-  error => {
-    console.error('API Error:', error)
-    return Promise.reject(error)
+function unwrap(response) {
+  const body = response?.data
+  return {
+    success: body?.success !== false,
+    data: body?.data,
+    message: body?.message
   }
-)
+}
 
 export const imageRecognitionAPI = {
   /**
@@ -29,12 +27,11 @@ export const imageRecognitionAPI = {
     
     try {
       // 发送题目分割识别请求
-      const result = await apiClient.post('/upload/question-segment', formData)
-      
+      const result = unwrap(await apiClient.post('/upload/question-segment', formData))
       return {
         success: true,
         data: result.data,
-        message: '识别成功'
+        message: result.message || '识别成功'
       }
     } catch (error) {
       // 如果后端还未实现，返回模拟数据
@@ -61,12 +58,11 @@ export const imageRecognitionAPI = {
     formData.append('file', imageFile)
     
     try {
-      const result = await apiClient.post('/upload/question-segment', formData)
-      
+      const result = unwrap(await apiClient.post('/upload/question-segment', formData))
       return {
         success: true,
         data: result.data,
-        message: '题目分割识别成功'
+        message: result.message || '题目分割识别成功'
       }
     } catch (error) {
       // 如果后端还未实现，返回模拟数据
@@ -208,16 +204,16 @@ export const imageRecognitionAPI = {
         imageUrl: imageUrl
       }
 
-      const result = await apiClient.post('/upload/save-questions', requestData, {
+      const result = unwrap(await apiClient.post('/upload/save-questions', requestData, {
         headers: {
           'Content-Type': 'application/json'
         }
-      })
+      }))
 
       return {
         success: true,
         data: result.data,
-        message: '题目保存成功'
+        message: result.message || '题目保存成功'
       }
     } catch (error) {
       console.error('保存题目失败:', error)

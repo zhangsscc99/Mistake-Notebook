@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mistake.notebook.dto.ApiResponse;
 import com.mistake.notebook.entity.SavedPaper;
 import com.mistake.notebook.repository.SavedPaperRepository;
+import com.mistake.notebook.security.AuthContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +29,8 @@ public class SavedPaperController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> listSavedPapers() {
         try {
-            List<Map<String, Object>> papers = savedPaperRepository.findByIsDeletedFalseOrderByCreatedAtDesc()
+            List<Map<String, Object>> papers = savedPaperRepository
+                    .findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(AuthContext.requireUserId())
                     .stream()
                     .map(this::toResponse)
                     .collect(Collectors.toList());
@@ -55,6 +57,7 @@ public class SavedPaperController {
             List<Map<String, Object>> questions = (List<Map<String, Object>>) questionsObj;
 
             SavedPaper paper = new SavedPaper();
+            paper.setUserId(AuthContext.requireUserId());
             paper.setTitle(title.trim());
             paper.setQuestionCount(questions.size());
             paper.setDuration(parseInteger(request.get("duration"), 90));
@@ -73,7 +76,7 @@ public class SavedPaperController {
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deletePaper(@PathVariable Long id) {
         try {
-            SavedPaper paper = savedPaperRepository.findById(id)
+            SavedPaper paper = savedPaperRepository.findByIdAndUserId(id, AuthContext.requireUserId())
                     .orElseThrow(() -> new IllegalArgumentException("试卷不存在"));
             paper.setIsDeleted(true);
             savedPaperRepository.save(paper);

@@ -13,9 +13,9 @@
   <!-- 顶部搜索栏 -->
   <view class="search-section">
     <view class="search-box">
-      <view class="search-icon-wrap">
-        <text class="search-icon">🔍</text>
-      </view>
+        <view class="search-icon-wrap">
+          <view class="search-glyph"></view>
+        </view>
       <input class="search-input" placeholder="搜索错题分类" value="{{searchKeyword}}" bindinput="onSearchInput" />
       <text class="search-action" bindtap="onSearch">搜索</text>
     </view>

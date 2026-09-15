@@ -20,6 +20,9 @@ public class SavedPaper {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(nullable = false, length = 200)
     private String title;
 

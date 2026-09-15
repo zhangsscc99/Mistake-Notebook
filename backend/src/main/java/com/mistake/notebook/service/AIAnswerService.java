@@ -155,6 +155,32 @@ public class AIAnswerService {
         }
     }
 
+    public String complete(String systemPrompt, String userPrompt, int maxTokens) {
+        try {
+            Map<String, Object> requestData = new HashMap<>();
+            requestData.put("model", aiConfig.getModel());
+            requestData.put("temperature", 0.4);
+            requestData.put("max_tokens", maxTokens);
+            requestData.put("stream", false);
+            requestData.put("messages", List.of(
+                    Map.of("role", "system", "content", systemPrompt),
+                    Map.of("role", "user", "content", userPrompt)
+            ));
+            try (Response response = openAIClient.createChatCompletion(requestData)) {
+                String responseBody = response.body() != null ? response.body().string() : "";
+                if (!response.isSuccessful()) {
+                    log.error("AI complete 失败 {}", response.code());
+                    return "";
+                }
+                JsonNode root = objectMapper.readTree(responseBody);
+                return root.path("choices").path(0).path("message").path("content").asText("");
+            }
+        } catch (Exception e) {
+            log.error("AI complete 异常", e);
+            return "";
+        }
+    }
+
     @Data
     @AllArgsConstructor
     public static class AnswerResult {

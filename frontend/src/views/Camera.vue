@@ -1,5 +1,9 @@
 <template>
   <div class="camera-page">
+    <div class="web-topbar" @click="$router.push('/profile')">
+      <img v-if="avatarUrl" class="web-avatar" :src="avatarUrl" alt="" />
+      <span>{{ greeting || '智卷错题通' }}</span>
+    </div>
     <!-- 主要内容区域 -->
     <div class="main-section">
       <div class="content-container tech-card">
@@ -53,6 +57,14 @@
                 />
               </div>
             </div>
+            <button
+              v-if="selectedImages.length < 10"
+              class="image-item add-tile"
+              type="button"
+              @click="selectFromGallery"
+            >
+              + 继续添加
+            </button>
           </div>
         </div>
 
@@ -120,17 +132,14 @@
       ref="fileInput"
       type="file" 
       accept="image/*"
+      :multiple="!captureMode"
       :capture="captureMode ? 'environment' : undefined"
       style="display: none"
       @change="handleFileSelect"
     />
 
     <!-- 底部导航 -->
-    <van-tabbar route>
-      <van-tabbar-item icon="home-o" to="/homepage">首页</van-tabbar-item>
-      <van-tabbar-item icon="apps-o" to="/categories">分类</van-tabbar-item>
-      <van-tabbar-item icon="edit" to="/paper-builder">组卷</van-tabbar-item>
-    </van-tabbar>
+    <AppTabBar />
   </div>
 </template>
 
@@ -142,11 +151,16 @@ import { imageRecognitionAPI } from '../api/recognition'
 import { apiClient } from '../api/config'
 import categoryAPI from '../api/category'
 import { isPendingQuestion } from '../utils/questionFormat'
+import AppTabBar from '../components/AppTabBar.vue'
+import { getProfile } from '../utils/auth'
 
 export default {
   name: 'Homepage',
+  components: { AppTabBar },
   setup() {
     const router = useRouter()
+    const greeting = ref('')
+    const avatarUrl = ref('')
 
     const processing = ref(false)
     const selectedImages = reactive([])
@@ -214,17 +228,26 @@ export default {
       fileInput.value.click()
     }
 
-    // 处理文件选择（单张，对齐小程序）
-    const handleFileSelect = (event) => {
-      const file = event.target.files?.[0]
-      if (!file || !file.type.startsWith('image/')) return
+    const MAX_IMAGES = 10
 
-      selectedImages.splice(0, selectedImages.length)
-      selectedImages.push({
-        file,
-        url: URL.createObjectURL(file),
-        name: file.name
+    // 处理文件选择（最多 10 张）
+    const handleFileSelect = (event) => {
+      const files = Array.from(event.target.files || []).filter((f) => f.type.startsWith('image/'))
+      if (!files.length) return
+      const room = MAX_IMAGES - selectedImages.length
+      if (room <= 0) {
+        showToast('一次最多选 10 张')
+        event.target.value = ''
+        return
+      }
+      files.slice(0, room).forEach((file) => {
+        selectedImages.push({
+          file,
+          url: URL.createObjectURL(file),
+          name: file.name
+        })
       })
+      if (files.length > room) showToast('一次最多选 10 张')
       event.target.value = ''
     }
 
@@ -250,17 +273,28 @@ export default {
             file: await compressImage(img.file)
           }))
         )
-        const results = await imageRecognitionAPI.recognizeImages(compressed)
-        const payload = results.data || {}
-        if (!payload.questions?.length) {
+        const pages = []
+        for (const img of compressed) {
+          const results = await imageRecognitionAPI.recognizeImages([img])
+          const payload = results.data || {}
+          pages.push({
+            tempFilePath: img.url,
+            imageUrl: payload.imageUrl || img.url,
+            segments: payload.questions || []
+          })
+        }
+        const first = pages.find((p) => p.segments?.length) || pages[0]
+        if (!first?.segments?.length) {
           showToast('未识别到题目')
           return
         }
 
         sessionStorage.setItem('recognitionDraft', JSON.stringify({
-          tempFilePath: selectedImages[0].url,
-          imageUrl: payload.imageUrl || selectedImages[0].url,
-          segments: payload.questions
+          tempFilePath: first.tempFilePath,
+          imageUrl: first.imageUrl,
+          segments: first.segments,
+          pages,
+          pageIndex: pages.findIndex((p) => p === first)
         }))
 
         selectedImages.splice(0)
@@ -352,10 +386,17 @@ export default {
 
     // 组件挂载时加载数据
     onMounted(async () => {
+      const p = getProfile() || {}
+      avatarUrl.value = p.avatarUrl || ''
+      const h = new Date().getHours()
+      const prefix = h < 6 ? '夜深了' : h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好'
+      greeting.value = p.nickName ? prefix + '，' + p.nickName : prefix
       await loadRecentRecords()
     })
 
     return {
+      greeting,
+      avatarUrl,
       processing,
       selectedImages,
       recentRecords,
@@ -374,6 +415,11 @@ export default {
 </script>
 
 <style scoped>
+.web-topbar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px 4px; font-weight: 700; color: #0b1633;
+}
+.web-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
 .camera-page {
   /* Homepage-only theme override (Copilot/M365-ish: premium glass panels on a crisp blue-white canvas). */
   --primary-color: #2459ff;
@@ -411,7 +457,7 @@ export default {
 
   min-height: 100vh;
   background: var(--bg-primary);
-  padding-bottom: 60px;
+  padding-bottom: 90px;
   position: relative;
   overflow-x: hidden;
   font-family: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC",
@@ -709,11 +755,14 @@ export default {
   transition: all 0.3s var(--ease-smooth);
 }
 
-.image-item:hover {
-  transform: scale(1.05);
-  box-shadow: 
-    0 0 22px rgba(31, 91, 255, 0.16),
-    var(--shadow-hover);
+.add-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f7fb;
+  color: #2459ff;
+  font-weight: 700;
+  border: 1px dashed rgba(36, 89, 255, 0.35);
 }
 
 .preview-image {

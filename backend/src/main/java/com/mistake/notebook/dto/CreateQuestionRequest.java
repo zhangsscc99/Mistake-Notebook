@@ -31,4 +31,8 @@ public class CreateQuestionRequest {
     private String aiAnswer;
 
     private String aiAnalysis;
+
+    private String aiStatus;
+
+    private Boolean isVariant;
 } 

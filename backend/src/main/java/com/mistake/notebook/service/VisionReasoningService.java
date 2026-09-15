@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
@@ -47,6 +48,7 @@ public class VisionReasoningService {
     private double temperature;
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
+            .proxy(Proxy.NO_PROXY)
             .connectTimeout(120, TimeUnit.SECONDS)
             .readTimeout(300, TimeUnit.SECONDS)
             .writeTimeout(120, TimeUnit.SECONDS)

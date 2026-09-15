@@ -7,7 +7,7 @@ const { dismissLoginOverlay } = require('../../utils/auth.js');
 const SYMBOL_MAP = {
   '数学': '数', '物理': '物', '化学': '化', '英语': '英',
   '语文': '语', '生物': '生', '历史': '史', '地理': '地',
-  '政治': '政', '体育': '体'
+  '政治': '政', '体育': '体', '计算机/编程': '码'
 };
 
 function formatRelativeTime(ts) {

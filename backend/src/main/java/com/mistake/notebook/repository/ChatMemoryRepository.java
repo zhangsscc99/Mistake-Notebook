@@ -13,4 +13,6 @@ import java.util.Optional;
 public interface ChatMemoryRepository extends JpaRepository<ChatMemory, Long> {
 
     Optional<ChatMemory> findByClientId(String clientId);
+
+    void deleteByClientId(String clientId);
 }

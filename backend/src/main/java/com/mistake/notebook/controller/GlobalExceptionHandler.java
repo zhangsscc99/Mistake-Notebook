@@ -44,6 +44,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
     }
 
+    @ExceptionHandler(com.mistake.notebook.security.UnauthorizedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnauthorized(com.mistake.notebook.security.UnauthorizedException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiResponse.error(e.getMessage(), "UNAUTHORIZED"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandled(Exception e) {
         log.error("未处理的服务异常", e);

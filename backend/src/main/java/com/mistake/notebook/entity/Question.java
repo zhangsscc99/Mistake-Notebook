@@ -24,6 +24,15 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "is_variant")
+    private Boolean isVariant = false;
+
+    @Column(name = "source_question_ids", columnDefinition = "TEXT")
+    private String sourceQuestionIds;
+
     /**
      * 题目内容
      */
