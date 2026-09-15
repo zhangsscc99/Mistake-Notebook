@@ -1,5 +1,14 @@
 // app.js
-const { isLoggedIn, restoreSessionFromCloud } = require('./utils/auth');
+const { isLoggedIn, restoreSessionFromCloud, getSessionRole } = require('./utils/auth');
+
+const TEACHER_PREFIX = 'pages/teacher';
+const STUDENT_TABS = {
+  'pages/index/index': true,
+  'pages/categories/categories': true,
+  'pages/aiChat/aiChat': true,
+  'pages/paperBuilder/paperBuilder': true,
+  'pages/profile/profile': true
+};
 
 App({
   // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
@@ -11,6 +20,7 @@ App({
     loggedIn: false,
     recognitionDraft: null,
     selectedPaperQuestions: [],
+    teacherPick: null,
     categoriesMode: null,
     aiChatContext: ''
   },
@@ -58,9 +68,24 @@ App({
 
   onShow: function () {
     // 切 Tab / 从后台回来时只静默认回会话，绝不 reLaunch 到登录页。
-    // 从对话等 tabBar 页 reLaunch 到非 tab 的登录页，微信会叠一层点不了的登录界面
-    // （标题还是「对话助手」、底部 Tab 还在）。
-    if (isLoggedIn()) return;
+    // 从对话等 tabBar 页 reLaunch 到非 tab 的登录页，微信会叠一层点不了的登录界面。
+    const pages = getCurrentPages();
+    const cur = pages[pages.length - 1];
+    const route = (cur && cur.route) || '';
+    if (route === 'pages/login/login') return;
+
+    if (isLoggedIn()) {
+      const role = getSessionRole();
+      if (role === 'teacher' && STUDENT_TABS[route]) {
+        wx.reLaunch({ url: '/pages/teacher/teacher' });
+        return;
+      }
+      if (role !== 'teacher' && route.indexOf(TEACHER_PREFIX) === 0) {
+        wx.switchTab({ url: '/pages/index/index' });
+      }
+      return;
+    }
+
     restoreSessionFromCloud().catch((err) => {
       console.warn('[app] 恢复登录失败:', err);
     });

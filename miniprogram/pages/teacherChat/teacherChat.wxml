@@ -1,0 +1,21 @@
+<view class="teacher-chat">
+  <view class="chip-row">
+    <view class="chip {{selectedClass.id === item.id ? 'on' : ''}}" wx:for="{{classes}}" wx:key="id" data-id="{{item.id}}" bindtap="selectClass">{{item.name}}</view>
+  </view>
+  <view class="chat-hint">面向老师：基于当前班级错题统计，帮你看高频、薄弱学科和组卷建议。不会像学生端那样讲题答疑。</view>
+  <scroll-view class="msg-scroll" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation>
+    <view class="msg-list">
+      <view wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}" class="msg-row {{item.role === 'user' ? 'msg-row-user' : ''}}">
+        <view class="msg-bubble {{item.role === 'user' ? 'bubble-user' : 'bubble-ai'}}">{{item.content}}</view>
+      </view>
+    </view>
+    <view class="suggest-row" wx:if="{{messages.length === 1 && !sending}}">
+      <view class="suggest-chip" wx:for="{{suggestions}}" wx:key="*this" data-text="{{item}}" bindtap="useSuggestion">{{item}}</view>
+    </view>
+  </scroll-view>
+  <view class="input-bar">
+    <input class="chat-input" value="{{inputValue}}" bindinput="onInput" confirm-type="send" bindconfirm="send" placeholder="问班级学情，例如：这周该练什么" />
+    <button class="send-btn" loading="{{sending}}" disabled="{{sending}}" bindtap="send">发送</button>
+  </view>
+  <teacher-tabbar active="chat"></teacher-tabbar>
+</view>

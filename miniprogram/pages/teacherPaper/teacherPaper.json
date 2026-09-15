@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "班级组卷",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "teacher-tabbar": "/components/teacher-tabbar/teacher-tabbar"
+  }
+}

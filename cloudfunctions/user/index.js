@@ -68,6 +68,8 @@ exports.main = async (event) => {
         return await getProfile(openId);
       case 'ensure':
         return await ensureAccount(openId);
+      case 'setRole':
+        return await setRole(openId, event);
       case 'updateProfile':
         return await updateProfile(openId, event);
       case 'getWallet':
@@ -234,6 +236,8 @@ function normalize(record, openId) {
     nickName: r.nickName || '',
     avatarFileID: r.avatarFileID || '',
     stage: r.stage || '',
+    // 教师身份只认库里的 role。客户端不能通过 updateProfile 改这个字段。
+    role: r.role === 'teacher' ? 'teacher' : (r.role === 'student' ? 'student' : ''),
     // 钱包字段。老用户档里没有这些键，一律退化成 0/'' —— 不要在这里补写库，
     // getProfile 是纯读（见下方注释），建档只发生在 updateProfile / checkin
     coins: r.coins || 0,
@@ -257,6 +261,29 @@ function normalize(record, openId) {
 async function getProfile(openId) {
   const record = await readUserDoc(openId);
   return { success: true, data: normalize(record, openId) };
+}
+
+// 登录页选择学生/老师时写入自己的身份。只改调用者自己的档，不接受别人的 openid。
+// 没有教师审核后台，所以第一次（以及之后退出重进）都可以自己选；不能靠管理员改库。
+async function setRole(openId, event) {
+  const role = event.role === 'teacher' ? 'teacher' : 'student';
+  const now = new Date().toISOString();
+  const existing = await db.collection(COLLECTION).where({ _id: openId }).limit(1).get();
+  const current = (existing.data || [])[0];
+  if (!current) {
+    const data = {
+      ...emptyUserFields(openId),
+      role,
+      createdAt: now,
+      updatedAt: now
+    };
+    await db.collection(COLLECTION).doc(openId).set({ data });
+    return { success: true, data: normalize(data, openId) };
+  }
+  await db.collection(COLLECTION).doc(openId).update({
+    data: { role, updatedAt: now }
+  });
+  return { success: true, data: normalize({ ...current, role, updatedAt: now }, openId) };
 }
 
 async function updateProfile(openId, event) {

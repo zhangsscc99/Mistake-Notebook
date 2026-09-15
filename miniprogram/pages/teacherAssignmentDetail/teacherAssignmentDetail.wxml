@@ -1,0 +1,38 @@
+<view class="teacher-shell detail-page">
+  <view class="loading-line" wx:if="{{loading}}">加载作业…</view>
+
+  <block wx:if="{{!loading && title}}">
+    <view class="teacher-hero">
+      <view class="hero-kicker">{{className}}</view>
+      <view class="hero-title">{{title}}</view>
+      <view class="hero-sub">截止 {{dueText}}</view>
+      <view class="hero-stats">
+        <view class="hero-stat"><text>{{submitted}}/{{studentCount}}</text><label>已交</label></view>
+        <view class="hero-divider"></view>
+        <view class="hero-stat"><text>{{missing}}</text><label>未交</label></view>
+        <view class="hero-divider"></view>
+        <view class="hero-stat"><text>{{graded}}</text><label>已批</label></view>
+      </view>
+    </view>
+
+    <view class="section-head"><text class="section-title">题目</text><text class="section-note">{{questions.length}} 道</text></view>
+    <view class="white-card" wx:for="{{questions}}" wx:key="id" data-index="{{index}}" bindtap="openQuestion">
+      <view class="q-index">第 {{item.index}} 题</view>
+      <view class="q-content">{{item.content}}</view>
+    </view>
+    <view class="empty-block" wx:if="{{!questions.length}}">题目可能已被删除</view>
+
+    <view class="section-head"><text class="section-title">学生</text></view>
+    <view class="white-card tap-card" wx:for="{{roster}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="openStudent">
+      <view class="row-card">
+        <view class="mark">{{item.mark}}</view>
+        <view style="flex:1; min-width:0;">
+          <view class="stu-name">{{item.nickName}}</view>
+          <view class="stu-meta">{{item.statusKey === 'missing' ? '尚未提交' : '点开查看作答并打分'}}</view>
+        </view>
+        <text class="badge status-{{item.statusKey}}">{{item.status}}</text>
+      </view>
+    </view>
+    <view class="empty-block" wx:if="{{!roster.length}}">班里还没有学生</view>
+  </block>
+</view>

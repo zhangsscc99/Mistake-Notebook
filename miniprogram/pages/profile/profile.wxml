@@ -184,6 +184,14 @@
   <view class="section-group">
     <view class="section-title">我的</view>
     <view class="cell-list">
+      <view class="cell" bindtap="joinClass">
+        <text class="cell-label">加入班级</text>
+        <text class="cell-arrow">›</text>
+      </view>
+      <view class="cell" bindtap="goClasses">
+        <text class="cell-label">我的班级</text>
+        <text class="cell-arrow">›</text>
+      </view>
       <view class="cell" bindtap="goCategories">
         <text class="cell-label">我的错题</text>
         <text class="cell-arrow">›</text>

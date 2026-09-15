@@ -1,0 +1,48 @@
+<view class="teacher-shell create-page">
+  <view class="teacher-hero">
+    <view class="hero-kicker">ASSIGN</view>
+    <view class="hero-title">布置作业</view>
+    <view class="hero-sub">选班级、题目来源和截止时间。学生作答后，在作业详情里按人批改</view>
+  </view>
+
+  <view class="section-head"><text class="section-title">班级</text></view>
+  <view class="chip-row">
+    <view class="chip {{selectedClass.id === item.id ? 'on' : ''}}" wx:for="{{classes}}" wx:key="id" data-id="{{item.id}}" bindtap="selectClass">{{item.name}}</view>
+  </view>
+  <view class="empty-block" wx:if="{{!classes.length}}">还没有班级<text>先去「班级」新建</text></view>
+
+  <view class="section-head"><text class="section-title">作业名称</text></view>
+  <view class="white-card">
+    <input class="field" value="{{title}}" placeholder="例如：周五错题练习" maxlength="30" bindinput="onTitle" />
+  </view>
+
+  <view class="section-head"><text class="section-title">截止时间</text></view>
+  <view class="white-card row-card">
+    <picker mode="date" value="{{dueDate}}" bindchange="onDue">
+      <view class="field">{{dueDate || '可选，不设则不限制'}}</view>
+    </picker>
+    <text class="clear" wx:if="{{dueDate}}" catchtap="clearDue">清除</text>
+  </view>
+
+  <view class="section-head"><text class="section-title">题目来源</text></view>
+  <view class="chip-row">
+    <view class="chip {{source === 'hot' ? 'on' : ''}}" data-source="hot" bindtap="setSource">高频错题 {{hotCount}}</view>
+    <view class="chip {{source === 'paper' ? 'on' : ''}}" data-source="paper" bindtap="setSource">已存试卷</view>
+    <view class="chip {{source === 'pick' ? 'on' : ''}}" data-source="pick" bindtap="setSource">当前选题 {{pickCount}}</view>
+  </view>
+  <view class="hint" wx:if="{{source === 'hot'}}">将把当前班级最高频的错题布置下去（每题一份）</view>
+  <view class="hint" wx:if="{{source === 'pick' && !pickCount}}">还没有选题<text class="link" bindtap="goPick">去错题页勾选</text></view>
+  <view class="hint" wx:if="{{source === 'pick' && pickCount}}">使用错题页带到组卷的 {{pickCount}} 道题</view>
+
+  <block wx:if="{{source === 'paper'}}">
+    <view class="white-card {{selectedPaperId === item.id ? 'on-paper' : ''}}" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" bindtap="selectPaper">
+      <view class="paper-title">{{item.title}}</view>
+      <view class="paper-meta">{{item.questionCount}} 道题</view>
+    </view>
+    <view class="empty-block" wx:if="{{!papers.length}}">这个班还没有试卷<text>先去组卷页保存一份</text></view>
+  </block>
+
+  <view class="submit-wrap">
+    <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">布置给学生</button>
+  </view>
+</view>

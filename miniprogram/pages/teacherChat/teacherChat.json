@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "教学助手",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "disableScroll": true,
+  "usingComponents": {
+    "teacher-tabbar": "/components/teacher-tabbar/teacher-tabbar"
+  }
+}

@@ -37,7 +37,7 @@ function isLoggedIn() {
   return !!readSession();
 }
 
-function setLoggedIn(openId) {
+function setLoggedIn(openId, role) {
   memoryLoggedIn = true;
   try {
     const app = getApp();
@@ -49,12 +49,30 @@ function setLoggedIn(openId) {
     wx.setStorageSync(SESSION_KEY, {
       loggedIn: true,
       openId: openId || '',
+      role: role === 'teacher' ? 'teacher' : 'student',
       at: Date.now()
     });
     wx.removeStorageSync(LOGOUT_KEY);
   } catch (e) {
     // 写失败也不挡这次进入：内存标记 + 云端 OPENID 仍有效
   }
+}
+
+function getSessionRole() {
+  const s = readSession();
+  return (s && s.role) || 'student';
+}
+
+function isTeacherSession() {
+  return getSessionRole() === 'teacher';
+}
+
+function enterByRole(role) {
+  if (role === 'teacher') {
+    wx.reLaunch({ url: '/pages/teacher/teacher' });
+    return;
+  }
+  wx.switchTab({ url: '/pages/index/index' });
 }
 
 function clearSession() {
@@ -103,6 +121,10 @@ function dismissLoginOverlay() {
   if (!top || top.route !== 'pages/login/login') return false;
   if (isOptedOut()) return false;
 
+  if (isTeacherSession()) {
+    wx.reLaunch({ url: '/pages/teacher/teacher' });
+    return true;
+  }
   for (let i = pages.length - 2; i >= 0; i--) {
     const url = TAB_URLS[pages[i].route];
     if (url) {
@@ -115,6 +137,10 @@ function dismissLoginOverlay() {
 }
 
 function leaveLoginToTab() {
+  if (isTeacherSession()) {
+    wx.reLaunch({ url: '/pages/teacher/teacher' });
+    return;
+  }
   const pages = getCurrentPages();
   for (let i = pages.length - 2; i >= 0; i--) {
     const url = TAB_URLS[pages[i].route];
@@ -138,7 +164,7 @@ function restoreSessionFromCloud() {
 
   const cached = getCachedProfile();
   if (cached && (cached.hasProfile || cached.openId)) {
-    setLoggedIn(cached.openId);
+    setLoggedIn(cached.openId, cached.role);
   }
 
   restoring = new Promise((resolve, reject) => {
@@ -153,7 +179,7 @@ function restoreSessionFromCloud() {
     .then((res) => {
       if (!res.success) throw new Error(res.error || '登录恢复失败');
       const p = setCachedProfile(res.data);
-      setLoggedIn(p.openId);
+      setLoggedIn(p.openId, p.role);
       return { loggedIn: true, restored: true, profile: p };
     })
     .catch((err) => {
@@ -178,6 +204,9 @@ module.exports = {
   SESSION_KEY,
   isLoggedIn,
   setLoggedIn,
+  getSessionRole,
+  isTeacherSession,
+  enterByRole,
   clearSession,
   goLogin,
   restoreSessionFromCloud,

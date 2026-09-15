@@ -1,0 +1,71 @@
+<view class="teacher-shell {{picking ? 'picking' : ''}}">
+  <view class="teacher-hero">
+    <view class="hero-kicker">MISTAKES</view>
+    <view class="hero-title">全班错题</view>
+    <view class="hero-sub">用分类、学生和搜索缩小范围，再勾选带到组卷页</view>
+    <view class="hero-stats">
+      <view class="hero-stat"><text>{{stats.total || 0}}</text><label>错题</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{stats.studentCount || 0}}</text><label>学生</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat" bindtap="toggleHot"><text>{{hotCount}}</text><label>高频</label></view>
+    </view>
+  </view>
+
+  <view class="chip-row">
+    <view class="chip {{selectedClass.id === item.id ? 'on' : ''}}" wx:for="{{classes}}" wx:key="id" data-id="{{item.id}}" bindtap="selectClass">{{item.name}}</view>
+  </view>
+
+  <view class="search-box">
+    <input class="search-input" value="{{keyword}}" placeholder="搜索题干" confirm-type="search" bindinput="onSearch" />
+    <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">清除</text>
+  </view>
+
+  <scroll-view class="chip-scroll" scroll-x>
+    <view class="chip {{category === item.value ? 'on' : ''}}" wx:for="{{categoryChips}}" wx:key="name" data-value="{{item.value}}" bindtap="selectCategory">{{item.name}} {{item.count}}</view>
+  </scroll-view>
+
+  <scroll-view class="chip-scroll" scroll-x wx:if="{{students.length}}">
+    <view class="chip {{!studentId ? 'on' : ''}}" data-id="all" bindtap="selectStudent">全班</view>
+    <view class="chip {{studentId === item.id ? 'on' : ''}}" wx:for="{{students}}" wx:key="id" data-id="{{item.id}}" bindtap="selectStudent">{{item.name}} {{item.questionCount}}</view>
+  </scroll-view>
+
+  <view class="filter-row">
+    <view class="chip {{onlyHot ? 'on' : ''}}" bindtap="toggleHot">只看高频</view>
+    <view class="chip" wx:if="{{!picking}}" bindtap="startPick">选题</view>
+    <view class="chip" wx:if="{{picking && !visibleAllSelected}}" bindtap="selectAllVisible">全选当前</view>
+    <view class="chip" wx:if="{{picking && visibleAllSelected}}" bindtap="clearVisible">取消当前</view>
+  </view>
+
+  <view class="section-head">
+    <text class="section-title">题目</text>
+    <text class="section-note">显示 {{visibleCount}} 道{{selectedCount ? ' · 已选 ' + selectedCount : ''}}</text>
+  </view>
+
+  <view class="white-card" wx:for="{{visibleQuestions}}" wx:key="id" data-id="{{item.id}}" bindtap="onQuestionTap">
+    <view class="row-card">
+      <view class="check {{selectedMap[item.id] ? 'on' : ''}}" wx:if="{{picking}}">{{selectedMap[item.id] ? '✓' : ''}}</view>
+      <view class="hot-count" wx:if="{{item.isHot}}">{{item.hotCount}}次</view>
+      <view style="flex:1; min-width:0;">
+        <view class="q-content">{{item.content}}</view>
+        <view class="q-meta">
+          <text class="badge">{{item.category || '未分类'}}</text>
+          <text class="badge">{{item.nickName || '学生'}}</text>
+          <text class="badge" wx:if="{{item.isHot}}">高频</text>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="empty-block" wx:if="{{!loading && !visibleCount}}">没有符合条件的错题<text>换个分类、学生或搜索词试试</text></view>
+
+  <view class="loading-line" wx:if="{{loading}}">加载班级错题…</view>
+
+  <view class="pick-dock" wx:if="{{picking}}">
+    <view class="pick-dock-title">已选 {{selectedCount}} 道 · 当前显示 {{visibleCount}} 道</view>
+    <view class="pick-actions">
+      <button class="ghost-btn" bindtap="cancelPick">取消</button>
+      <button class="primary-btn" bindtap="confirmPick">带到组卷</button>
+    </view>
+  </view>
+  <teacher-tabbar active="questions"></teacher-tabbar>
+</view>

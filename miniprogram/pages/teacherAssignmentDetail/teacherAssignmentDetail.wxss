@@ -1,0 +1,47 @@
+@import "../../styles/teacher-shell.wxss";
+
+.detail-page { padding-bottom: 48rpx; }
+
+.q-index {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #2459ff;
+}
+
+.q-content {
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  line-height: 1.55;
+  color: #0b1633;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64rpx;
+  height: 64rpx;
+  margin-right: 16rpx;
+  border-radius: 50%;
+  color: #2459ff;
+  background: #eaf1ff;
+  font-size: 26rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.stu-name {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.stu-meta {
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.badge.status-missing { color: #e11d48; background: rgba(225, 29, 72, 0.12); }
+.badge.status-submitted { color: #d97706; background: rgba(217, 119, 6, 0.12); }
+.badge.status-graded { color: #16a34a; background: rgba(22, 163, 74, 0.12); }

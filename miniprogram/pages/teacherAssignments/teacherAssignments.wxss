@@ -1,0 +1,32 @@
+@import "../../styles/teacher-shell.wxss";
+
+.hw-page { padding-bottom: 48rpx; }
+
+.hero-btn {
+  margin-top: 24rpx;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.45);
+}
+
+.hw-title {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.hw-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.hw-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.badge.status-missing { color: #e11d48; background: rgba(225, 29, 72, 0.12); }
+.badge.status-graded { color: #16a34a; background: rgba(22, 163, 74, 0.12); }

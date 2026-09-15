@@ -1,0 +1,44 @@
+<view class="teacher-shell">
+  <view class="teacher-hero">
+    <view class="hero-kicker">TEACHER</view>
+    <view class="hero-title">{{nickName || '教师'}}</view>
+    <view class="hero-sub">点上方数字可进入对应模块。这里没有拍照和个人错题本</view>
+    <view class="hero-stats">
+      <view class="hero-stat" data-focus="" bindtap="goClass"><text>{{classCount}}</text><label>班级</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat" data-focus="students" bindtap="goClass"><text>{{studentCount}}</text><label>学生</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat" bindtap="goAssignments"><text>{{assignmentCount}}</text><label>作业</label></view>
+    </view>
+  </view>
+
+  <view class="section-head"><text class="section-title">教学</text></view>
+  <view class="white-card">
+    <view class="cell" bindtap="goAssignments">
+      <text class="cell-label">作业布置与批改</text>
+      <text class="cell-arrow">›</text>
+    </view>
+    <view class="cell" bindtap="goPaper">
+      <text class="cell-label">班级组卷</text>
+      <text class="cell-arrow">›</text>
+    </view>
+    <view class="cell" bindtap="goReport">
+      <text class="cell-label">家长报告</text>
+      <text class="cell-arrow">›</text>
+    </view>
+    <view class="cell" bindtap="goQuestions">
+      <text class="cell-label">全班错题与高频</text>
+      <text class="cell-arrow">›</text>
+    </view>
+  </view>
+
+  <view class="section-head"><text class="section-title">账号</text></view>
+  <view class="white-card">
+    <view class="cell" bindtap="onLogout">
+      <text class="cell-label">退出登录</text>
+      <text class="cell-arrow">›</text>
+    </view>
+  </view>
+  <view class="empty-block"><text>学生请从登录页选择学生入口。这里不会出现金币、签到或个人错题本。</text></view>
+  <teacher-tabbar active="mine"></teacher-tabbar>
+</view>
