@@ -24,7 +24,8 @@ const COLLECTIONS = [
   'class_notebooks',
   'assignments',
   'assignment_submissions',
-  'parent_reports'
+  'parent_reports',
+  'class_papers'
 ];
 
 async function ensureCollection(name) {

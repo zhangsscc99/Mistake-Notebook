@@ -1,1 +1,4 @@
-{"timeout":30,"memorySize":256}
+{
+  "timeout": 60,
+  "memorySize": 256
+}

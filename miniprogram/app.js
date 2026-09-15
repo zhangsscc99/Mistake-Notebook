@@ -1,5 +1,14 @@
 // app.js
-const { isLoggedIn, goLogin } = require('./utils/auth');
+const { isLoggedIn, goLogin, getSessionRole } = require('./utils/auth');
+
+const TEACHER_PREFIX = 'pages/teacher';
+const STUDENT_TABS = {
+  'pages/index/index': true,
+  'pages/categories/categories': true,
+  'pages/aiChat/aiChat': true,
+  'pages/paperBuilder/paperBuilder': true,
+  'pages/profile/profile': true
+};
 
 App({
   // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
@@ -10,6 +19,7 @@ App({
     profile: null,
     recognitionDraft: null,
     selectedPaperQuestions: [],
+    teacherPick: null,
     categoriesMode: null,
     aiChatContext: ''
   },
@@ -61,7 +71,19 @@ App({
   onShow: function () {
     const pages = getCurrentPages();
     const cur = pages[pages.length - 1];
-    if (cur && cur.route === 'pages/login/login') return;
-    if (!isLoggedIn()) goLogin();
+    const route = (cur && cur.route) || '';
+    if (route === 'pages/login/login') return;
+    if (!isLoggedIn()) {
+      goLogin();
+      return;
+    }
+    const role = getSessionRole();
+    if (role === 'teacher' && STUDENT_TABS[route]) {
+      wx.reLaunch({ url: '/pages/teacher/teacher' });
+      return;
+    }
+    if (role !== 'teacher' && (route.indexOf(TEACHER_PREFIX) === 0)) {
+      wx.switchTab({ url: '/pages/index/index' });
+    }
   }
 });

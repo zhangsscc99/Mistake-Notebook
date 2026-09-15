@@ -1,11 +1,26 @@
 <view class="classes-page">
-  <view class="classes-header"><view class="header-kicker">MY CLASSES</view><view class="header-title">我的班级</view><view class="header-sub">查看教师通知和班级学习安排</view></view>
-  <view class="message-card" wx:for="{{messages}}" wx:key="_id"><view class="message-top"><text class="message-class">{{item.className || '班级通知'}}</text><text class="message-time">{{item.createdAt}}</text></view><view class="message-content">{{item.content}}</view></view>
+  <view class="classes-header">
+    <view class="header-kicker">MY CLASSES</view>
+    <view class="header-title">我的班级</view>
+    <view class="header-sub">查看班级错题本和待完成作业</view>
+  </view>
   <view class="section-title" wx:if="{{notebooks.length}}">班级错题本</view>
-  <view class="notebook-card" wx:for="{{notebooks}}" wx:key="id"><view class="notebook-title">{{item.title}}</view><view class="notebook-meta">{{item.className}} · {{item.questionCount}} 道题</view><view class="notebook-q" wx:for="{{item.questions}}" wx:key="id" wx:for-item="q" wx:for-index="qi">{{qi + 1}}. {{q.content}}</view></view>
+  <view class="notebook-card" wx:for="{{notebooks}}" wx:key="id">
+    <view class="notebook-title">{{item.title}}</view>
+    <view class="notebook-meta">{{item.className}} · {{item.questionCount}} 道题</view>
+    <view class="notebook-q" wx:for="{{item.questions}}" wx:key="id" wx:for-item="q" wx:for-index="qi">{{qi + 1}}. {{q.content}}</view>
+  </view>
   <view class="section-title" wx:if="{{assignments.length}}">待完成作业</view>
-  <view class="assignment-card" wx:for="{{assignments}}" wx:key="_id" data-id="{{item._id}}" bindtap="openAssignment"><view class="notebook-title">{{item.title}}</view><view class="notebook-meta">{{item.questionIds.length}} 道题 · {{item.dueAt || '未设置截止时间'}}</view><view class="assignment-action">{{item.submissionStatus === 'graded' ? '已批改 · ' + item.submissionScore + '分' : item.submissionStatus === 'submitted' ? '已提交，等待批改' : '开始作答 ›'}}</view></view>
-  <view class="class-card" wx:for="{{classes}}" wx:key="id"><view class="class-name">{{item.name}}</view><view class="class-meta">{{item.grade || '未设置学段'}} · {{item.teacherName}}</view><view class="class-code">已加入</view></view>
+  <view class="assignment-card" wx:for="{{assignments}}" wx:key="_id" data-id="{{item._id}}" bindtap="openAssignment">
+    <view class="notebook-title">{{item.title}}</view>
+    <view class="notebook-meta">{{item.questionCount}} 道题 · {{item.dueAt || '未设置截止时间'}}</view>
+    <view class="assignment-action">{{item.submissionStatus === 'graded' ? '已批改 · ' + item.submissionScore + '分' : item.submissionStatus === 'submitted' ? '已提交，等待批改' : '开始作答 ›'}}</view>
+  </view>
+  <view class="class-card" wx:for="{{classes}}" wx:key="id">
+    <view class="class-name">{{item.name}}</view>
+    <view class="class-meta">{{item.grade || '未设置学段'}} · {{item.teacherName}}</view>
+    <view class="class-code">已加入</view>
+  </view>
   <view class="empty" wx:if="{{!loading && classes.length === 0}}">还没有加入班级<text>可在“我的”中输入教师提供的加入码</text></view>
   <view class="loading" wx:if="{{loading}}">加载中…</view>
 </view>

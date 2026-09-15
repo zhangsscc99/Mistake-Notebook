@@ -1,0 +1,87 @@
+@import "../../styles/teacher-shell.wxss";
+
+page { height: 100%; overflow: hidden; }
+
+.teacher-chat {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #eef3fb;
+  background-image:
+    radial-gradient(circle 420rpx at 100% 0%, rgba(82,183,255,0.12) 0%, transparent 60%),
+    linear-gradient(rgba(11,22,51,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11,22,51,0.025) 1px, transparent 1px);
+  background-size: auto, 44rpx 44rpx, 44rpx 44rpx;
+}
+
+.chat-hint {
+  margin: 16rpx 24rpx 0;
+  padding: 16rpx 22rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  font-size: 22rpx;
+  color: rgba(11,22,51,0.55);
+  border: 1px solid rgba(11,22,51,0.06);
+}
+
+.chip-row { padding-top: 12rpx; }
+
+.suggest-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 0 24rpx 16rpx;
+}
+
+.suggest-chip {
+  padding: 12rpx 20rpx;
+  border-radius: 999px;
+  background: rgba(36, 89, 255, 0.08);
+  color: #2459ff;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.msg-scroll { flex: 1; min-height: 0; }
+
+.msg-list { padding: 16rpx 24rpx 24rpx; }
+
+.msg-row { display: flex; margin-bottom: 20rpx; }
+.msg-row-user { justify-content: flex-end; }
+.msg-bubble { max-width: 78%; padding: 18rpx 22rpx; border-radius: 18rpx; font-size: 28rpx; line-height: 1.55; }
+.bubble-ai { background: #fff; color: #0b1633; border: 1px solid rgba(11,22,51,0.06); }
+.bubble-user { background: linear-gradient(135deg,#2459ff,#52b7ff); color: #fff; }
+
+.input-bar {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 12rpx 24rpx calc(124rpx + env(safe-area-inset-bottom));
+  background: rgba(255,255,255,0.94);
+  border-top: 1rpx solid rgba(11,22,51,0.06);
+}
+
+.chat-input {
+  flex: 1;
+  height: 72rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  background: #f4f7fd;
+  font-size: 28rpx;
+}
+
+.send-btn {
+  width: 120rpx !important;
+  height: 72rpx;
+  line-height: 72rpx;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 999rpx;
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 800;
+  background: linear-gradient(135deg,#2459ff,#52b7ff);
+}
+.send-btn::after { border: none; }

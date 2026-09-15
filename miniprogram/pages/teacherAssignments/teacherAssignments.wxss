@@ -1,1 +1,32 @@
-.assignment-page{min-height:100vh;background:#eaf3ff;color:#0b1633;padding-bottom:120rpx}.head{padding:44rpx 32rpx 36rpx;color:#fff;background:linear-gradient(135deg,#2459ff,#52b7ff 58%,#b6a6ff)}.kicker{font-size:20rpx;letter-spacing:3rpx;opacity:.72}.title{margin-top:14rpx;font-size:38rpx;font-weight:800}.sub{margin-top:10rpx;font-size:23rpx;opacity:.82}.picker,.input{margin:22rpx 24rpx 0;height:70rpx;line-height:70rpx;padding:0 22rpx;border-radius:14rpx;background:#fff;font-size:26rpx}.input{box-sizing:border-box;margin-top:14rpx}.q{display:flex;align-items:flex-start;margin:12rpx 24rpx 0;padding:22rpx;border-radius:16rpx;background:#fff;font-size:24rpx;line-height:1.5}.check{width:38rpx;height:38rpx;margin-right:16rpx;border:2rpx solid #aab8d8;border-radius:50%;text-align:center;line-height:34rpx;color:#fff;flex:none}.check.on{border-color:#2459ff;background:#2459ff}.submit{position:fixed;left:24rpx;right:24rpx;bottom:28rpx;height:82rpx;line-height:82rpx;border:0;border-radius:999rpx;color:#fff;background:linear-gradient(135deg,#2459ff,#52b7ff)}.submit::after{border:0}
+@import "../../styles/teacher-shell.wxss";
+
+.hw-page { padding-bottom: 48rpx; }
+
+.hero-btn {
+  margin-top: 24rpx;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #fff !important;
+  box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.45);
+}
+
+.hw-title {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.hw-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.hw-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.badge.status-missing { color: #e11d48; background: rgba(225, 29, 72, 0.12); }
+.badge.status-graded { color: #16a34a; background: rgba(22, 163, 74, 0.12); }

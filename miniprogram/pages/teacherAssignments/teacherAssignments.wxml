@@ -1,1 +1,19 @@
-<view class="assignment-page"><view class="head"><view class="kicker">ASSIGNMENTS</view><view class="title">布置作业</view><view class="sub">从班级错题中选择题目发布</view></view><picker range="{{classes}}" range-key="name" bindchange="onClass"><view class="picker">{{selectedClass.name || '选择班级'}}</view></picker><input class="input" value="{{title}}" bindinput="onTitle" placeholder="作业名称"/><view class="q" wx:for="{{questions}}" wx:key="id" data-id="{{item.id}}" bindtap="toggle"><view class="check {{item.checked?'on':''}}">{{item.checked?'✓':''}}</view><text>{{item.content}}</text></view><view class="published" wx:if="{{assignments.length}}"><view class="published-title">已布置作业</view><view class="published-item" wx:for="{{assignments}}" wx:key="_id" data-index="{{index}}" bindtap="viewSubmissions">{{item.title}} · {{item.questionIds.length}} 题 <text>查看提交 ›</text></view></view><button class="submit" bindtap="publish">发布作业（{{selectedCount}}）</button></view>
+<view class="teacher-shell hw-page">
+  <view class="teacher-hero">
+    <view class="hero-kicker">HOMEWORK</view>
+    <view class="hero-title">作业</view>
+    <view class="hero-sub">在这里布置和批改。和错题、组卷分开，学生作答后才能打分</view>
+    <button class="ghost-btn hero-btn" bindtap="goCreate">＋ 布置作业</button>
+  </view>
+
+  <view class="white-card tap-card" wx:for="{{assignments}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
+    <view class="hw-title">{{item.title}}</view>
+    <view class="hw-meta">{{item.className || '班级'}} · {{item.questionCount}} 道题 · {{item.dueText}}</view>
+    <view class="hw-stats">
+      <text class="badge">已交 {{item.submitted}}/{{item.studentCount}}</text>
+      <text class="badge status-missing">未交 {{item.missing}}</text>
+      <text class="badge status-graded">已批 {{item.graded}}</text>
+    </view>
+  </view>
+  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>点上方「布置作业」，从试卷、高频错题或已选题出题</text></view>
+</view>

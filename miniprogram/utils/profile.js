@@ -12,6 +12,7 @@ const EMPTY_PROFILE = {
   nickName: '',
   avatarFileID: '',
   stage: '',
+  role: 'student',
   hasProfile: false
 };
 
@@ -23,6 +24,7 @@ function normalize(data) {
     nickName: d.nickName || '',
     avatarFileID: d.avatarFileID || '',
     stage: d.stage || '',
+    role: d.role === 'teacher' ? 'teacher' : (d.role === 'student' ? 'student' : ''),
     hasProfile: !!(d.exists || d.hasProfile)
   };
 }

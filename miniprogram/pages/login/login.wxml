@@ -3,13 +3,18 @@
   <view class="hero">
     <view class="mark">错</view>
     <view class="title">智卷错题通</view>
-    <view class="subtitle">{{invited ? '同学推荐你来一起整理错题' : '用微信身份进入，每人一份自己的错题本'}}</view>
+    <view class="subtitle">{{invited ? '同学推荐你来一起整理错题' : (intentRole === 'teacher' ? '教师工作台与学生端分开，登录后只看班级学情' : '用微信身份进入，每人一份自己的错题本')}}</view>
   </view>
 
   <view class="card">
     <view class="card-title">{{returning ? '欢迎回来' : '创建账号'}}</view>
-    <view class="card-desc" wx:if="{{returning}}">已识别到你的微信，点击即可进入原账号</view>
-    <view class="card-desc" wx:else>第一次使用会自动注册，之后换手机也能找回</view>
+    <view class="card-desc" wx:if="{{returning}}">已识别到你的微信，选学生或老师后进入对应工作台</view>
+    <view class="card-desc" wx:else>第一次使用会自动注册。学生和老师都在这里自己选身份</view>
+
+    <view class="role-row">
+      <view class="role-chip {{intentRole === 'student' ? 'on' : ''}}" data-role="student" bindtap="selectRole">学生</view>
+      <view class="role-chip {{intentRole === 'teacher' ? 'on' : ''}}" data-role="teacher" bindtap="selectRole">老师</view>
+    </view>
 
     <button class="avatar-btn" bindtap="onPickAvatar">
       <image
@@ -23,7 +28,7 @@
       <text class="nick-label">昵称</text>
       <input
         class="nick-input"
-        type="nickname"
+        type="text"
         placeholder="匿名用户"
         maxlength="20"
         value="{{nickName}}"
@@ -38,12 +43,12 @@
       loading="{{submitting}}"
       disabled="{{submitting}}"
       bindtap="onLogin">
-      <text class="login-btn-label">{{submitting ? '正在进入…' : (returning ? '进入错题本' : '微信一键登录')}}</text>
+      <text class="login-btn-label">{{submitting ? '正在进入…' : (intentRole === 'teacher' ? (returning ? '进入教师工作台' : '教师登录') : (returning ? '进入错题本' : '微信一键登录'))}}</text>
     </button>
   </view>
 
   <view class="hints">
-    <view class="hint">登录后才能看到自己的错题、分类与组卷</view>
-    <view class="hint">头像、昵称、学段之后也可在「我的」里修改</view>
+    <view class="hint">学生整理自己的错题；老师建班后查看加入班级的学生错题</view>
+    <view class="hint">身份在登录时选择并保存，退出后可再选一次</view>
   </view>
 </view>

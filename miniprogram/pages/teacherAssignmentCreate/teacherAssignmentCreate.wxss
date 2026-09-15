@@ -1,0 +1,50 @@
+@import "../../styles/teacher-shell.wxss";
+
+.create-page { padding-bottom: 48rpx; }
+
+.field {
+  width: 100%;
+  font-size: 28rpx;
+  color: #0b1633;
+}
+
+.clear {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  color: #2459ff;
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.hint {
+  margin: 0 28rpx 16rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+  line-height: 1.5;
+}
+
+.link {
+  margin-left: 8rpx;
+  color: #2459ff;
+  font-weight: 700;
+}
+
+.paper-title {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.paper-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.on-paper {
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.35);
+}
+
+.submit-wrap {
+  margin: 24rpx;
+}

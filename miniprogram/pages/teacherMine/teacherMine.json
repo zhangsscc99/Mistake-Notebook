@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "教师",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "usingComponents": {
+    "teacher-tabbar": "/components/teacher-tabbar/teacher-tabbar"
+  }
+}

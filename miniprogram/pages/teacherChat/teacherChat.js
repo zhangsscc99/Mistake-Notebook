@@ -1,0 +1,107 @@
+const { callTeacher } = require('../../utils/teacher');
+
+const SUGGESTIONS = [
+  '这班高频错题是哪些？',
+  '哪个学科最薄弱？',
+  '建议组一套针对性练习',
+  '哪些学生错题比较多？'
+];
+
+function greetingFor(cls, stats) {
+  if (!cls || !cls.id) {
+    return '你好老师，我是班级教学助手，不是学生答疑。先去「班级」建班并把加入码发给学生，他们在学生端录入错题后，我就能帮你看高频错题、薄弱学科，并建议组卷或布置作业。';
+  }
+  const name = cls.name || '当前班级';
+  const total = (stats && stats.total) || 0;
+  const hot = ((stats && stats.hot) || [])[0];
+  if (!total) {
+    return `你好老师，现在看的是「${name}」。班里还没有可统计的错题。等学生在学生端录入后，再问我高频错题或组卷建议。`;
+  }
+  const hotHint = hot
+    ? `目前最高频的是「${String(hot.content || '').slice(0, 24)}」（${hot.count} 次 / ${hot.studentCount} 人）。`
+    : '';
+  return `你好老师，现在看的是「${name}」，共 ${total} 道班级错题。${hotHint}问我高频错题、薄弱学科，或让我帮你决定组哪些练习。`;
+}
+
+Page({
+  data: {
+    classes: [],
+    selectedClass: {},
+    messages: [],
+    suggestions: SUGGESTIONS,
+    inputValue: '',
+    sending: false,
+    scrollToId: '',
+    nextId: 1
+  },
+
+  onLoad() { this.boot(); },
+
+  async boot() {
+    const dash = await callTeacher('dashboard');
+    const classes = (dash.success && dash.data && dash.data.classes) || [];
+    const selectedClass = classes[0] || {};
+    this.setData({ classes, selectedClass });
+    await this.resetThread();
+  },
+
+  async resetThread() {
+    const cls = this.data.selectedClass || {};
+    let stats = { total: 0, hot: [] };
+    if (cls.id) {
+      const st = await callTeacher('classStats', { classId: cls.id });
+      if (st.success) stats = st.data || stats;
+    }
+    this.setData({
+      messages: [{ id: 0, role: 'assistant', content: greetingFor(cls, stats) }],
+      nextId: 1,
+      scrollToId: 'msg-0'
+    });
+  },
+
+  selectClass(e) {
+    const item = this.data.classes.find((c) => c.id === e.currentTarget.dataset.id);
+    if (!item || item.id === this.data.selectedClass.id) return;
+    this.setData({ selectedClass: item });
+    this.resetThread();
+  },
+
+  onInput(e) { this.setData({ inputValue: e.detail.value }); },
+
+  useSuggestion(e) {
+    const text = e.currentTarget.dataset.text;
+    if (!text || this.data.sending) return;
+    this.setData({ inputValue: text }, () => this.send());
+  },
+
+  async send() {
+    const text = (this.data.inputValue || '').trim();
+    if (!text || this.data.sending) return;
+    const id = this.data.nextId;
+    const messages = this.data.messages.concat([{ id, role: 'user', content: text }]);
+    this.setData({
+      messages,
+      inputValue: '',
+      sending: true,
+      nextId: id + 1,
+      scrollToId: 'msg-' + id
+    });
+    try {
+      const payload = messages
+        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .map((m) => ({ role: m.role, content: m.content }));
+      const res = await callTeacher('chat', { classId: this.data.selectedClass.id, messages: payload }, 60000);
+      if (!res.success) throw new Error(res.error || '回复失败');
+      const rid = this.data.nextId;
+      this.setData({
+        messages: this.data.messages.concat([{ id: rid, role: 'assistant', content: res.data.reply }]),
+        nextId: rid + 1,
+        scrollToId: 'msg-' + rid
+      });
+    } catch (e) {
+      wx.showToast({ title: e.message || '发送失败', icon: 'none' });
+    } finally {
+      this.setData({ sending: false });
+    }
+  }
+});

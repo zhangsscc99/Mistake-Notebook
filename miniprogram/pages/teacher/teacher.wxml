@@ -1,48 +1,73 @@
-<view class="teacher-page">
-  <view class="teacher-hero">
-    <view class="hero-kicker">TEACHER WORKSPACE</view>
-    <view class="hero-title">教师工作台</view>
-    <view class="hero-subtitle">管理班级、关注学生的学习进展</view>
-    <view class="hero-stats">
-      <view class="hero-stat"><text>{{classes.length}}</text><label>我的班级</label></view>
-      <view class="hero-divider"></view>
-      <view class="hero-stat"><text>{{studentCount}}</text><label>绑定学生</label></view>
-      <view class="hero-divider"></view>
-      <view class="hero-stat"><text>{{messageCount}}</text><label>未读留言</label></view>
-    </view>
-  </view>
-
+<view class="teacher-shell">
   <view class="access-card" wx:if="{{!loading && !isTeacher}}">
-    <view class="access-icon">教</view>
-    <view class="access-title">暂未开通教师权限</view>
-    <view class="access-desc">请联系系统管理员将你的账号设置为教师后再试。</view>
-    <button class="secondary-btn" bindtap="loadDashboard">重新检查</button>
+    <view class="access-title">请用教师身份进入</view>
+    <view class="access-desc">从登录页选择「老师」即可开通教师工作台。若刚选完老师，点下面重新检查。</view>
+    <button class="primary-btn" style="margin-top: 28rpx;" bindtap="loadDashboard">重新检查</button>
   </view>
 
   <block wx:if="{{isTeacher}}">
-    <view class="section-head"><text>我的班级</text><button class="add-btn" bindtap="createClass">＋ 新建班级</button></view>
-    <view class="class-card" wx:for="{{classes}}" wx:key="id" bindtap="selectClass" data-id="{{item.id}}">
-      <view class="class-main"><view class="class-dot"></view><view><view class="class-name">{{item.name}}</view><view class="class-meta">{{item.grade || '未设置学段'}} · {{item.studentCount || 0}} 名学生</view></view></view>
-      <view class="class-code">{{item.joinCode}} <text>›</text></view>
+    <view class="teacher-hero">
+      <view class="hero-kicker">TEACHER</view>
+      <view class="hero-title">班级工作台</view>
+      <view class="hero-sub">只看加入班级的学生。点加入码可复制发给学生</view>
+      <view class="hero-stats">
+        <view class="hero-stat"><text>{{classes.length}}</text><label>班级</label></view>
+        <view class="hero-divider"></view>
+        <view class="hero-stat"><text>{{studentCount}}</text><label>学生</label></view>
+        <view class="hero-divider"></view>
+        <view class="hero-stat"><text>{{assignmentCount}}</text><label>作业</label></view>
+      </view>
     </view>
-    <view class="empty-card" wx:if="{{classes.length === 0}}"><text>还没有班级</text><text class="empty-hint">创建班级后，把加入码分享给学生</text></view>
 
-    <view class="section-head students-head"><text>{{selectedClass.name || '班级学生'}}</text><text class="section-note">{{students.length}} 人</text></view>
-    <view class="student-card" wx:for="{{students}}" wx:key="id" bindtap="showStudent" data-id="{{item.id}}">
-      <view class="student-avatar">{{item.nickName ? item.nickName.slice(0, 1) : '学'}}</view>
-      <view class="student-info"><view class="student-name">{{item.nickName || '未设置昵称'}}</view><view class="student-meta">错题 {{item.questionCount || 0}} · 近7天练习 {{item.practiceCount || 0}}</view></view>
+    <view class="section-head">
+      <text class="section-title">我的班级</text>
+      <button class="ghost-btn" bindtap="createClass">＋ 新建班级</button>
+    </view>
+    <view class="white-card row-card {{selectedClass.id === item.id ? 'on-class' : ''}}" wx:for="{{classes}}" wx:key="id" bindtap="selectClass" data-id="{{item.id}}">
+      <view class="class-dot"></view>
+      <view class="class-main">
+        <view class="class-name">{{item.name}}</view>
+        <view class="class-meta">{{item.grade || '未设置学段'}} · {{item.studentCount || 0}} 名学生</view>
+      </view>
+      <view class="class-code" catchtap="copyJoinCode" data-code="{{item.joinCode}}">{{item.joinCode}}</view>
+    </view>
+    <view class="empty-block" wx:if="{{classes.length === 0}}">还没有班级<text>创建后把加入码发给学生</text></view>
+
+    <view class="section-head" id="section-students">
+      <text class="section-title">{{selectedClass.name || '班级学生'}}</text>
+      <text class="section-note">{{students.length}} 人</text>
+    </view>
+    <view class="white-card row-card" wx:for="{{students}}" wx:key="id" bindtap="showStudent" data-id="{{item.id}}">
+      <view class="student-avatar">{{item.mark}}</view>
+      <view class="student-info">
+        <view class="student-name">{{item.nickName || '未设置昵称'}}</view>
+        <view class="student-meta">错题 {{item.questionCount || 0}} 道 · 点开查看</view>
+      </view>
       <text class="student-arrow">›</text>
     </view>
-    <view class="empty-card" wx:if="{{selectedClass.id && students.length === 0}}"><text>班级还没有绑定学生</text><text class="empty-hint">加入码：{{selectedClass.joinCode}}</text></view>
+    <view class="empty-block" wx:if="{{selectedClass.id && students.length === 0}}">班级还没有学生<text>加入码：{{selectedClass.joinCode}}</text></view>
 
-    <view class="section-head actions-head"><text>教学工具</text></view>
+    <view class="section-head"><text class="section-title">教学工具</text></view>
     <view class="tool-grid">
-      <view class="tool-card" bindtap="openNotebook"><view class="tool-icon">题</view><view class="tool-title">班级错题本</view><view class="tool-desc">整理高频错题</view></view>
-      <view class="tool-card" bindtap="openAssignments"><view class="tool-icon">作</view><view class="tool-title">作业管理</view><view class="tool-desc">布置与批改作业</view></view>
-      <view class="tool-card" bindtap="openReport"><view class="tool-icon">报</view><view class="tool-title">家长报告</view><view class="tool-desc">生成学习反馈</view></view>
-      <view class="tool-card" bindtap="openMessage"><view class="tool-icon">信</view><view class="tool-title">留言中心</view><view class="tool-desc">与学生沟通</view></view>
+      <view class="tool-card" bindtap="openQuestions">
+        <view class="tool-title">全班错题</view>
+        <view class="tool-desc">查看高频错题</view>
+      </view>
+      <view class="tool-card" bindtap="openPaper">
+        <view class="tool-title">班级组卷</view>
+        <view class="tool-desc">选题并推送练习</view>
+      </view>
+      <view class="tool-card" bindtap="openAssignments">
+        <view class="tool-title">作业批改</view>
+        <view class="tool-desc">布置与打分</view>
+      </view>
+      <view class="tool-card" bindtap="openReport">
+        <view class="tool-title">家长报告</view>
+        <view class="tool-desc">班级学情快照</view>
+      </view>
     </view>
   </block>
 
-  <view class="loading" wx:if="{{loading}}">加载教师工作台…</view>
+  <view class="loading-line" wx:if="{{loading}}">加载班级…</view>
+  <teacher-tabbar active="class"></teacher-tabbar>
 </view>

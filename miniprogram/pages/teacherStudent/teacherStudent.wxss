@@ -1,0 +1,95 @@
+@import "../../styles/teacher-shell.wxss";
+
+.student-page {
+  padding-bottom: 48rpx;
+}
+
+.dist-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+.dist-row:first-child { margin-top: 0; }
+
+.dist-name {
+  width: 140rpx;
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #0b1633;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dist-track {
+  flex: 1;
+  height: 12rpx;
+  border-radius: 999px;
+  background: rgba(36, 89, 255, 0.12);
+  overflow: hidden;
+}
+
+.dist-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+}
+
+.dist-num {
+  width: 56rpx;
+  text-align: right;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #2459ff;
+}
+
+.chip-scroll {
+  white-space: nowrap;
+  width: 100%;
+  padding: 0 24rpx 12rpx;
+  box-sizing: border-box;
+}
+
+.chip-scroll .chip {
+  display: inline-flex;
+  margin-right: 12rpx;
+  vertical-align: middle;
+}
+
+.hw-title {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.hw-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.q-index {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #2459ff;
+}
+
+.q-content {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  line-height: 1.55;
+  color: #0b1633;
+}
+
+.q-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.badge.status-missing { color: #e11d48; background: rgba(225, 29, 72, 0.12); }
+.badge.status-submitted { color: #d97706; background: rgba(217, 119, 6, 0.12); }
+.badge.status-graded { color: #16a34a; background: rgba(22, 163, 74, 0.12); }

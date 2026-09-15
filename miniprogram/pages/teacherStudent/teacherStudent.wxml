@@ -1,0 +1,56 @@
+<view class="teacher-shell student-page">
+  <view class="loading-line" wx:if="{{loading}}">加载学生情况…</view>
+
+  <block wx:if="{{!loading && student.id}}">
+    <view class="teacher-hero">
+      <view class="hero-kicker">{{className || '班级'}}</view>
+      <view class="hero-title">{{student.nickName || '未设置昵称'}}</view>
+      <view class="hero-sub">加入 {{joinedText}} · 最近活跃 {{activeText}}</view>
+      <view class="hero-stats">
+        <view class="hero-stat"><text>{{questionCount}}</text><label>错题</label></view>
+        <view class="hero-divider"></view>
+        <view class="hero-stat"><text>{{submittedCount}}</text><label>已交作业</label></view>
+        <view class="hero-divider"></view>
+        <view class="hero-stat"><text>{{missingCount}}</text><label>未交</label></view>
+      </view>
+    </view>
+
+    <view class="section-head"><text class="section-title">薄弱学科</text></view>
+    <view class="white-card" wx:if="{{categories.length}}">
+      <view class="dist-row" wx:for="{{categories}}" wx:key="name">
+        <text class="dist-name">{{item.name}}</text>
+        <view class="dist-track"><view class="dist-fill" style="width: {{item.pct}}%;"></view></view>
+        <text class="dist-num">{{item.count}}</text>
+      </view>
+    </view>
+    <view class="empty-block" wx:else>还没有错题可统计</view>
+
+    <view class="section-head"><text class="section-title">作业</text></view>
+    <view class="white-card tap-card" wx:for="{{homework}}" wx:key="id" data-id="{{item.id}}" bindtap="openHomework">
+      <view class="row-card">
+        <view style="flex:1; min-width:0;">
+          <view class="hw-title">{{item.title}}</view>
+          <view class="hw-meta">{{item.questionCount}} 道题 · {{item.dueText}}</view>
+        </view>
+        <text class="badge status-{{item.statusKey}}">{{item.status}}</text>
+      </view>
+    </view>
+    <view class="empty-block" wx:if="{{!homework.length}}">这个班还没有布置作业</view>
+
+    <view class="section-head">
+      <text class="section-title">错题</text>
+      <text class="section-note">{{visibleQuestions.length}} 道</text>
+    </view>
+    <scroll-view class="chip-scroll" scroll-x wx:if="{{categoryChips.length > 1}}">
+      <view class="chip {{category === item.value ? 'on' : ''}}" wx:for="{{categoryChips}}" wx:key="name" data-value="{{item.value}}" bindtap="selectCategory">{{item.name}}</view>
+    </scroll-view>
+    <view class="white-card" wx:for="{{visibleQuestions}}" wx:key="id" data-id="{{item.id}}" bindtap="openQuestion">
+      <view class="q-index">第 {{item.index}} 题 · {{item.day}}</view>
+      <view class="q-content">{{item.content}}</view>
+      <view class="q-meta">
+        <text class="badge">{{item.category || '未分类'}}</text>
+      </view>
+    </view>
+    <view class="empty-block" wx:if="{{!visibleQuestions.length}}">该筛选下没有错题</view>
+  </block>
+</view>

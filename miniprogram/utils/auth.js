@@ -16,16 +16,34 @@ function isLoggedIn() {
   return !!readSession();
 }
 
-function setLoggedIn(openId) {
+function setLoggedIn(openId, role) {
   try {
     wx.setStorageSync(SESSION_KEY, {
       loggedIn: true,
       openId: openId || '',
+      role: role === 'teacher' ? 'teacher' : 'student',
       at: Date.now()
     });
   } catch (e) {
     // 写失败也不挡这次进入：云函数仍能靠 OPENID 认出人
   }
+}
+
+function getSessionRole() {
+  const s = readSession();
+  return (s && s.role) || 'student';
+}
+
+function isTeacherSession() {
+  return getSessionRole() === 'teacher';
+}
+
+function enterByRole(role) {
+  if (role === 'teacher') {
+    wx.reLaunch({ url: '/pages/teacher/teacher' });
+    return;
+  }
+  wx.switchTab({ url: '/pages/index/index' });
 }
 
 function clearSession() {
@@ -53,6 +71,9 @@ module.exports = {
   SESSION_KEY,
   isLoggedIn,
   setLoggedIn,
+  getSessionRole,
+  isTeacherSession,
+  enterByRole,
   clearSession,
   goLogin,
   requireLogin

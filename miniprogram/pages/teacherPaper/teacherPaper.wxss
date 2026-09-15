@@ -1,0 +1,34 @@
+@import "../../styles/teacher-shell.wxss";
+
+.action-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16rpx;
+  margin: 8rpx 24rpx 24rpx;
+}
+
+.paper-title {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.paper-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.pick-banner {
+  margin: 16rpx 24rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 18px;
+  background: rgba(36, 89, 255, 0.08);
+  color: #2459ff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.tap-card {
+  padding-right: 48rpx;
+}

@@ -1,5 +1,5 @@
 const { ensureCloudSession } = require('../../utils/cloud');
-const { setLoggedIn, isLoggedIn } = require('../../utils/auth');
+const { setLoggedIn, isLoggedIn, getSessionRole, enterByRole } = require('../../utils/auth');
 const { setCachedProfile, getCachedProfile, getProfile } = require('../../utils/profile');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
 const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
@@ -7,8 +7,8 @@ const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
 const MAX_NICKNAME_LEN = 20;
 const DEFAULT_NICK = '匿名用户';
 
-function enterHome() {
-  wx.switchTab({ url: '/pages/index/index' });
+function enterHome(role) {
+  enterByRole(role || getSessionRole());
 }
 
 function clipNick(raw) {
@@ -24,14 +24,15 @@ Page({
     avatarFileID: '',
     avatarTempPath: '',
     submitting: false,
-    invited: false
+    invited: false,
+    intentRole: 'student'
   },
 
   onLoad: function (options) {
     this.setData({ invited: !!(options && options.from === 'share') });
     enableShareMenu();
     if (isLoggedIn()) {
-      enterHome();
+      enterHome(getSessionRole());
       return;
     }
     this.applyKnownProfile(getCachedProfile());
@@ -42,11 +43,14 @@ Page({
     const nick = clipNick(p && p.nickName);
     const avatarFileID = (p && p.avatarFileID) || '';
     const returning = !!(p && (p.hasProfile || nick || avatarFileID));
-    this.setData({
+    const patch = {
       returning,
       nickName: returning ? (nick || DEFAULT_NICK) : DEFAULT_NICK,
       avatarFileID: returning ? avatarFileID : ''
-    });
+    };
+    // 只有库里已经选过身份才预填；不要把「没写 role」当成学生，否则会冲掉用户刚点的老师
+    if (p && (p.role === 'teacher' || p.role === 'student')) patch.intentRole = p.role;
+    this.setData(patch);
   },
 
   probeAccount: function () {
@@ -84,7 +88,16 @@ Page({
     this.setData({ nickName: nick || DEFAULT_NICK });
   },
 
+  selectRole: function (e) {
+    const intentRole = e.currentTarget.dataset.role === 'teacher' ? 'teacher' : 'student';
+    this.setData({ intentRole });
+  },
+
   onLogin: function () {
+    this.doLogin();
+  },
+
+  doLogin: function () {
     if (this.data.submitting) return;
     this.setData({ submitting: true });
 
@@ -104,8 +117,13 @@ Page({
         if (!res.success) throw new Error(res.error || '登录失败');
         created = !!(res.data && res.data.created);
         openId = (res.data && res.data.openId) || '';
+        return this.callUser({ action: 'setRole', role: this.data.intentRole });
+      })
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '保存身份失败');
+        openId = (res.data && res.data.openId) || openId;
         setCachedProfile(res.data);
-        setLoggedIn(openId);
+        setLoggedIn(openId, this.data.intentRole);
       })
       .then(() => this.callUser({ action: 'updateProfile', nickName: nick })
         .then((up) => {
@@ -120,7 +138,7 @@ Page({
           title: created ? '账号已创建' : '欢迎回来',
           icon: 'success'
         });
-        setTimeout(enterHome, 400);
+        setTimeout(() => enterHome(this.data.intentRole), 400);
       })
       .catch((err) => {
         console.error('[login] 失败', err);

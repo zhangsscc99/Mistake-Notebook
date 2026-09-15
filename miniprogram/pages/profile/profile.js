@@ -523,10 +523,6 @@ Page({
     wx.switchTab({ url: '/pages/categories/categories' });
   },
 
-  goTeacher: function () {
-    wx.navigateTo({ url: '/pages/teacher/teacher' });
-  },
-
   joinClass: function () {
     wx.showModal({
       title: '加入教师班级',

@@ -48,3 +48,6 @@ cloudfunctions/pdf/ArialUnicode.ttf
 
 .tools/
 wechat-login-qr.png
+
+# Local agent work tracking (do not commit)
+.local/

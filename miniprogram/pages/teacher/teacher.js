@@ -1,32 +1,74 @@
+const { callTeacher } = require('../../utils/teacher');
+
 Page({
-  data: { loading: true, isTeacher: false, classes: [], selectedClass: {}, students: [], studentCount: 0, messageCount: 0 },
-
-  onLoad() { this.loadDashboard(); },
-  onPullDownRefresh() { this.loadDashboard().finally(() => wx.stopPullDownRefresh()); },
-
-  call(action, data = {}) {
-    return new Promise((resolve, reject) => wx.cloud.callFunction({ name: 'teacher', data: { action, ...data }, success: r => resolve(r.result || {}), fail: reject }));
+  data: {
+    loading: true,
+    isTeacher: false,
+    classes: [],
+    selectedClass: {},
+    students: [],
+    studentCount: 0,
+    assignmentCount: 0
   },
+
+  onLoad(options) {
+    this._focus = (options && options.focus) || '';
+    this.loadDashboard().then(() => {
+      if (this._focus === 'students') {
+        setTimeout(() => wx.pageScrollTo({ selector: '#section-students', duration: 280 }), 250);
+      }
+    });
+  },
+  onPullDownRefresh() { this.loadDashboard().finally(() => wx.stopPullDownRefresh()); },
 
   async loadDashboard() {
     this.setData({ loading: true });
     try {
-      const result = await this.call('dashboard');
+      const result = await callTeacher('dashboard');
       if (!result.success) throw new Error(result.error || '加载失败');
       const data = result.data || {};
       const classes = data.classes || [];
-      const selectedClass = classes.find(c => c.id === this.data.selectedClass.id) || classes[0] || {};
-      this.setData({ isTeacher: true, classes, selectedClass, students: data.students || [], studentCount: data.studentCount || 0, messageCount: data.messageCount || 0 });
+      const selectedClass = classes.find((c) => c.id === this.data.selectedClass.id) || classes[0] || {};
+      this.setData({
+        isTeacher: true,
+        classes,
+        selectedClass,
+        students: (data.students || []).map((s) => ({
+          ...s,
+          mark: (s.nickName || '学').slice(0, 1)
+        })),
+        studentCount: data.studentCount || 0,
+        assignmentCount: data.assignmentCount || 0
+      });
+      if (selectedClass.id && selectedClass.id !== (classes[0] && classes[0].id)) {
+        this.loadStudents(selectedClass.id);
+      }
     } catch (e) {
       this.setData({ isTeacher: false });
       if (e.message !== 'NOT_TEACHER') wx.showToast({ title: e.message || '加载失败', icon: 'none' });
-    } finally { this.setData({ loading: false }); }
+    } finally {
+      this.setData({ loading: false });
+    }
+  },
+
+  async loadStudents(classId) {
+    const result = await callTeacher('students', { classId });
+    this.setData({ students: result.success ? (result.data || []).map((s) => ({
+      ...s,
+      mark: (s.nickName || '学').slice(0, 1)
+    })) : [] });
   },
 
   async createClass() {
-    const name = await new Promise(resolve => wx.showModal({ title: '新建班级', editable: true, placeholderText: '例如：高一（3）班', confirmText: '创建', success: r => resolve(r.confirm ? (r.content || '').trim() : '') }));
+    const name = await new Promise((resolve) => wx.showModal({
+      title: '新建班级',
+      editable: true,
+      placeholderText: '例如：高一（3）班',
+      confirmText: '创建',
+      success: (r) => resolve(r.confirm ? (r.content || '').trim() : '')
+    }));
     if (!name) return;
-    const result = await this.call('createClass', { name });
+    const result = await callTeacher('createClass', { name });
     if (!result.success) return wx.showToast({ title: result.error || '创建失败', icon: 'none' });
     wx.showToast({ title: '班级已创建', icon: 'success' });
     this.loadDashboard();
@@ -34,28 +76,36 @@ Page({
 
   async selectClass(e) {
     const id = e.currentTarget.dataset.id;
-    const item = this.data.classes.find(c => c.id === id);
+    const item = this.data.classes.find((c) => c.id === id);
     if (!item) return;
-    const result = await this.call('students', { classId: id });
-    this.setData({ selectedClass: item, students: result.success ? (result.data || []) : [] });
+    this.setData({ selectedClass: item });
+    await this.loadStudents(id);
   },
 
-  async showStudent(e) {
-    const student = this.data.students.find(s => s.id === e.currentTarget.dataset.id);
-    if (!student) return;
-    const result = await this.call('studentQuestions', { classId: this.data.selectedClass.id, studentId: student.id });
-    const questions = result.success ? (result.data || []) : [];
-    const preview = questions.slice(0, 5).map((q, i) => `${i + 1}. ${q.content}`).join('\n');
-    wx.showModal({ title: student.nickName || '学生情况', content: `错题 ${student.questionCount || 0} 道\n近7天练习 ${student.practiceCount || 0} 次\n最近学习：${student.lastActiveAt || '暂无记录'}${preview ? `\n\n最近错题：\n${preview}` : ''}`, showCancel: false, confirmText: '知道了' });
+  showStudent(e) {
+    const studentId = e.currentTarget.dataset.id;
+    const classId = this.data.selectedClass.id;
+    if (!studentId || !classId) return;
+    wx.navigateTo({
+      url: `/pages/teacherStudent/teacherStudent?classId=${classId}&studentId=${studentId}`
+    });
   },
 
-  openMessage() {
-    if (!this.data.selectedClass.id) return wx.showToast({ title: '请先选择班级', icon: 'none' });
-    wx.showModal({ title: '发送班级留言', editable: true, placeholderText: '写下给学生的话', confirmText: '发送', success: async r => { if (!r.confirm || !r.content.trim()) return; const result = await this.call('message', { classId: this.data.selectedClass.id, content: r.content.trim() }); if (result.success) wx.showToast({ title: '留言已发送', icon: 'success' }); else wx.showToast({ title: result.error || '发送失败', icon: 'none' }); } });
+  copyJoinCode(e) {
+    const code = e.currentTarget.dataset.code;
+    if (!code) return;
+    wx.setClipboardData({
+      data: String(code),
+      success: () => wx.showToast({ title: '加入码已复制', icon: 'success' })
+    });
   },
 
-  comingSoon() { wx.showToast({ title: '功能正在接入中', icon: 'none' }); }
-  ,openNotebook() { wx.navigateTo({ url: '/pages/teacherNotebook/teacherNotebook' }); }
-  ,openAssignments() { wx.navigateTo({ url: '/pages/teacherAssignments/teacherAssignments' }); }
-  ,openReport() { if (!this.data.selectedClass.id) return wx.showToast({ title: '请先选择班级', icon: 'none' }); wx.cloud.callFunction({ name: 'teacher', data: { action: 'parentReport', classId: this.data.selectedClass.id }, success: r => { const b = r.result || {}; if (!b.success) return wx.showToast({ title: b.error || '生成失败', icon: 'none' }); const rows = (b.data.students || []).map(s => `${s.nickName}：错题${s.questionCount}道，作业${s.submitted}份，平均${s.averageScore == null ? '待批改' : s.averageScore + '分'}`).join('\n'); wx.showModal({ title: b.data.title, content: `布置作业：${b.data.assignmentCount}份\n\n${rows || '暂无学生数据'}`, showCancel: false, confirmText: '知道了' }); }, fail: () => wx.showToast({ title: '生成失败', icon: 'none' }) }); }
+  openQuestions() { wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions' }); },
+  openPaper() { wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' }); },
+  openAssignments() { wx.navigateTo({ url: '/pages/teacherAssignments/teacherAssignments' }); },
+  openReport() {
+    const classId = this.data.selectedClass.id || '';
+    const q = classId ? ('?classId=' + classId) : '';
+    wx.navigateTo({ url: '/pages/teacherReport/teacherReport' + q });
+  }
 });
