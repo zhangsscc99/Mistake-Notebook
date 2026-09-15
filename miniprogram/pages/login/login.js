@@ -1,15 +1,11 @@
 const { ensureCloudSession } = require('../../utils/cloud');
-const { setLoggedIn, isLoggedIn } = require('../../utils/auth');
-const { setCachedProfile, getCachedProfile, getProfile } = require('../../utils/profile');
+const { setLoggedIn, isLoggedIn, restoreSessionFromCloud, isOptedOut, leaveLoginToTab } = require('../../utils/auth');
+const { setCachedProfile, getCachedProfile } = require('../../utils/profile');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
 const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
 
 const MAX_NICKNAME_LEN = 20;
 const DEFAULT_NICK = '匿名用户';
-
-function enterHome() {
-  wx.switchTab({ url: '/pages/index/index' });
-}
 
 function clipNick(raw) {
   const nick = String(raw || '').trim();
@@ -24,18 +20,32 @@ Page({
     avatarFileID: '',
     avatarTempPath: '',
     submitting: false,
-    invited: false
+    invited: false,
+    checking: true
   },
 
   onLoad: function (options) {
     this.setData({ invited: !!(options && options.from === 'share') });
     enableShareMenu();
-    if (isLoggedIn()) {
-      enterHome();
+    this.bounceOrStay();
+  },
+
+  onShow: function () {
+    this.bounceOrStay();
+  },
+
+  // 登录页不能叠在 Tab 上。除了主动退出，一律立刻切回原来的 Tab（组卷/对话/分类…）。
+  bounceOrStay: function () {
+    if (isOptedOut()) {
+      this.applyKnownProfile(getCachedProfile());
+      this.setData({ checking: false });
       return;
     }
     this.applyKnownProfile(getCachedProfile());
-    this.probeAccount();
+    setTimeout(() => leaveLoginToTab(), 60);
+    if (!isLoggedIn()) {
+      restoreSessionFromCloud().catch(() => {});
+    }
   },
 
   applyKnownProfile: function (p) {
@@ -47,15 +57,6 @@ Page({
       nickName: returning ? (nick || DEFAULT_NICK) : DEFAULT_NICK,
       avatarFileID: returning ? avatarFileID : ''
     });
-  },
-
-  probeAccount: function () {
-    ensureCloudSession()
-      .then(() => getProfile({ force: true }))
-      .then((p) => this.applyKnownProfile(p))
-      .catch((err) => {
-        console.warn('[login] 读取账号失败', err);
-      });
   },
 
   onPickAvatar: function () {
@@ -120,7 +121,7 @@ Page({
           title: created ? '账号已创建' : '欢迎回来',
           icon: 'success'
         });
-        setTimeout(enterHome, 400);
+        setTimeout(leaveLoginToTab, 400);
       })
       .catch((err) => {
         console.error('[login] 失败', err);

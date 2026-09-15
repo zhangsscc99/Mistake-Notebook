@@ -8,7 +8,7 @@ const {
   setCachedProfile,
   clearProfileCache
 } = require('../../utils/profile');
-const { clearSession } = require('../../utils/auth');
+const { clearSession, goLogin, dismissLoginOverlay } = require('../../utils/auth');
 const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
 const { renderInvitePoster, savePosterToAlbum, saveFailHint } = require('../../utils/invitePoster');
 const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
@@ -111,6 +111,7 @@ Page({
   },
 
   onShow: function () {
+    dismissLoginOverlay();
     enableShareMenu();
     this._nickDraft = '';
     // 先用缓存铺上，否则每次切回本页头像昵称都会空一下再出现
@@ -472,11 +473,11 @@ Page({
             title: '部分数据未能清除',
             content: '以下项目删除失败：' + failed.map(failedLabel).join('、') + '\n请稍后重试。',
             showCancel: false,
-            success: () => wx.reLaunch({ url: '/pages/login/login' })
+            success: () => goLogin({ force: true })
           });
         } else {
           wx.showToast({ title: '账号已注销', icon: 'success' });
-          setTimeout(() => wx.reLaunch({ url: '/pages/login/login' }), 400);
+          setTimeout(() => goLogin({ force: true }), 400);
         }
       })
       .catch((err) => {
@@ -499,7 +500,7 @@ Page({
         clearSession();
         app.globalData.selectedPaperQuestions = [];
         app.globalData.recognitionDraft = null;
-        wx.reLaunch({ url: '/pages/login/login' });
+        goLogin({ force: true });
       }
     });
   },

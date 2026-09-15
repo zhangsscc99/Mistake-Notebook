@@ -6,7 +6,12 @@
     <view class="subtitle">{{invited ? '同学推荐你来一起整理错题' : '用微信身份进入，每人一份自己的错题本'}}</view>
   </view>
 
-  <view class="card">
+  <view class="card" wx:if="{{checking}}">
+    <view class="card-title">正在进入…</view>
+    <view class="card-desc">正在确认你的微信账号</view>
+  </view>
+
+  <view class="card" wx:else>
     <view class="card-title">{{returning ? '欢迎回来' : '创建账号'}}</view>
     <view class="card-desc" wx:if="{{returning}}">已识别到你的微信，点击即可进入原账号</view>
     <view class="card-desc" wx:else>第一次使用会自动注册，之后换手机也能找回</view>
@@ -42,7 +47,7 @@
     </button>
   </view>
 
-  <view class="hints">
+  <view class="hints" wx:if="{{!checking}}">
     <view class="hint">登录后才能看到自己的错题、分类与组卷</view>
     <view class="hint">头像、昵称、学段之后也可在「我的」里修改</view>
   </view>

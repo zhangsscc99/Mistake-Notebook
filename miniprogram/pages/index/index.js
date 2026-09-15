@@ -3,6 +3,7 @@ const app = getApp();
 const { ensureCloudSession, isAccessTokenError } = require('../../utils/cloud.js');
 const { getProfile, getCachedProfile, greetingPrefix } = require('../../utils/profile.js');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share.js');
+const { dismissLoginOverlay } = require('../../utils/auth.js');
 
 // 一次识别最多 10 张。微信 chooseMedia/chooseImage 单次最多 9 张，
 // 满 9 张后再点「继续添加」可补到 10。
@@ -61,6 +62,7 @@ Page({
   },
 
   onShow: function () {
+    dismissLoginOverlay();
     enableShareMenu();
     this.loadRecentRecords();
     this.loadProfile();

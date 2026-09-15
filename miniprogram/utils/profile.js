@@ -38,6 +38,16 @@ function getCachedProfile() {
   } catch (e) {
     // 读缓存失败不是错误，走空档案即可
   }
+  // 本地登录态在（App 启动时已从云端 ensure 认回），就把 authSession 里的 openId 也当一份档案，
+  // 否则首次渲染 getCachedProfile 是空档案，页面 onShow 的 getProfile 可能把它写进缓存。
+  try {
+    const s = wx.getStorageSync('authSession');
+    if (s && s.loggedIn && s.openId) {
+      return { ...EMPTY_PROFILE, openId: s.openId, hasProfile: true };
+    }
+  } catch (e) {
+    // ignore
+  }
   return { ...EMPTY_PROFILE };
 }
 
@@ -74,6 +84,16 @@ function getProfile(options) {
     .then((res) => {
       if (!res.success) throw new Error(res.error || '读取资料失败');
       const profile = normalize(res.data);
+      // 云端偶发 exists=false（where(_id) 空结果）时，不要把本地已确认的档案覆盖掉。
+      // 每个 Tab 的 onShow 都会打 getProfile，一旦写进空档案，后续恢复登录也会失败。
+      if (!profile.hasProfile) {
+        const prev = getCachedProfile();
+        if (prev.hasProfile) return prev;
+        // 云端还没建档：返回全局的 openId 档，避免把本地已确认的档案清掉
+        const app = getApp();
+        const gd = app && app.globalData && app.globalData.profile;
+        if (gd && gd.hasProfile) return gd;
+      }
       writeCache(profile);
       return profile;
     });

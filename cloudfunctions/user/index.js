@@ -170,8 +170,7 @@ async function seedPersonalCategories(openId) {
 // 登录 / 注册：没有用户档就建一个，并保证这个人有一份自己的默认分类。
 // 环境里如果还只有这一个用户，就把旧的无归属错题/分类认领过来，避免演示数据一夜清空。
 async function ensureAccount(openId) {
-  const existing = await db.collection(COLLECTION).where({ _id: openId }).limit(1).get();
-  let record = (existing.data || [])[0];
+  let record = await readUserDoc(openId);
   let created = false;
   const now = new Date().toISOString();
 
@@ -218,6 +217,15 @@ function parseExactBool(v) {
   return undefined;
 }
 
+async function readUserDoc(openId) {
+  try {
+    const result = await db.collection(COLLECTION).doc(openId).get();
+    return result.data || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function normalize(record, openId) {
   const r = record || {};
   return {
@@ -247,8 +255,8 @@ function normalize(record, openId) {
 // 纯读，零副作用：文档不存在是全新用户的正常状态，返回 exists:false 而不是报错。
 // 也不在这里建档 —— 否则「我的」页每次 onShow 都会写一次库。
 async function getProfile(openId) {
-  const result = await db.collection(COLLECTION).where({ _id: openId }).limit(1).get();
-  return { success: true, data: normalize((result.data || [])[0], openId) };
+  const record = await readUserDoc(openId);
+  return { success: true, data: normalize(record, openId) };
 }
 
 async function updateProfile(openId, event) {
@@ -300,8 +308,7 @@ async function updateProfile(openId, event) {
     return { success: false, error: '没有需要更新的内容' };
   }
 
-  const existing = await db.collection(COLLECTION).where({ _id: openId }).limit(1).get();
-  const current = (existing.data || [])[0];
+  const current = await readUserDoc(openId);
 
   if (!current) {
     const data = {

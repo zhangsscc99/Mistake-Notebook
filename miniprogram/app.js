@@ -1,5 +1,5 @@
 // app.js
-const { isLoggedIn, goLogin } = require('./utils/auth');
+const { isLoggedIn, restoreSessionFromCloud } = require('./utils/auth');
 
 App({
   // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
@@ -8,6 +8,7 @@ App({
   globalData: {
     // 由 utils/profile.js 统一读写（服务端才是权威，这里只是缓存）
     profile: null,
+    loggedIn: false,
     recognitionDraft: null,
     selectedPaperQuestions: [],
     categoriesMode: null,
@@ -31,15 +32,8 @@ App({
       fail: (err) => console.warn('[app] wx.login 失败，上传可能受影响:', err)
     });
 
-    // 本地已登录但云端可能还没有用户档/默认分类（旧会话、跳过登录页）。
-    // 补一次 ensure，避免题目写下之后在「分类」里找不到文件夹。
-    if (isLoggedIn()) {
-      wx.cloud.callFunction({
-        name: 'user',
-        data: { action: 'ensure' },
-        fail: (err) => console.warn('[app] ensure 账号失败:', err)
-      });
-    }
+    // 本地标记丢了也从云端认回；认回后再 ensure 分类。
+    this.ensureAccountIfKnown();
 
     // 只确保集合存在。默认分类改在登录时按账号创建，不再写入全局题库。
     setTimeout(() => {
@@ -58,10 +52,17 @@ App({
     }, 1000);
   },
 
+  ensureAccountIfKnown: function () {
+    restoreSessionFromCloud().catch((err) => console.warn('[app] 恢复登录失败:', err));
+  },
+
   onShow: function () {
-    const pages = getCurrentPages();
-    const cur = pages[pages.length - 1];
-    if (cur && cur.route === 'pages/login/login') return;
-    if (!isLoggedIn()) goLogin();
+    // 切 Tab / 从后台回来时只静默认回会话，绝不 reLaunch 到登录页。
+    // 从对话等 tabBar 页 reLaunch 到非 tab 的登录页，微信会叠一层点不了的登录界面
+    // （标题还是「对话助手」、底部 Tab 还在）。
+    if (isLoggedIn()) return;
+    restoreSessionFromCloud().catch((err) => {
+      console.warn('[app] 恢复登录失败:', err);
+    });
   }
 });

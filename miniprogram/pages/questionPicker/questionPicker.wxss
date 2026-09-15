@@ -1,6 +1,6 @@
 .picker-page {
   min-height: 100vh;
-  padding-bottom: 280rpx;
+  padding-bottom: 340rpx;
   background: #eaf3ff;
 }
 
@@ -185,17 +185,32 @@
 }
 
 .save-btn {
-  /* 底部栏的主操作，应当是通栏。原先这里没写 width，于是落到 app.json:60
-     "style": "v2" 的按钮默认宽度上 —— 同样会缩成一个居中短胶囊。
-     !important 的原因见 profile.wxss 的 .save-btn */
-  display: block;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   width: 100% !important;
-  box-sizing: border-box;
-  padding: 0;
-  background: #2459ff;
-  color: #fff;
-  border-radius: 999rpx;
-  font-size: 30rpx;
+  height: 96rpx !important;
+  min-height: 96rpx !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box !important;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 24rpx !important;
+  font-size: 34rpx !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  box-shadow: 0 10px 24px rgba(31, 91, 255, 0.30) !important;
+}
+
+.save-btn::after {
+  border: none !important;
+}
+
+.save-btn[disabled] {
+  opacity: 0.45;
+  box-shadow: none !important;
 }
 
 /* ---- 分类弹窗 ---- */

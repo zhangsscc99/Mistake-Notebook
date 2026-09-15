@@ -1,7 +1,8 @@
 // 分享文案集中在这里。不发金币、不写奖励，避免踩微信「滥用分享」红线。
-// 落地页用登录页：新用户先看到注册，老用户登录页会自己跳首页。
+// 落地页用首页。不要落到登录页：小程序已在后台时点分享卡片，
+// 微信会打开 path，登录页叠在当前 Tab/子页上（标题还是「数学」「对话」）。
 const APP_NAME = '智卷错题通';
-const LANDING = '/pages/login/login?from=share';
+const LANDING = '/pages/index/index?from=share';
 
 function inviteCard() {
   return {

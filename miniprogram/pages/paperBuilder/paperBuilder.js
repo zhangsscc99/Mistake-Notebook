@@ -2,6 +2,7 @@
 const app = getApp();
 const { normalizePaperQuestion } = require('../../utils/paper.js');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share.js');
+const { dismissLoginOverlay } = require('../../utils/auth.js');
 
 Page({
   data: {
@@ -10,6 +11,7 @@ Page({
   },
 
   onShow: function () {
+    dismissLoginOverlay();
     enableShareMenu();
     app.globalData.selectedPaperQuestions = [];
     this.loadSavedPapers();
