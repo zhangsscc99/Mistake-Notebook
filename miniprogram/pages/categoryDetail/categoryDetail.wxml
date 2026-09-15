@@ -109,6 +109,7 @@
               <button class="q-tool-btn" catchtap="startMistakeReportFromCard" data-id="{{qitem.id}}">错因分析</button>
               <button class="q-tool-btn q-tool-btn-fill" catchtap="startVariantsFromCard" data-id="{{qitem.id}}">生成变式题</button>
             </view>
+            <button class="q-tool-note-btn {{qitem.hasNote ? 'has-note' : ''}}" wx:if="{{!editMode && !isPaperSelectMode}}" catchtap="openNoteFromCard" data-id="{{qitem.id}}">{{qitem.hasNote ? '查看批注与笔记' : '错题批注与笔记'}}</button>
             <view class="ai-box" wx:if="{{qitem.showAI && !editMode}}">
               <view class="ai-title">AI 标准答案与解析</view>
               <view class="ai-subtitle">标准答案：</view>
@@ -167,6 +168,7 @@
             <button class="q-tool-btn" catchtap="startMistakeReportFromCard" data-id="{{item.id}}">错因分析</button>
             <button class="q-tool-btn q-tool-btn-fill" catchtap="startVariantsFromCard" data-id="{{item.id}}">生成变式题</button>
           </view>
+          <button class="q-tool-note-btn {{item.hasNote ? 'has-note' : ''}}" wx:if="{{!editMode && !isPaperSelectMode}}" catchtap="openNoteFromCard" data-id="{{item.id}}">{{item.hasNote ? '查看批注与笔记' : '错题批注与笔记'}}</button>
 
           <view class="ai-box" wx:if="{{item.showAI && !editMode}}">
             <view class="ai-title">AI 标准答案与解析</view>
@@ -229,10 +231,10 @@
       <!-- 我的笔记：每人对每题一条，仅自己可见 -->
       <view class="detail-section detail-section-note">
         <view class="detail-section-head">
-          <text class="detail-section-title">我的笔记</text>
+          <text class="detail-section-title">错题批注与笔记</text>
           <text class="detail-note-time" wx:if="{{detailNoteUpdatedAt}}">{{detailNoteUpdatedAt}} 已保存</text>
         </view>
-        <textarea class="detail-note-input" value="{{detailNote}}" placeholder="记录你的错因、心得或提醒…"
+        <textarea class="detail-note-input" value="{{detailNote}}" placeholder="写下这道题的批注、错因或提醒，只有你自己能看到…"
           maxlength="2000" auto-height bindinput="onDetailNoteInput" />
         <button class="note-save-btn" bindtap="saveDetailNote" disabled="{{noteSaving}}">{{noteSaving ? '保存中…' : '保存笔记'}}</button>
       </view>
@@ -250,6 +252,27 @@
       </view>
     </scroll-view>
     <button class="detail-modal-confirm" bindtap="closeDetailModal">关闭</button>
+  </view>
+
+  <!-- 单题批注：从卡片按钮进入，不经过完整详情 -->
+  <view class="detail-mask" wx:if="{{showNoteModal}}" bindtap="closeNoteModal"></view>
+  <view class="detail-modal note-modal" wx:if="{{showNoteModal}}">
+    <view class="detail-modal-header">
+      <text class="detail-modal-title">错题批注与笔记</text>
+      <text class="detail-modal-close" bindtap="closeNoteModal">×</text>
+    </view>
+    <scroll-view scroll-y class="detail-modal-body note-modal-body" enhanced show-scrollbar="{{false}}">
+      <text class="note-preview" wx:if="{{noteQuestionPreview}}">{{noteQuestionPreview}}</text>
+      <view class="detail-section detail-section-note">
+        <view class="detail-section-head">
+          <text class="detail-section-title">我的批注</text>
+          <text class="detail-note-time" wx:if="{{detailNoteUpdatedAt}}">{{detailNoteUpdatedAt}} 已保存</text>
+        </view>
+        <textarea class="detail-note-input" value="{{detailNote}}" placeholder="写下这道题的批注、错因或提醒，只有你自己能看到…"
+          maxlength="2000" auto-height bindinput="onDetailNoteInput" />
+        <button class="note-save-btn" bindtap="saveDetailNote" disabled="{{noteSaving}}">{{noteSaving ? '保存中…' : '保存批注'}}</button>
+      </view>
+    </scroll-view>
   </view>
 
   <!-- 空状态 -->

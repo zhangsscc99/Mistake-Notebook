@@ -115,6 +115,9 @@ Page({
     knowledgePointGroups: [],
     expandedGroups: {},
     showDetailModal: false,
+    showNoteModal: false,
+    noteQuestionId: '',
+    noteQuestionPreview: '',
     detailQuestion: null,
     detailNote: '',
     detailNoteUpdatedAt: '',
@@ -593,6 +596,8 @@ Page({
 
     this.setData({
       showDetailModal: true,
+      showNoteModal: false,
+      noteQuestionId: '',
       detailQuestion: buildDetailQuestion(item, index),
       detailNote: '',
       detailNoteUpdatedAt: '',
@@ -635,6 +640,30 @@ Page({
     this.setData({ showDetailModal: false, noteSaving: false });
   },
 
+  openNoteFromCard(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) {
+      wx.showToast({ title: '题目信息缺失', icon: 'none' });
+      return;
+    }
+    const item = (this.data.questions || []).find((q) => String(q.id) === String(id));
+    const preview = String((item && (item.displayContent || item.content)) || '').replace(/\s+/g, ' ').trim();
+    this.setData({
+      showNoteModal: true,
+      showDetailModal: false,
+      noteQuestionId: String(id),
+      noteQuestionPreview: preview.length > 72 ? preview.slice(0, 72) + '…' : preview,
+      detailNote: '',
+      detailNoteUpdatedAt: '',
+      noteSaving: false
+    });
+    this.loadDetailNote(id);
+  },
+
+  closeNoteModal() {
+    this.setData({ showNoteModal: false, noteQuestionId: '', noteQuestionPreview: '' });
+  },
+
   // ─── 我的笔记（每人对每题一条，存 question_notes）─────────────────────────
 
   loadDetailNote(id) {
@@ -660,14 +689,15 @@ Page({
   },
 
   saveDetailNote() {
-    const dq = this.data.detailQuestion;
-    if (!dq || !dq.id || this.data.noteSaving) return;
+    const id = this.data.noteQuestionId
+      || (this.data.detailQuestion && this.data.detailQuestion.id);
+    if (!id || this.data.noteSaving) return;
 
     const note = (this.data.detailNote || '').trim();
     this.setData({ noteSaving: true });
     wx.cloud.callFunction({
       name: 'question',
-      data: { action: 'saveNote', questionId: String(dq.id), note },
+      data: { action: 'saveNote', questionId: String(id), note },
       success: (res) => {
         const result = res.result || {};
         if (!result.success) {
@@ -677,13 +707,12 @@ Page({
         const updatedAt = result.data.updatedAt
           ? String(result.data.updatedAt).slice(0, 16).replace('T', ' ')
           : '';
-        // 同步列表页的「有笔记」角标
         const questions = this.data.questions.map((q) => (
-          String(q.id) === String(dq.id) ? { ...q, hasNote: !!note } : q
+          String(q.id) === String(id) ? { ...q, hasNote: !!note } : q
         ));
         this.setData({ questions, detailNoteUpdatedAt: updatedAt });
         this.applyFilters();
-        wx.showToast({ title: note ? '笔记已保存' : '笔记已清空', icon: 'success' });
+        wx.showToast({ title: note ? '批注已保存' : '批注已清空', icon: 'success' });
       },
       fail: () => wx.showToast({ title: '网络异常，请重试', icon: 'none' }),
       complete: () => this.setData({ noteSaving: false })
