@@ -153,7 +153,8 @@ Page({
       })
       .catch((err) => {
         console.error('[login] 失败', err);
-        wx.showToast({ title: (err && err.message) || '登录失败，请重试', icon: 'none' });
+        const msg = (err && (err.message || err.errMsg)) || '登录失败，请重试';
+        wx.showToast({ title: msg.slice(0, 20), icon: 'none' });
       })
       .then(() => this.setData({ submitting: false }));
   },
@@ -190,7 +191,7 @@ Page({
         data,
         config: { timeout: 30000 },
         success: (res) => resolve(res.result || {}),
-        fail: reject
+        fail: (err) => reject(new Error((err && (err.errMsg || err.message)) || '云函数调用失败'))
       });
     });
   },

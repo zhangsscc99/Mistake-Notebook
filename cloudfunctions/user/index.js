@@ -115,6 +115,7 @@ function emptyUserFields(openId) {
     nickName: '匿名用户',
     avatarFileID: '',
     stage: '',
+    role: '',
     coins: 0,
     vipExpireAt: '',
     checkinStreak: 0,
@@ -268,8 +269,7 @@ async function getProfile(openId) {
 async function setRole(openId, event) {
   const role = event.role === 'teacher' ? 'teacher' : 'student';
   const now = new Date().toISOString();
-  const existing = await db.collection(COLLECTION).where({ _id: openId }).limit(1).get();
-  const current = (existing.data || [])[0];
+  const current = await readUserDoc(openId);
   if (!current) {
     const data = {
       ...emptyUserFields(openId),
