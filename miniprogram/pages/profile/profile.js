@@ -8,6 +8,7 @@ const {
   setCachedProfile,
   clearProfileCache
 } = require('../../utils/profile');
+const { clearSession } = require('../../utils/auth');
 
 const MAX_NICKNAME_LEN = 20;
 
@@ -19,13 +20,55 @@ const FAILED_LABELS = {
   papers: '试卷',
   users: '个人资料',
   'users:read': '个人资料',
-  avatarFile: '头像图片'
+  avatarFile: '头像图片',
+  questionNotes: '错题笔记',
+  mistakeReports: '错因分析报告',
+  checkins: '打卡记录',
+  coinLogs: '金币流水',
+  chatUsage: '对话配额',
+  questionMarks: '错题收藏',
+  questions: '错题',
+  categories: '分类'
 };
 
 function failedLabel(item) {
   const target = (item && item.target) || '';
   return FAILED_LABELS[target] || target || '未知项目';
 }
+
+// 云函数返回的是 UTC ISO，这里按北京时间显示。
+// +8 之后取 UTC 字段，不能取本地字段 —— 用户手机时区不一定在北京
+function formatCnDate(iso) {
+  const ms = Date.parse(iso || '');
+  if (!ms) return '';
+  const d = new Date(ms + 8 * 60 * 60 * 1000);
+  return `${d.getUTCMonth() + 1} 月 ${d.getUTCDate()} 日`;
+}
+
+// 在钱包对象上补几个展示用派生字段，省得 wxml 里塞计算和日期逻辑
+function decorateWallet(raw) {
+  const w = { ...(raw || {}) };
+  w.vipExpireText = formatCnDate(w.vipExpireAt);
+  w.coinGap = Math.max(0, (w.vipCost || 0) - (w.coins || 0));
+  w.canRedeem = !!w.isVip || w.coinGap === 0;
+  return w;
+}
+
+const EMPTY_WALLET = {
+  coins: 0,
+  isVip: false,
+  vipExpireAt: '',
+  vipExpireText: '',
+  vipCost: 0,
+  vipDays: 0,
+  checkinStreak: 0,
+  checkinTotalDays: 0,
+  todayChecked: false,
+  todayBonus: { base: 0, chat: 0, paper: 0, total: 0 },
+  recentDays: [],
+  favoriteCount: 0,
+  pinnedCount: 0
+};
 
 Page({
   data: {
@@ -42,7 +85,15 @@ Page({
     deleting: false,
     totalQuestions: 0,
     totalCategories: 0,
-    appVersion: '1.0.0 (2026版)'
+    appVersion: '1.0.0 (2026版)',
+
+    // 打卡 / 金币 / 会员
+    wallet: EMPTY_WALLET,
+    // 加载失败时不显示一堆 0 冒充满钱包 —— 那会让用户以为金币真的没了
+    walletLoaded: false,
+    walletError: '',
+    checkingIn: false,
+    redeeming: false
   },
 
   onShow: function () {
@@ -51,9 +102,13 @@ Page({
     this.applyProfile(getCachedProfile());
     this.loadProfile();
     this.loadStats();
+    this.loadWallet();
   },
 
   applyProfile: function (p) {
+    // 已落库的昵称单独记一份：输入框绑定的 nickName 会随打字变，
+    // 保存时不能拿它判断「有没有改」，否则必命中「昵称没有变化」
+    this._savedNickName = p.nickName || '';
     this.setData({
       openId: p.openId,
       nickName: p.nickName,
@@ -61,6 +116,92 @@ Page({
       stage: p.stage,
       hasProfile: p.hasProfile
     });
+  },
+
+  // 打卡与金币。纯读，不发币
+  loadWallet: function () {
+    this.setData({ walletError: '' });
+    return this.callCloud('user', { action: 'getWallet' }, 20000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '读取失败');
+        this.setData({ wallet: decorateWallet(res.data), walletLoaded: true });
+      })
+      .catch((err) => {
+        console.error('[profile] 读取钱包失败', err);
+        this.setData({
+          walletLoaded: false,
+          walletError: isAccessTokenError(err)
+            ? '云开发未登录，请重进小程序'
+            : '打卡与金币加载失败'
+        });
+      });
+  },
+
+  onCheckin: function () {
+    if (this.data.checkingIn || !this.data.walletLoaded) return;
+    this.setData({ checkingIn: true });
+
+    this.callCloud('user', { action: 'checkin' }, 30000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '打卡失败');
+        const d = res.data || {};
+        this.setData({ wallet: decorateWallet(d), checkingIn: false });
+        if (d.alreadyChecked) {
+          // 并发连点时后到的那次会走到这里，不是错误，如实说就行
+          wx.showToast({ title: '今天已经打过卡了', icon: 'none' });
+        } else {
+          wx.showToast({ title: `打卡成功 +${d.rewarded} 金币`, icon: 'success' });
+        }
+      })
+      .catch((err) => {
+        this.setData({ checkingIn: false });
+        console.error('[profile] 打卡失败', err);
+        wx.showToast({ title: err.message || '打卡失败，请重试', icon: 'none' });
+      });
+  },
+
+  onRedeemVip: function () {
+    const w = this.data.wallet || {};
+    if (this.data.redeeming || !this.data.walletLoaded) return;
+
+    if (!w.canRedeem) {
+      wx.showToast({ title: `还差 ${w.coinGap} 金币`, icon: 'none' });
+      return;
+    }
+
+    // 花金币是不可逆的，兑换前把消耗和得到说清楚
+    wx.showModal({
+      title: w.isVip ? '续期会员' : '兑换会员',
+      content: `消耗 ${w.vipCost} 金币，兑换 ${w.vipDays} 天对话会员。\n\n会员期间 AI 对话不限量。\n\n当前金币：${w.coins}`,
+      confirmText: '兑换',
+      success: (res) => {
+        if (res.confirm) this.doRedeemVip();
+      }
+    });
+  },
+
+  doRedeemVip: function () {
+    this.setData({ redeeming: true });
+    wx.showLoading({ title: '兑换中...', mask: true });
+
+    this.callCloud('user', { action: 'redeemVip' }, 30000)
+      .then((res) => {
+        if (!res.success) throw new Error(res.error || '兑换失败');
+        wx.hideLoading();
+        this.setData({ redeeming: false });
+        wx.showToast({
+          title: `会员已到 ${formatCnDate(res.data.vipExpireAt)}`,
+          icon: 'success'
+        });
+        // 重新拉一次拿完整的钱包状态（余额、到期时间都变了）
+        this.loadWallet();
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        this.setData({ redeeming: false });
+        console.error('[profile] 兑换会员失败', err);
+        wx.showToast({ title: err.message || '兑换失败，请重试', icon: 'none' });
+      });
   },
 
   // 与 pages/index/index.js:157-177 同款包装（项目没有统一封装，各页内联是既有约定）
@@ -184,7 +325,12 @@ Page({
   onSaveProfile: function (e) {
     if (this.data.saving) return;
 
-    const nickName = ((e.detail.value && e.detail.value.nickName) || '').trim();
+    // type="nickname" 在部分基础库里不进 form 的 detail.value，
+    // 点键盘昵称条时 bindinput 也不保证触发。三路兜底，取到再 trim。
+    const fromForm = ((e.detail.value && e.detail.value.nickName) || '').trim();
+    const fromLive = (this.data.nickName || '').trim();
+    const fromDraft = (this._nickDraft || '').trim();
+    const nickName = fromForm || fromLive || fromDraft;
 
     if (!nickName) {
       wx.showToast({ title: '请输入昵称', icon: 'none' });
@@ -194,7 +340,7 @@ Page({
       wx.showToast({ title: `昵称不能超过 ${MAX_NICKNAME_LEN} 个字`, icon: 'none' });
       return;
     }
-    if (nickName === this.data.nickName && this.data.hasProfile) {
+    if (nickName === (this._savedNickName || '').trim()) {
       wx.showToast({ title: '昵称没有变化', icon: 'none' });
       return;
     }
@@ -248,12 +394,9 @@ Page({
   onDeleteAccount: function () {
     if (this.data.deleting) return;
 
-    // 第一步：说清楚删什么、不删什么。
-    // 「题目不删」必须写在这里 —— 题目是全局共享的（写入时就没有归属字段），
-    // 注销确实动不了它，含糊过去等于虚假承诺。
     wx.showModal({
       title: '注销账号',
-      content: '将永久删除：\n· 个人资料（头像、昵称、学段）\n· 全部 AI 对话记忆\n· 全部试卷\n\n不会删除：\n· 错题本身（题目为公共题库，不归属个人）\n\n删除后无法恢复。',
+      content: '将永久删除本账号下的：\n· 个人资料（头像、昵称、学段）\n· 全部错题与分类\n· 全部 AI 对话记忆\n· 全部试卷\n· 打卡记录、金币与会员\n· 错题收藏、置顶与笔记\n\n删除后无法恢复。',
       confirmText: '继续',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -265,7 +408,7 @@ Page({
   confirmDeleteAccount: function () {
     wx.showModal({
       title: '最后确认',
-      content: '再次确认删除全部云端数据？\n\n注意：微信账号本身不受影响，下次进入仍可正常使用，只是资料是空白的。',
+      content: '再次确认删除全部云端数据？\n\n微信账号不受影响。下次进入需要重新登录，将是一份空白错题本。',
       confirmText: '确认删除',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -287,6 +430,7 @@ Page({
         // 定点清理，不用 wx.clearStorageSync() —— 那会连 appSettings
         // （自动分类 / 图片质量 / 自动备份）一起抹掉，而用户只是想删账号数据。
         clearProfileCache();
+        clearSession();
         try {
           wx.removeStorageSync('savedPapers');
         } catch (err) {
@@ -294,28 +438,19 @@ Page({
         }
         app.globalData.selectedPaperQuestions = [];
         app.globalData.recognitionDraft = null;
-
-        // openId 要留着：微信不给撤销 openid，用户还是同一个人，
-        // 后面点头像换头像还得靠它拼归属路径
-        this.setData({
-          nickName: '',
-          avatarFileID: '',
-          stage: '',
-          hasProfile: false,
-          deleting: false
-        });
+        this.setData({ deleting: false });
         wx.hideLoading();
 
         if (failed.length) {
-          // 部分失败必须说出来。静默当成成功，用户会以为删干净了 ——
-          // 这是本功能最危险的失败模式
           wx.showModal({
             title: '部分数据未能清除',
             content: '以下项目删除失败：' + failed.map(failedLabel).join('、') + '\n请稍后重试。',
-            showCancel: false
+            showCancel: false,
+            success: () => wx.reLaunch({ url: '/pages/login/login' })
           });
         } else {
-          wx.showToast({ title: '云端数据已清除', icon: 'success' });
+          wx.showToast({ title: '账号已注销', icon: 'success' });
+          setTimeout(() => wx.reLaunch({ url: '/pages/login/login' }), 400);
         }
       })
       .catch((err) => {
@@ -326,13 +461,53 @@ Page({
       });
   },
 
-  // settings 不是 tab 页，这里必须用 navigateTo；反过来 settings 跳回本页要用 switchTab
-  goSettings: function () {
-    wx.navigateTo({ url: '/pages/settings/settings' });
+  onLogout: function () {
+    wx.showModal({
+      title: '退出登录',
+      content: '退出后不会删除云端数据。下次用微信登录仍是同一个错题本。',
+      confirmText: '退出',
+      success: (res) => {
+        if (!res.confirm) return;
+        clearProfileCache();
+        clearSession();
+        app.globalData.selectedPaperQuestions = [];
+        app.globalData.recognitionDraft = null;
+        wx.reLaunch({ url: '/pages/login/login' });
+      }
+    });
   },
 
   goCategories: function () {
     wx.switchTab({ url: '/pages/categories/categories' });
+  },
+
+  goLeaderboard: function () {
+    wx.navigateTo({ url: '/pages/leaderboard/leaderboard' });
+  },
+
+  goReportList: function () {
+    wx.navigateTo({ url: '/pages/reportList/reportList' });
+  },
+
+  // 打卡分享。分享的动机必须是内容本身，不能是奖励 ——
+  // 微信《滥用分享行为》2.1 明确禁止「完成分享操作立即可获得积分/金币」，
+  // 且金币属于规则定义里的「虚拟奖品/利益」，处罚是阶梯封禁分享能力直至封号。
+  // 所以这里不发币、不写库，标题里也不出现任何奖励暗示。
+  //
+  // 刻意没写 onShareTimeline（朋友圈）：它只能分享**当前页**，没有 path 可改，
+  // 而本页是「我的」—— 接收者打开看到的是他自己那份空白资料（未设置昵称、0 道错题），
+  // 毫无意义。朋友圈分享该挂在首页上，那是本轮之外的事。
+  onShareAppMessage: function () {
+    const streak = (this.data.wallet || {}).checkinStreak || 0;
+    return {
+      title: streak > 0
+        ? `我已连续打卡 ${streak} 天，一起来整理错题吧`
+        : '用 AI 整理错题，一起来打卡吧',
+      // 落首页而不是本页，理由同上：本页对接收者毫无意义
+      path: '/pages/index/index'
+      // imageUrl 故意不传 —— 缺省时微信会自动截当前页（5:4 居中裁切），
+      // 在本页触发正好截到打卡卡片，比项目里任何一张现成图都贴题
+    };
   },
 
   showVersionInfo: function () {

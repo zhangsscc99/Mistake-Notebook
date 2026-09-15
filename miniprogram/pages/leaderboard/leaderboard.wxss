@@ -1,0 +1,259 @@
+/* pages/leaderboard/leaderboard.wxss
+   配色与圆角沿用 app.wxss 的调色板（--primary-color / --text-primary / --divider-color 那套），
+   这里直接写字面值，与 profile.wxss / categoryDetail.wxss 的既有写法一致 */
+
+.board-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: #eaf3ff;
+  padding-bottom: 60rpx;
+}
+
+/* 顶部 */
+.board-hero {
+  padding: 48rpx 32rpx 40rpx;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
+  color: #ffffff;
+}
+
+.hero-title {
+  font-size: 40rpx;
+  font-weight: 800;
+  letter-spacing: 1rpx;
+}
+
+.hero-sub {
+  margin-top: 12rpx;
+  font-size: 23rpx;
+  opacity: 0.92;
+}
+
+/* 指标筛选。用 margin 而不是 flex 的 gap ——
+   gap 在部分 iOS 的 WKWebView 上不生效，这里不冒那个险 */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 28rpx 32rpx 4rpx;
+}
+
+.chip {
+  height: 60rpx;
+  line-height: 60rpx;
+  padding: 0 26rpx;
+  margin: 0 14rpx 14rpx 0;
+  border-radius: 999rpx;
+  font-size: 25rpx;
+  font-weight: 600;
+  color: rgba(11, 22, 51, 0.62);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(47, 107, 255, 0.14);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chip.active {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  box-shadow: 0 6rpx 16rpx rgba(31, 91, 255, 0.28);
+}
+
+/* 我那一行（只在我不在榜上时出现） */
+.me-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24rpx 32rpx 0;
+  padding: 24rpx 28rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, rgba(36, 89, 255, 0.10), rgba(82, 183, 255, 0.10));
+  border: 1px solid rgba(36, 89, 255, 0.22);
+}
+
+.me-left {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.me-avatar {
+  flex-shrink: 0;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.me-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.me-name {
+  display: block;
+  font-size: 29rpx;
+  font-weight: 700;
+  color: #0b1633;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.me-sub {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.55);
+}
+
+.me-right {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  text-align: right;
+}
+
+.me-streak {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1;
+  color: #2459ff;
+}
+
+.me-lab {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 21rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+/* 榜单 */
+.list {
+  padding: 24rpx 24rpx 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(47, 107, 255, 0.14);
+  box-shadow: 0 14px 44px rgba(11, 22, 51, 0.06);
+}
+
+/* 我在榜上的那一行 */
+.row-me {
+  background: rgba(36, 89, 255, 0.07);
+  border-color: rgba(36, 89, 255, 0.42);
+}
+
+.rank {
+  flex-shrink: 0;
+  width: 56rpx;
+  text-align: center;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: rgba(11, 22, 51, 0.38);
+}
+
+.rank-1 {
+  color: #f59e0b;
+}
+
+.rank-2 {
+  color: #94a3b8;
+}
+
+.rank-3 {
+  color: #d97706;
+}
+
+.avatar {
+  flex-shrink: 0;
+  width: 76rpx;
+  height: 76rpx;
+  margin-left: 8rpx;
+  border-radius: 50%;
+  background: rgba(11, 22, 51, 0.06);
+}
+
+.row-main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 20rpx;
+}
+
+.row-name {
+  display: block;
+  font-size: 29rpx;
+  font-weight: 700;
+  color: #0b1633;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 21rpx;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+}
+
+.me-unit,
+.row-unit {
+  margin-left: 6rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.row-right {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  text-align: right;
+}
+
+.row-streak {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #2459ff;
+  white-space: nowrap;
+}
+
+/* 加载中 / 失败 / 空榜 */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 60rpx;
+}
+
+.state-text {
+  font-size: 28rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.state-sub {
+  margin-top: 12rpx;
+  font-size: 23rpx;
+  color: rgba(11, 22, 51, 0.38);
+}
+
+.state-btn {
+  margin-top: 36rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  padding: 0 48rpx;
+  border-radius: 999rpx;
+  font-size: 27rpx;
+  font-weight: 700;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  box-shadow: 0 8rpx 20rpx rgba(31, 91, 255, 0.28);
+}

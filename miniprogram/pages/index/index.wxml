@@ -17,7 +17,6 @@
         mode="aspectFill"></image>
       <text class="top-bar-greet">{{greeting}}</text>
     </view>
-    <navigator url="/pages/settings/settings" class="top-bar-settings">⚙️</navigator>
   </view>
 
   <view class="main-section">

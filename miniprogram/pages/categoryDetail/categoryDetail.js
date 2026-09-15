@@ -8,6 +8,12 @@ const SYMBOL_MAP = {
   '语文': '语', '生物': '生', '历史': '史', '地理': '地'
 };
 
+// 标记成功后的提示语，下标 0 = 取消、1 = 设置
+const MARK_LABELS = {
+  favorite: ['已取消收藏', '已收藏'],
+  pinned: ['已取消置顶', '已置顶']
+};
+
 function parseQuestionParas(text) {
   if (!text) return [];
   const normalized = String(text).replace(/\r\n/g, '\n').trim();
@@ -98,6 +104,8 @@ Page({
     filterBy: 'all',
     tagFilter: 'all',
     availableTags: [],
+    favoriteCount: 0,
+    pinnedCount: 0,
     accuracy: 0,
     editMode: false,
     isPaperSelectMode: false,
@@ -108,6 +116,9 @@ Page({
     expandedGroups: {},
     showDetailModal: false,
     detailQuestion: null,
+    detailNote: '',
+    detailNoteUpdatedAt: '',
+    noteSaving: false,
     loading: false
   },
 
@@ -157,13 +168,22 @@ Page({
               formattedDate: q.createdAt ? String(q.createdAt).split('T')[0] : '2026-05-30',
               showAI: false,
               isCorrect: q.isCorrect || false,
-              selected: false
+              selected: false,
+              // questions 是全局共享的题库，标记只存在于 question_marks 里，
+              // 这里先给默认值保证界面有确定的初值，真值由 loadMarks 合并进来
+              favorite: false,
+              pinned: false,
+              mastered: false,
+              // 笔记同理，在 question_notes 里，真值由 loadNotes 合并
+              hasNote: false
             };
           });
           this.setData({ questions: processed, loading: false });
           this.refreshTags();
           this.applyFilters();
           this.calcAccuracy();
+          this.loadMarks();
+          this.loadNotes();
         } else {
           this.setData({ questions: [] });
           this.refreshTags();
@@ -219,6 +239,160 @@ Page({
     this.setData({ availableTags: Array.from(tags), tagFilter: 'all' });
   },
 
+  refreshMarkCounts() {
+    let favoriteCount = 0;
+    let pinnedCount = 0;
+    this.data.questions.forEach((q) => {
+      if (q.favorite) favoriteCount += 1;
+      if (q.pinned) pinnedCount += 1;
+    });
+    this.setData({ favoriteCount, pinnedCount });
+  },
+
+  // 标记是每人一份的（questions 本身没有归属字段），且必须等 byCategory
+  // 回来拿到题目 id 才能查 —— 所以这里是第二次往返，没办法并成 Promise.all
+  loadMarks() {
+    const ids = this.data.questions
+      .map(q => q.id)
+      .filter(id => id !== undefined && id !== null && id !== '');
+    if (!ids.length) return;
+
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'listMarks', questionIds: ids.slice(0, 200) },
+      success: (res) => {
+        const result = res.result || {};
+        if (!result.success || !result.data) return;
+
+        const marks = result.data;
+        const busy = this._markBusy || {};
+        // 有在途标记请求的题目跳过：那份快照比用户刚点的旧，
+        // 盖回去会让界面和库里悄悄分家
+        const questions = this.data.questions.map((q) => {
+          const key = String(q.id);
+          if (busy[key]) return q;
+          const m = marks[key] || {};
+          return {
+            ...q,
+            favorite: !!m.favorite,
+            pinned: !!m.pinned,
+            mastered: !!m.mastered
+          };
+        });
+
+        // 必须重算 applyFilters：置顶改顺序、收藏改「★ 收藏」筛选的结果
+        this.setData({ questions });
+        this.refreshMarkCounts();
+        this.applyFilters();
+      },
+      // 失败静默。题目本身已经显示出来了，为了几个星标把整页报成错误不划算，
+      // 下拉刷新自会重试
+      fail: () => {}
+    });
+  },
+
+  // 拉当前用户在这些题上的笔记，给列表加「有笔记」角标。失败静默，同 loadMarks
+  loadNotes() {
+    const ids = this.data.questions
+      .map(q => q.id)
+      .filter(id => id !== undefined && id !== null && id !== '');
+    if (!ids.length) return;
+
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'listNotes', questionIds: ids.slice(0, 200) },
+      success: (res) => {
+        const result = res.result || {};
+        if (!result.success || !result.data) return;
+        const notes = result.data;
+        const questions = this.data.questions.map((q) => {
+          const n = notes[String(q.id)];
+          return { ...q, hasNote: !!(n && n.note) };
+        });
+        this.setData({ questions });
+        this.applyFilters();
+      },
+      fail: () => {}
+    });
+  },
+
+  findQuestion(id) {
+    return this.data.questions.find(q => String(q.id) === String(id));
+  },
+
+  toggleFavorite(e) {
+    const id = e.currentTarget.dataset.id;
+    const q = this.findQuestion(id);
+    if (!q) return;
+    this.applyMark(id, 'favorite', !q.favorite);
+  },
+
+  togglePin(e) {
+    const id = e.currentTarget.dataset.id;
+    const q = this.findQuestion(id);
+    if (!q) return;
+    this.applyMark(id, 'pinned', !q.pinned);
+  },
+
+  // 乐观更新 + 失败回滚，写法同 profile.js 的 onStageSelect。
+  // 同一个 id 上有在途请求时忽略后续点击：这个接口写的是「状态」不是「增量」，
+  // 两次连点若并发落到服务端，回来的顺序不保证，最终库里的值可能和界面相反。
+  // 串行化是唯一稳妥的做法（云函数侧是确定性 _id 的 set，也不会写出两条记录）
+  applyMark(id, field, value) {
+    const key = String(id);
+    this._markBusy = this._markBusy || {};
+    if (this._markBusy[key]) return;
+    this._markBusy[key] = true;
+
+    const optimistic = this.data.questions.map(q => (
+      String(q.id) === key ? { ...q, [field]: value } : q
+    ));
+    this.setData({ questions: optimistic });
+    this.refreshMarkCounts();
+    this.applyFilters();
+
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'mark', questionId: key, [field]: value },
+      success: (res) => {
+        const result = res.result || {};
+        if (!result.success) {
+          this.rollbackMark(key, field, !value, result.error);
+          return;
+        }
+        // 以服务端返回为准：它会把这次没传的字段一起回带
+        const data = result.data || {};
+        const confirmed = this.data.questions.map(q => (
+          String(q.id) === key
+            ? {
+              ...q,
+              favorite: !!data.favorite,
+              pinned: !!data.pinned,
+              mastered: !!data.mastered
+            }
+            : q
+        ));
+        this.setData({ questions: confirmed });
+        this.refreshMarkCounts();
+        this.applyFilters();
+        wx.showToast({ title: MARK_LABELS[field][value ? 1 : 0], icon: 'none' });
+      },
+      fail: () => this.rollbackMark(key, field, !value, 'network'),
+      complete: () => { delete this._markBusy[key]; }
+    });
+  },
+
+  rollbackMark(id, field, value, error) {
+    const questions = this.data.questions.map(q => (
+      String(q.id) === id ? { ...q, [field]: value } : q
+    ));
+    this.setData({ questions });
+    this.refreshMarkCounts();
+    this.applyFilters();
+    console.error('[categoryDetail] 标记失败', error || '');
+    wx.showToast({ title: '操作失败，请重试', icon: 'none' });
+  },
+
   buildKnowledgePointGroups(list) {
     const groups = new Map();
     list.forEach((q, listIndex) => {
@@ -256,24 +430,45 @@ Page({
     this.setData({ expandedGroups, knowledgePointGroups });
   },
 
+  // 置顶恒在最前，其余仍按用户选的排序方式。
+  // 不做「先按置顶排一遍、再按所选方式排一遍」—— 那要依赖 Array.sort 的稳定性，
+  // 而且两次排序谁说了算读代码时也看不出来。做成「置顶是第一关键字、
+  // 所选方式是第二关键字」的单一比较器，一次排序，与引擎实现无关
+  buildComparator() {
+    const sortBy = this.data.sortBy;
+    const ORDER = { hard: 3, HARD: 3, medium: 2, MEDIUM: 2, easy: 1, EASY: 1 };
+    const base = (a, b) => {
+      if (sortBy === 'earliest') {
+        return (a.formattedDate || '').localeCompare(b.formattedDate || '');
+      }
+      if (sortBy === 'difficulty') {
+        return (ORDER[b.difficulty] || 2) - (ORDER[a.difficulty] || 2);
+      }
+      if (sortBy === 'confidence') {
+        return (b.aiConfidence || b.confidence || 0) - (a.aiConfidence || a.confidence || 0);
+      }
+      return (b.formattedDate || '').localeCompare(a.formattedDate || '');
+    };
+    return (a, b) => (Number(!!b.pinned) - Number(!!a.pinned)) || base(a, b);
+  },
+
   applyFilters() {
     let list = [...this.data.questions];
-    if (this.data.filterBy !== 'all') {
+
+    // 「收藏」和难度共用 filterBy：它们是同一排 chip 里的单选。
+    // 没有做成两个独立的筛选维度，是因为「收藏 + 简单」这种组合在两排高亮里
+    // 读不出来，用户会以为筛选坏了。选中收藏时难度自然让位
+    if (this.data.filterBy === 'favorite') {
+      list = list.filter(q => !!q.favorite);
+    } else if (this.data.filterBy !== 'all') {
       list = list.filter(q => (q.difficulty || '').toLowerCase() === this.data.filterBy);
     }
     if (this.data.tagFilter !== 'all') {
       list = list.filter(q => (q.tags || []).includes(this.data.tagFilter));
     }
-    if (this.data.sortBy === 'latest') {
-      list.sort((a, b) => (b.formattedDate || '').localeCompare(a.formattedDate || ''));
-    } else if (this.data.sortBy === 'earliest') {
-      list.sort((a, b) => (a.formattedDate || '').localeCompare(b.formattedDate || ''));
-    } else if (this.data.sortBy === 'difficulty') {
-      const ORDER = { hard: 3, HARD: 3, medium: 2, MEDIUM: 2, easy: 1, EASY: 1 };
-      list.sort((a, b) => (ORDER[b.difficulty] || 2) - (ORDER[a.difficulty] || 2));
-    } else if (this.data.sortBy === 'confidence') {
-      list.sort((a, b) => (b.aiConfidence || b.confidence || 0) - (a.aiConfidence || a.confidence || 0));
-    }
+
+    list.sort(this.buildComparator());
+
     const knowledgePointGroups = this.buildKnowledgePointGroups(list);
     this.setData({ displayQuestions: list, knowledgePointGroups });
     this.updateSelectionState();
@@ -398,10 +593,15 @@ Page({
 
     this.setData({
       showDetailModal: true,
-      detailQuestion: buildDetailQuestion(item, index)
+      detailQuestion: buildDetailQuestion(item, index),
+      detailNote: '',
+      detailNoteUpdatedAt: '',
+      noteSaving: false
     });
 
     if (!item.id) return;
+
+    this.loadDetailNote(item.id);
 
     wx.cloud.callFunction({
       name: 'question',
@@ -432,7 +632,116 @@ Page({
   },
 
   closeDetailModal() {
-    this.setData({ showDetailModal: false });
+    this.setData({ showDetailModal: false, noteSaving: false });
+  },
+
+  // ─── 我的笔记（每人对每题一条，存 question_notes）─────────────────────────
+
+  loadDetailNote(id) {
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'getNote', questionId: String(id) },
+      success: (res) => {
+        const result = res.result || {};
+        if (!result.success || !result.data) return;
+        this.setData({
+          detailNote: result.data.note || '',
+          detailNoteUpdatedAt: result.data.updatedAt
+            ? String(result.data.updatedAt).slice(0, 16).replace('T', ' ')
+            : ''
+        });
+      },
+      fail: () => {}
+    });
+  },
+
+  onDetailNoteInput(e) {
+    this.setData({ detailNote: e.detail.value });
+  },
+
+  saveDetailNote() {
+    const dq = this.data.detailQuestion;
+    if (!dq || !dq.id || this.data.noteSaving) return;
+
+    const note = (this.data.detailNote || '').trim();
+    this.setData({ noteSaving: true });
+    wx.cloud.callFunction({
+      name: 'question',
+      data: { action: 'saveNote', questionId: String(dq.id), note },
+      success: (res) => {
+        const result = res.result || {};
+        if (!result.success) {
+          wx.showToast({ title: result.error || '保存失败，请重试', icon: 'none' });
+          return;
+        }
+        const updatedAt = result.data.updatedAt
+          ? String(result.data.updatedAt).slice(0, 16).replace('T', ' ')
+          : '';
+        // 同步列表页的「有笔记」角标
+        const questions = this.data.questions.map((q) => (
+          String(q.id) === String(dq.id) ? { ...q, hasNote: !!note } : q
+        ));
+        this.setData({ questions, detailNoteUpdatedAt: updatedAt });
+        this.applyFilters();
+        wx.showToast({ title: note ? '笔记已保存' : '笔记已清空', icon: 'success' });
+      },
+      fail: () => wx.showToast({ title: '网络异常，请重试', icon: 'none' }),
+      complete: () => this.setData({ noteSaving: false })
+    });
+  },
+
+  // ─── 多题 AI 功能入口（错因分析 / 变式题，至少 2 题）──────────────────────
+
+  enterEditMode() {
+    if (!this.data.editMode) this.toggleEditMode();
+  },
+
+  startMistakeReport() {
+    if (this.getSelectedQuestions().length >= 2) {
+      this.goMistakeReport();
+      return;
+    }
+    this.enterEditMode();
+    wx.showToast({ title: '请勾选至少 2 道错题', icon: 'none' });
+  },
+
+  startVariants() {
+    if (this.getSelectedQuestions().length >= 1) {
+      this.goVariants();
+      return;
+    }
+    this.enterEditMode();
+    wx.showToast({ title: '请勾选至少 1 道错题', icon: 'none' });
+  },
+
+  goMistakeReport() {
+    const selected = this.getSelectedQuestions();
+    if (selected.length < 2) {
+      wx.showToast({ title: '错因分析至少选择 2 道题', icon: 'none' });
+      return;
+    }
+    const ids = selected.map(q => q.id).join(',');
+    wx.navigateTo({ url: `/pages/mistakeReport/mistakeReport?ids=${encodeURIComponent(ids)}` });
+  },
+
+  goVariants() {
+    const selected = this.getSelectedQuestions();
+    if (selected.length < 1) {
+      wx.showToast({ title: '请先选择题目', icon: 'none' });
+      return;
+    }
+    const ids = selected.map(q => q.id).join(',');
+    wx.navigateTo({ url: `/pages/variants/variants?ids=${encodeURIComponent(ids)}` });
+  },
+
+  generateVariantsFromDetail() {
+    const dq = this.data.detailQuestion;
+    if (!dq || !dq.id) {
+      wx.showToast({ title: '题目信息缺失', icon: 'none' });
+      return;
+    }
+    this.closeDetailModal();
+    wx.navigateTo({ url: `/pages/variants/variants?ids=${encodeURIComponent(String(dq.id))}` });
   },
 
   previewDetailImage(e) {
@@ -470,6 +779,7 @@ Page({
   removeQuestionById(id) {
     const list = this.data.questions.filter(q => q.id !== id);
     this.setData({ questions: list });
+    this.refreshMarkCounts();
     this.applyFilters();
     this.calcAccuracy();
   },
@@ -580,6 +890,7 @@ Page({
     const idSet = new Set(ids);
     const list = this.data.questions.filter(q => !idSet.has(q.id));
     this.setData({ questions: list, editMode: false });
+    this.refreshMarkCounts();
     this.applyFilters();
     this.calcAccuracy();
   },

@@ -1,0 +1,56 @@
+<!--pages/variants/variants.wxml-->
+<view class="variants-page">
+
+  <!-- 生成中 -->
+  <view class="state-card" wx:if="{{loading}}">
+    <view class="state-spinner"></view>
+    <view class="state-title">AI 正在根据错题出变式题…</view>
+    <view class="state-sub">根据选中的错题生成 3 道难度递进的变式题，约需 10-20 秒</view>
+  </view>
+
+  <!-- 失败 -->
+  <view class="state-card" wx:elif="{{error}}">
+    <view class="state-title">生成失败</view>
+    <view class="state-sub">{{error}}</view>
+    <button class="state-btn" bindtap="goBack">返回重选</button>
+  </view>
+
+  <block wx:else>
+    <view class="hint-card">
+      <text class="hint-title">已生成 {{variants.length}} 道变式题</text>
+      <text class="hint-sub">勾选要加入错题本的题目，确认后才会入库</text>
+    </view>
+
+    <view class="variant-card {{item.selected ? 'selected' : ''}}"
+      wx:for="{{variants}}" wx:key="index"
+      bindtap="toggleVariant" data-index="{{index}}">
+      <view class="v-index-tag">{{item.index}}</view>
+      <view class="v-select {{item.selected ? 'checked' : ''}}">
+        <text wx:if="{{item.selected}}">✓</text>
+      </view>
+      <view class="v-body">
+        <view class="v-meta">
+          <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+          <text class="v-kp" wx:if="{{item.knowledgePoint}}">{{item.knowledgePoint}}</text>
+        </view>
+        <text class="v-content">{{item.content}}</text>
+        <view class="v-answer-toggle" catchtap="toggleAnswer" data-index="{{index}}">
+          {{item.showAnswer ? '收起答案' : '查看答案与解析'}}
+        </view>
+        <view class="v-answer-box" wx:if="{{item.showAnswer}}">
+          <text class="v-answer-label">答案</text>
+          <text class="v-answer-text">{{item.answer}}</text>
+          <text class="v-answer-label">解析</text>
+          <text class="v-answer-text">{{item.analysis}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="save-bar" wx:if="{{!saved}}">
+      <text class="save-info">已勾选 {{selectedCount}} 道</text>
+      <button class="save-btn" bindtap="saveSelected" disabled="{{saving || selectedCount === 0}}">
+        {{saving ? '保存中…' : '加入错题本'}}
+      </button>
+    </view>
+  </block>
+</view>

@@ -16,6 +16,38 @@
   background-size: auto, auto, 44rpx 44rpx, 44rpx 44rpx;
 }
 
+/* 今日额度条。刻意做得比 context-bar 轻 —— 它是个常驻的提示，
+   不该跟「正在答疑」的题目条抢注意力 */
+.quota-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 16rpx 24rpx 0;
+  padding: 10rpx 22rpx;
+  border-radius: 999rpx;
+  background: rgba(36, 89, 255, 0.07);
+}
+
+.quota-text {
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.55);
+}
+
+.quota-hint {
+  font-size: 20rpx;
+  color: #2459ff;
+}
+
+/* 快用完时转成警示色，让用户有机会在看到硬拦截之前就去兑换 */
+.quota-low {
+  background: rgba(255, 138, 0, 0.12);
+}
+
+.quota-low .quota-text {
+  color: #b25c00;
+}
+
 /* 题目上下文条 */
 .context-bar {
   display: flex;
@@ -346,14 +378,29 @@
 /* 底部输入栏 */
 .input-bar {
   display: flex;
-  align-items: center;
-  gap: 16rpx;
-  padding: 16rpx 24rpx;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 12rpx 24rpx 16rpx;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-top: 1px solid rgba(11, 22, 51, 0.06);
   transition: transform 0.18s ease-out;
+}
+
+.ai-disclaimer {
+  padding: 0 8rpx 10rpx;
+  font-size: 20rpx;
+  line-height: 1.4;
+  color: rgba(11, 22, 51, 0.38);
+  text-align: center;
+  letter-spacing: 0.5rpx;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
 }
 
 .chat-input {

@@ -8,6 +8,15 @@ const { normalizeCategory } = require('./normalize');
 const PENDING_STATUSES = ['pending', 'processing', 'failed'];
 const settledStatus = () => _.nin(PENDING_STATUSES);
 
+function getCallerOpenId() {
+  const wxContext = cloud.getWXContext();
+  return wxContext.OPENID || wxContext.FROM_OPENID || '';
+}
+
+function noOpenId() {
+  return { success: false, error: 'NO_OPENID', data: { message: '登录状态异常，请重新登录' } };
+}
+
 exports.main = async (event, context) => {
   const { action } = event;
 
@@ -29,8 +38,11 @@ exports.main = async (event, context) => {
 };
 
 async function listCategories() {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const categoriesResult = await db.collection('categories')
-    .where({ isDeleted: false })
+    .where({ openid: openId, isDeleted: false })
     .orderBy('createdAt', 'asc')
     .get();
 
@@ -39,6 +51,7 @@ async function listCategories() {
   const categoriesWithCounts = await Promise.all(categories.map(async (cat) => {
     const countResult = await db.collection('questions')
       .where({
+        openid: openId,
         categoryId: cat._id,
         isDeleted: false,
         aiStatus: settledStatus()
@@ -54,6 +67,9 @@ async function listCategories() {
 }
 
 async function getCategory(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { id, name } = event;
   if (!id && !name) {
     return { success: false, error: 'Missing category id or name' };
@@ -63,7 +79,9 @@ async function getCategory(event) {
   if (id) {
     try {
       const result = await db.collection('categories').doc(id).get();
-      category = result.data;
+      if (result.data && result.data.openid === openId) {
+        category = result.data;
+      }
     } catch (e) {
       category = null;
     }
@@ -71,7 +89,7 @@ async function getCategory(event) {
 
   if (!category && name) {
     const result = await db.collection('categories')
-      .where({ name, isDeleted: false })
+      .where({ openid: openId, name, isDeleted: false })
       .limit(1)
       .get();
     category = result.data[0] || null;
@@ -82,7 +100,12 @@ async function getCategory(event) {
   }
 
   const countResult = await db.collection('questions')
-    .where({ categoryId: category._id, isDeleted: false, aiStatus: settledStatus() })
+    .where({
+      openid: openId,
+      categoryId: category._id,
+      isDeleted: false,
+      aiStatus: settledStatus()
+    })
     .count();
 
   return {
@@ -95,19 +118,23 @@ async function getCategory(event) {
 }
 
 async function getStats() {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   const totalQuestionsResult = await db.collection('questions')
-    .where({ isDeleted: false, aiStatus: settledStatus() })
+    .where({ openid: openId, isDeleted: false, aiStatus: settledStatus() })
     .count();
 
   const totalCategoriesResult = await db.collection('categories')
-    .where({ isDeleted: false })
+    .where({ openid: openId, isDeleted: false })
     .count();
 
   const todayAddedResult = await db.collection('questions')
     .where({
+      openid: openId,
       isDeleted: false,
       aiStatus: settledStatus(),
       createdAt: db.command.gte(todayStart.toISOString())
@@ -116,6 +143,7 @@ async function getStats() {
 
   const pendingResult = await db.collection('questions')
     .where({
+      openid: openId,
       isDeleted: false,
       aiStatus: _.in(PENDING_STATUSES)
     })

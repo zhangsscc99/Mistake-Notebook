@@ -31,6 +31,14 @@
     </view>
   </view>
 
+  <!-- 今日额度。quotaRemaining 为 -1 表示会员不限量（与云函数约定一致） -->
+  <view class="quota-bar {{!isVip && quotaRemaining <= 5 ? 'quota-low' : ''}}"
+    wx:if="{{isVip || quotaLimit > 0}}">
+    <text class="quota-text" wx:if="{{isVip}}">会员 · 对话不限量</text>
+    <text class="quota-text" wx:else>今日剩余 {{quotaRemaining}} / {{quotaLimit}} 条</text>
+    <text class="quota-hint" wx:if="{{!isVip && quotaRemaining <= 5}}">可在「我的」用金币兑换会员</text>
+  </view>
+
   <scroll-view
     class="msg-scroll"
     scroll-y
@@ -72,21 +80,24 @@
 
   <!-- 底部输入栏 -->
   <view class="input-bar" style="transform: translateY({{inputBottom > 0 ? -inputBottom : 0}}px);">
-    <input
-      class="chat-input"
-      value="{{inputValue}}"
-      placeholder="输入你的问题…"
-      placeholder-class="input-placeholder"
-      confirm-type="send"
-      cursor-spacing="12"
-      bindinput="onInput"
-      bindfocus="onFocus"
-      bindblur="onBlur"
-      bindconfirm="sendMessage" />
-    <button
-      class="send-btn {{inputValue && !sending ? 'send-btn-active' : ''}}"
-      bindtap="sendMessage"
-      disabled="{{!inputValue || sending}}">发送</button>
+    <view class="ai-disclaimer">内容是由AI生成，仅供参考</view>
+    <view class="input-row">
+      <input
+        class="chat-input"
+        value="{{inputValue}}"
+        placeholder="输入你的问题…"
+        placeholder-class="input-placeholder"
+        confirm-type="send"
+        cursor-spacing="12"
+        bindinput="onInput"
+        bindfocus="onFocus"
+        bindblur="onBlur"
+        bindconfirm="sendMessage" />
+      <button
+        class="send-btn {{inputValue && !sending ? 'send-btn-active' : ''}}"
+        bindtap="sendMessage"
+        disabled="{{!inputValue || sending}}">发送</button>
+    </view>
   </view>
 
 </view>

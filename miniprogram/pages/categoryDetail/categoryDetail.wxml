@@ -1,5 +1,5 @@
 <!--pages/categoryDetail/categoryDetail.wxml-->
-<view class="category-detail-page">
+<view class="category-detail-page {{editMode ? 'has-batch-bar' : ''}}">
 
   <!-- 分类信息卡片（精确复刻 Web 端 .category-info-card） -->
   <view class="info-section">
@@ -20,14 +20,19 @@
 
       <!-- 操作按钮 -->
       <view class="action-buttons-row">
-        <button class="btn btn-primary action-btn" size="small" bindtap="startPractice" wx:if="{{!isPaperSelectMode}}">开始练习</button>
-        <button class="btn {{isPaperSelectMode ? 'btn-primary' : 'btn-secondary'}} action-btn" size="small" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '加入组卷'}}</button>
+        <button class="btn btn-primary action-btn" bindtap="startPractice" wx:if="{{!isPaperSelectMode}}">开始练习</button>
+        <button class="btn {{isPaperSelectMode ? 'btn-primary' : 'btn-secondary'}} action-btn" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '加入组卷'}}</button>
+      </view>
+      <view class="action-buttons-row action-buttons-ai" wx:if="{{!isPaperSelectMode}}">
+        <button class="btn btn-secondary action-btn" bindtap="startMistakeReport">错因分析</button>
+        <button class="btn btn-secondary action-btn" bindtap="startVariants">生成变式题</button>
       </view>
     </view>
   </view>
 
   <!-- 编辑工具栏（仅保留选择相关操作） -->
   <view class="edit-toolbar">
+    <text class="edit-hint" wx:if="{{editMode}}">勾选题目后可生成变式题，错因分析需 2 道以上</text>
     <text class="edit-action" wx:if="{{editMode}}" bindtap="toggleSelectAll">{{isAllSelected ? '取消全选' : '全选'}}</text>
     <text class="edit-action" bindtap="toggleEditMode">{{editMode ? '完成' : '编辑'}}</text>
   </view>
@@ -40,6 +45,7 @@
       <view class="filter-chip {{sortBy === 'earliest' ? 'active' : ''}}" bindtap="setSort" data-sort="earliest">最早添加</view>
       <view class="filter-chip {{sortBy === 'difficulty' ? 'active' : ''}}" bindtap="setSort" data-sort="difficulty">难度高</view>
       <view class="filter-chip {{sortBy === 'confidence' ? 'active' : ''}}" bindtap="setSort" data-sort="confidence">置信度高</view>
+      <view class="filter-chip {{filterBy === 'favorite' ? 'active' : ''}}" bindtap="setFilter" data-filter="favorite">{{favoriteCount > 0 ? '★ 收藏 ' + favoriteCount : '★ 收藏'}}</view>
       <view class="filter-chip {{filterBy === 'all' ? 'active' : ''}}" bindtap="setFilter" data-filter="all">全部</view>
       <view class="filter-chip {{filterBy === 'easy' ? 'active' : ''}}" bindtap="setFilter" data-filter="easy">简单</view>
       <view class="filter-chip {{filterBy === 'medium' ? 'active' : ''}}" bindtap="setFilter" data-filter="medium">中等</view>
@@ -62,6 +68,7 @@
           wx:for="{{item.questions}}" wx:for-item="qitem" wx:for-index="qIndex" wx:key="id"
           bindtap="onQuestionTap" data-id="{{qitem.id}}" data-index="{{qitem._displayIndex}}">
           <view class="q-index-tag">{{qIndex + 1}}</view>
+          <view class="pin-badge" wx:if="{{qitem.pinned}}">置顶</view>
           <view class="question-card-body">
             <view class="question-img-frame" wx:if="{{qitem.imageUrl}}"
               catchtap="previewImage" data-url="{{qitem.imageUrl}}">
@@ -79,9 +86,15 @@
               <view class="meta-left">
                 <text class="badge badge-{{qitem.difficultyClass}}">{{qitem.difficultyText}}</text>
                 <text class="add-time">{{qitem.formattedDate}}</text>
+                <text class="note-flag" wx:if="{{qitem.hasNote}}">📝</text>
               </view>
-              <view class="meta-right" wx:if="{{editMode}}">
-                <view class="select-box {{qitem.selected ? 'checked' : ''}}">
+              <view class="meta-right">
+                <!-- 必须 catchtap：整张卡片是 bindtap="onQuestionTap"，冒泡上去会顺手打开详情 -->
+                <view class="mark-btn {{qitem.favorite ? 'on' : ''}}" wx:if="{{!editMode}}"
+                  catchtap="toggleFavorite" data-id="{{qitem.id}}">{{qitem.favorite ? '★' : '☆'}}</view>
+                <view class="mark-btn {{qitem.pinned ? 'on' : ''}}" wx:if="{{!editMode}}"
+                  catchtap="togglePin" data-id="{{qitem.id}}">📌</view>
+                <view class="select-box {{qitem.selected ? 'checked' : ''}}" wx:if="{{editMode}}">
                   <text class="select-check" wx:if="{{qitem.selected}}">✓</text>
                 </view>
               </view>
@@ -106,6 +119,7 @@
       <view class="question-card {{item.selected ? 'selected' : ''}}" wx:for="{{displayQuestions}}" wx:key="id"
         bindtap="onQuestionTap" data-id="{{item.id}}" data-index="{{index}}">
         <view class="q-index-tag">{{index + 1}}</view>
+        <view class="pin-badge" wx:if="{{item.pinned}}">置顶</view>
         <view class="question-card-body">
           <view class="question-img-frame" wx:if="{{item.imageUrl}}"
             catchtap="previewImage" data-url="{{item.imageUrl}}">
@@ -126,9 +140,15 @@
             <view class="meta-left">
               <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
               <text class="add-time">{{item.formattedDate}}</text>
+              <text class="note-flag" wx:if="{{item.hasNote}}">📝</text>
             </view>
-            <view class="meta-right" wx:if="{{editMode}}">
-              <view class="select-box {{item.selected ? 'checked' : ''}}">
+            <view class="meta-right">
+              <!-- 必须 catchtap：整张卡片是 bindtap="onQuestionTap"，冒泡上去会顺手打开详情 -->
+              <view class="mark-btn {{item.favorite ? 'on' : ''}}" wx:if="{{!editMode}}"
+                catchtap="toggleFavorite" data-id="{{item.id}}">{{item.favorite ? '★' : '☆'}}</view>
+              <view class="mark-btn {{item.pinned ? 'on' : ''}}" wx:if="{{!editMode}}"
+                catchtap="togglePin" data-id="{{item.id}}">📌</view>
+              <view class="select-box {{item.selected ? 'checked' : ''}}" wx:if="{{editMode}}">
                 <text class="select-check" wx:if="{{item.selected}}">✓</text>
               </view>
             </view>
@@ -147,12 +167,14 @@
     </view>
   </view>
 
-  <!-- 批量操作栏（对齐 Web 端 batch-actions） -->
-  <view class="batch-actions" wx:if="{{editMode && selectedCount > 0}}">
-    <text class="batch-info">已选择 {{selectedCount}} 道题</text>
+  <!-- 批量操作栏：编辑模式下始终露出，避免「没勾选就看不见变式题」 -->
+  <view class="batch-actions" wx:if="{{editMode}}">
+    <text class="batch-info">{{selectedCount > 0 ? '已选择 ' + selectedCount + ' 道题' : '勾选题目后可操作'}}</text>
     <view class="batch-buttons">
-      <button class="btn btn-primary batch-btn" size="mini" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '加入组卷'}}</button>
-      <button class="btn btn-danger batch-btn" size="mini" bindtap="batchDelete">删除</button>
+      <button class="btn btn-ai batch-btn" bindtap="goMistakeReport" wx:if="{{!isPaperSelectMode}}">错因分析</button>
+      <button class="btn btn-ai batch-btn" bindtap="goVariants" wx:if="{{!isPaperSelectMode}}">生成变式题</button>
+      <button class="btn btn-primary batch-btn" bindtap="addToExam">{{isPaperSelectMode ? '确认组卷' : '加入组卷'}}</button>
+      <button class="btn btn-danger batch-btn" bindtap="batchDelete" wx:if="{{!isPaperSelectMode}}">删除</button>
     </view>
   </view>
 
@@ -187,6 +209,18 @@
         <text class="detail-section-body {{detailQuestion.aiStatus === 'pending' && !detailQuestion.hasAiAnalysis ? 'detail-placeholder' : ''}}">{{detailQuestion.aiAnalysis}}</text>
       </view>
 
+      <!-- 我的笔记：每人对每题一条，仅自己可见 -->
+      <view class="detail-section detail-section-note">
+        <view class="detail-section-head">
+          <text class="detail-section-title">我的笔记</text>
+          <text class="detail-note-time" wx:if="{{detailNoteUpdatedAt}}">{{detailNoteUpdatedAt}} 已保存</text>
+        </view>
+        <textarea class="detail-note-input" value="{{detailNote}}" placeholder="记录你的错因、心得或提醒…"
+          maxlength="2000" auto-height bindinput="onDetailNoteInput" />
+        <button class="note-save-btn" bindtap="saveDetailNote" disabled="{{noteSaving}}">{{noteSaving ? '保存中…' : '保存笔记'}}</button>
+        <button class="variant-detail-btn" catchtap="generateVariantsFromDetail">生成变式题</button>
+      </view>
+
       <view class="detail-section" wx:if="{{detailQuestion.tags && detailQuestion.tags.length > 0}}">
         <text class="detail-section-title">标签</text>
         <view class="detail-tags">
@@ -205,6 +239,7 @@
   <!-- 空状态 -->
   <view class="empty-state" wx:if="{{displayQuestions.length === 0 && knowledgePointGroups.length === 0}}">
     <text class="empty-text" wx:if="{{questions.length === 0}}">当前分类暂无错题</text>
+    <text class="empty-text" wx:elif="{{filterBy === 'favorite'}}">还没有收藏的错题，点题目右下角的 ☆ 即可收藏</text>
     <text class="empty-text" wx:else>没有匹配的题目</text>
     <button class="btn btn-primary go-back-btn" bindtap="goBackToHome">去拍错题</button>
   </view>

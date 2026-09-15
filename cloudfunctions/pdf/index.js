@@ -70,24 +70,31 @@ function hasUsableText(text, placeholder) {
   return text && text !== placeholder;
 }
 
-async function fetchQuestionFromDb(id) {
-  if (!id) return null;
+function getCallerOpenId() {
+  const wxContext = cloud.getWXContext();
+  return wxContext.OPENID || wxContext.FROM_OPENID || '';
+}
+
+async function fetchQuestionFromDb(id, openId) {
+  if (!id || !openId) return null;
   try {
     const db = cloud.database();
     const result = await db.collection('questions').doc(String(id)).get();
-    return result.data || null;
+    const doc = result.data || null;
+    if (!doc || doc.openid !== openId) return null;
+    return doc;
   } catch (err) {
     console.warn('fetchQuestionFromDb failed:', id, err.message);
     return null;
   }
 }
 
-async function lookupQuestionByContent(content) {
-  if (!content) return null;
+async function lookupQuestionByContent(content, openId) {
+  if (!content || !openId) return null;
   try {
     const db = cloud.database();
     const lookup = await db.collection('questions')
-      .where({ content, isDeleted: false })
+      .where({ openid: openId, content, isDeleted: false })
       .limit(1)
       .get();
     return (lookup.data && lookup.data[0]) || null;
@@ -112,12 +119,12 @@ function applyRecordFields(q, record) {
   }
 }
 
-async function hydrateQuestionFromDb(q) {
+async function hydrateQuestionFromDb(q, openId) {
   if (q.id) {
-    applyRecordFields(q, await fetchQuestionFromDb(q.id));
+    applyRecordFields(q, await fetchQuestionFromDb(q.id, openId));
   }
   if ((isMissingAnalysis(q.analysis) || isMissingAnswer(q.answer)) && q.content) {
-    applyRecordFields(q, await lookupQuestionByContent(q.content));
+    applyRecordFields(q, await lookupQuestionByContent(q.content, openId));
   }
   if (isMissingAnswer(q.answer)) q.answer = PENDING_ANSWER;
   if (isMissingAnalysis(q.analysis)) q.analysis = PENDING_ANALYSIS;
@@ -139,7 +146,7 @@ exports.main = async (event, context) => {
   }
 };
 
-async function fillMissingAnalysis(questions) {
+async function fillMissingAnalysis(questions, openId) {
   questions.forEach(normalizeQuestionFields);
 
   const needsHydrate = questions.filter(
@@ -147,7 +154,7 @@ async function fillMissingAnalysis(questions) {
   );
   if (needsHydrate.length === 0) return;
 
-  await Promise.all(needsHydrate.map((q) => hydrateQuestionFromDb(q)));
+  await Promise.all(needsHydrate.map((q) => hydrateQuestionFromDb(q, openId)));
 }
 
 async function generatePDF(event) {
@@ -158,7 +165,7 @@ async function generatePDF(event) {
   }
 
   if (withAnalysis) {
-    await fillMissingAnalysis(questions);
+    await fillMissingAnalysis(questions, getCallerOpenId());
   }
 
   questions.forEach(normalizeQuestionFields);

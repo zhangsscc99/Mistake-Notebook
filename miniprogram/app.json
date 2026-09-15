@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/login/login",
     "pages/index/index",
     "pages/categories/categories",
     "pages/categoryDetail/categoryDetail",
@@ -9,7 +10,11 @@
     "pages/questionSelector/questionSelector",
     "pages/settings/settings",
     "pages/aiChat/aiChat",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/leaderboard/leaderboard",
+    "pages/mistakeReport/mistakeReport",
+    "pages/reportList/reportList",
+    "pages/variants/variants"
   ],
   "window": {
     "backgroundTextStyle": "dark",

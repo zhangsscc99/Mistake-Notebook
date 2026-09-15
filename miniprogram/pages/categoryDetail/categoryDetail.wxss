@@ -13,11 +13,23 @@
   background-size: auto, auto, 44rpx 44rpx, 44rpx 44rpx;
 }
 
+.category-detail-page.has-batch-bar {
+  padding-bottom: 180px;
+}
+
 .edit-toolbar {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   gap: 16px;
   padding: 0 16px 8px;
+}
+
+.edit-hint {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(11, 22, 51, 0.45);
 }
 
 .edit-action {
@@ -119,14 +131,30 @@
   gap: 10px;
 }
 
+.action-buttons-ai {
+  margin-top: 10px;
+}
+
+.action-buttons-ai .action-btn {
+  letter-spacing: 0 !important;
+  font-size: 14px !important;
+}
+
 .action-btn {
   flex: 1;
-  height: 44px !important;
-  font-size: 15px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 88rpx !important;
+  min-height: 88rpx !important;
+  padding: 0 !important;
+  font-size: 30rpx !important;
   font-weight: 700 !important;
-  line-height: 44px !important;
+  line-height: 1 !important;
   border-radius: 14px !important;
   letter-spacing: 1px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
 }
 
 .action-btn::after {
@@ -340,6 +368,51 @@
   flex-shrink: 0;
 }
 
+/* 收藏 / 置顶。用 view 而不是 button：
+   app.json:60 的 "style": "v2" 会接管 <button> 的尺寸（见 .ai-toggle-btn 那一串 !important），
+   这里要的是贴边的图标小饼，绕开原生按钮省一层搏斗 */
+.mark-btn {
+  flex-shrink: 0;
+  min-width: 68rpx;
+  height: 68rpx;
+  padding: 0 16rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  line-height: 1;
+  color: rgba(11, 22, 51, 0.4);
+  background: rgba(11, 22, 51, 0.05);
+}
+
+/* 选中态靠底色而不只靠字形：☆★ 是文字字形能染色，📌 是彩色 emoji 染不了，
+   两个按钮得用同一套状态语言，否则并排看着像两套东西 */
+.mark-btn.on {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  box-shadow: 0 4rpx 12rpx rgba(31, 91, 255, 0.28);
+}
+
+/* 置顶角标，与左上角的 .q-index-tag 镜像对称。
+   没有它用户看不出这道题凭什么排在最前 */
+.pin-badge {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  height: 40rpx;
+  padding: 0 16rpx;
+  border-radius: 12rpx;
+  background: linear-gradient(140deg, #f59e0b, #f97316);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 40rpx;
+  box-shadow: 0 6rpx 14rpx rgba(245, 158, 11, 0.35);
+  z-index: 3;
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -462,15 +535,28 @@
 }
 
 .empty-text {
+  display: block;
+  width: 100%;
   font-size: 16px;
   font-weight: bold;
   color: #0b1633;
   margin-bottom: 24px;
+  text-align: center;
 }
 
 .go-back-btn {
-  width: 140px !important;
-  border-radius: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 280rpx !important;
+  height: 80rpx !important;
+  min-height: 80rpx !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  line-height: 1 !important;
+  border-radius: 999px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
 }
 
 .ai-subtitle-gap {
@@ -483,12 +569,11 @@
   right: 0;
   bottom: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid rgba(47, 107, 255, 0.14);
   box-shadow: 0 -8px 24px rgba(11, 22, 51, 0.08);
   z-index: 100;
@@ -504,11 +589,23 @@
 .batch-buttons {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .batch-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
   margin: 0 !important;
+  height: 64rpx !important;
+  min-height: 64rpx !important;
+  padding: 0 20rpx !important;
+  line-height: 1 !important;
+  font-size: 26rpx !important;
   border-radius: 12px !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
 }
 
 .btn-danger {
@@ -693,9 +790,140 @@
 }
 
 .detail-modal-confirm {
-  margin: 0 18px 18px;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 18px 18px !important;
+  height: 80rpx !important;
+  min-height: 80rpx !important;
+  padding: 0 !important;
+  line-height: 1 !important;
   background: #2459ff;
   color: #fff;
   border-radius: 999px;
   font-size: 15px;
+  font-weight: 700;
+  box-sizing: border-box !important;
+  text-align: center !important;
+}
+
+.detail-modal-confirm::after {
+  border: none !important;
+}
+
+/* 「有笔记」角标：贴在日期后面的小标记 */
+.note-flag {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* 批量栏的 AI 功能按钮：白底 + 品牌描边，与主操作（加入组卷）区分开 */
+.batch-buttons {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.btn-ai {
+  background: #ffffff !important;
+  color: #2459ff !important;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30) !important;
+}
+
+.btn-ai[disabled] {
+  color: rgba(11, 22, 51, 0.30) !important;
+  box-shadow: inset 0 0 0 2rpx rgba(11, 22, 51, 0.10) !important;
+  background: rgba(11, 22, 51, 0.03) !important;
+}
+
+/* 详情弹窗：错题讲解区块 */
+.detail-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.detail-section-head .detail-section-title {
+  margin-bottom: 0;
+}
+
+/* 详情弹窗：我的笔记 */
+.detail-section-note {
+  background: rgba(11, 22, 51, 0.025);
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  border-radius: 10px;
+  padding: 12px;
+}
+.detail-note-time {
+  font-size: 11px;
+  color: rgba(11, 22, 51, 0.40);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.detail-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #0b1633;
+  background: rgba(11, 22, 51, 0.03);
+  border: 1px solid rgba(11, 22, 51, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.note-save-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 16rpx 0 0 !important;
+  height: 80rpx !important;
+  min-height: 80rpx !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 28rpx !important;
+  font-weight: 700 !important;
+  border-radius: 24rpx !important;
+  background: #ffffff !important;
+  color: #2459ff !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30) !important;
+}
+
+.note-save-btn::after {
+  border: none !important;
+}
+
+.note-save-btn[disabled] {
+  color: rgba(11, 22, 51, 0.35) !important;
+  box-shadow: inset 0 0 0 2rpx rgba(11, 22, 51, 0.10) !important;
+}
+
+.variant-detail-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin: 16rpx 0 0 !important;
+  height: 80rpx !important;
+  min-height: 80rpx !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 28rpx !important;
+  font-weight: 700 !important;
+  border-radius: 24rpx !important;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 8px 20px rgba(31, 91, 255, 0.26) !important;
+}
+
+.variant-detail-btn::after {
+  border: none !important;
 }

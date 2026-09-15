@@ -12,11 +12,67 @@ function mapQuestionList(records) {
   return (records || []).map(normalizeQuestion);
 }
 
-// 本函数此前完全不认 openid（question 的增删改查都是全局的）。
-// 收藏/置顶是第一个需要「是谁」的功能，所以在这里补上。
+// 身份只从云端上下文取。错题 / 分类按 openid 隔离，不再是全站共用池。
 function getCallerOpenId() {
   const wxContext = cloud.getWXContext();
   return wxContext.OPENID || wxContext.FROM_OPENID || '';
+}
+
+function noOpenId() {
+  return { success: false, error: 'NO_OPENID', data: { message: '登录状态异常，请重新登录' } };
+}
+
+function notFound(msg) {
+  return { success: false, error: msg || 'Question not found' };
+}
+
+async function loadOwnedQuestion(openId, id) {
+  if (!id) return null;
+  try {
+    const result = await db.collection('questions').doc(String(id)).get();
+    const doc = result.data;
+    if (!doc || doc.isDeleted) return null;
+    if (doc.openid !== openId) return null;
+    return doc;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function findOrCreateCategory(openId, categoryId, categoryName) {
+  if (categoryId) {
+    try {
+      const result = await db.collection('categories').doc(String(categoryId)).get();
+      if (result.data && !result.data.isDeleted && result.data.openid === openId) {
+        return result.data;
+      }
+    } catch (e) {
+      // fall through to name lookup
+    }
+  }
+
+  const name = String(categoryName || '').trim();
+  if (!name) return null;
+
+  const byName = await db.collection('categories')
+    .where({ openid: openId, name, isDeleted: false })
+    .limit(1)
+    .get();
+  if (byName.data[0]) return byName.data[0];
+
+  const now = new Date().toISOString();
+  const add = await db.collection('categories').add({
+    data: {
+      name,
+      description: '',
+      color: '#4A90E2',
+      openid: openId,
+      isDeleted: false,
+      createdAt: now,
+      updatedAt: now
+    }
+  });
+  return { _id: add._id, name, openid: openId };
 }
 
 exports.main = async (event, context) => {
@@ -58,6 +114,14 @@ exports.main = async (event, context) => {
         return await markQuestion(event);
       case 'listMarks':
         return await listMarks(event);
+      case 'saveNote':
+        return await saveNote(event);
+      case 'getNote':
+        return await getNote(event);
+      case 'listNotes':
+        return await listNotes(event);
+      case 'saveVariants':
+        return await saveVariants(event);
       default:
         return { success: false, error: `Unknown action: ${action}` };
     }
@@ -68,28 +132,23 @@ exports.main = async (event, context) => {
 };
 
 async function createQuestion(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { content, imageUrl, category, difficulty, tags, aiAnswer, aiAnalysis } = event;
 
-  let categoryId = event.categoryId;
-  if (!categoryId && category) {
-    const catResult = await db.collection('categories')
-      .where({
-        name: category,
-        isDeleted: false
-      })
-      .get();
-    if (catResult.data.length > 0) {
-      categoryId = catResult.data[0]._id;
-    }
-  }
+  const cat = await findOrCreateCategory(openId, event.categoryId, category);
+  const categoryId = cat ? cat._id : '';
+  const categoryName = (cat && cat.name) || category || '';
 
   const now = new Date().toISOString();
   const hasAiContent = !!(aiAnswer || aiAnalysis);
   const questionData = {
+    openid: openId,
     content: content || '',
     imageUrl: imageUrl || '',
     categoryId: categoryId || '',
-    category: category || '',
+    category: categoryName,
     difficulty: difficulty || 'MEDIUM',
     tags: tags || [],
     aiConfidence: event.aiConfidence || 0,
@@ -114,25 +173,26 @@ async function createQuestion(event) {
 }
 
 async function getQuestion(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { id } = event;
   if (!id) {
     return { success: false, error: 'Missing question id' };
   }
 
-  const result = await db.collection('questions')
-    .doc(id)
-    .get();
+  const doc = await loadOwnedQuestion(openId, id);
+  if (!doc) return notFound();
 
-  if (!result.data) {
-    return { success: false, error: 'Question not found' };
-  }
-
-  return { success: true, data: normalizeQuestion(result.data) };
+  return { success: true, data: normalizeQuestion(doc) };
 }
 
 async function listQuestions(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { category, difficulty, keyword, tag } = event;
-  const conditions = { isDeleted: false };
+  const conditions = { openid: openId, isDeleted: false };
 
   if (category) {
     conditions.category = category;
@@ -159,8 +219,11 @@ async function listQuestions(event) {
 }
 
 async function pageQuestions(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { page = 0, size = 20, category, difficulty, keyword } = event;
-  const conditions = { isDeleted: false };
+  const conditions = { openid: openId, isDeleted: false };
 
   if (category) {
     conditions.category = category;
@@ -199,6 +262,9 @@ async function pageQuestions(event) {
 }
 
 async function batchGetQuestions(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { ids } = event;
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
     return { success: false, error: 'Missing or invalid ids array' };
@@ -207,6 +273,7 @@ async function batchGetQuestions(event) {
   const result = await db.collection('questions')
     .where({
       _id: _.in(ids),
+      openid: openId,
       isDeleted: false
     })
     .get();
@@ -215,10 +282,16 @@ async function batchGetQuestions(event) {
 }
 
 async function updateQuestion(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { id } = event;
   if (!id) {
     return { success: false, error: 'Missing question id' };
   }
+
+  const owned = await loadOwnedQuestion(openId, id);
+  if (!owned) return notFound();
 
   const updateFields = {};
   const allowedFields = ['content', 'imageUrl', 'categoryId', 'category', 'difficulty', 'tags', 'aiAnswer', 'aiAnalysis', 'aiStatus', 'aiConfidence', 'ocrConfidence'];
@@ -241,10 +314,16 @@ async function updateQuestion(event) {
 }
 
 async function deleteQuestion(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { id } = event;
   if (!id) {
     return { success: false, error: 'Missing question id' };
   }
+
+  const owned = await loadOwnedQuestion(openId, id);
+  if (!owned) return notFound();
 
   await db.collection('questions')
     .doc(id)
@@ -259,14 +338,22 @@ async function deleteQuestion(event) {
 }
 
 async function batchDeleteQuestions(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { ids } = event;
   if (!ids || !Array.isArray(ids) || ids.length === 0) {
     return { success: false, error: 'Missing or invalid ids array' };
   }
 
   const now = new Date().toISOString();
+  const ownedIds = [];
+  for (const id of ids) {
+    const doc = await loadOwnedQuestion(openId, id);
+    if (doc) ownedIds.push(id);
+  }
 
-  const updatePromises = ids.map(id =>
+  const updatePromises = ownedIds.map(id =>
     db.collection('questions')
       .doc(id)
       .update({
@@ -279,15 +366,15 @@ async function batchDeleteQuestions(event) {
 
   await Promise.all(updatePromises);
 
-  return { success: true, data: { deletedCount: ids.length } };
+  return { success: true, data: { deletedCount: ownedIds.length } };
 }
 
-async function resolveCategory(event) {
+async function resolveCategory(event, openId) {
   const { categoryId, categoryName } = event;
   if (categoryId) {
     try {
       const result = await db.collection('categories').doc(String(categoryId)).get();
-      if (result.data && !result.data.isDeleted) {
+      if (result.data && !result.data.isDeleted && result.data.openid === openId) {
         return result.data;
       }
     } catch (e) {
@@ -298,7 +385,7 @@ async function resolveCategory(event) {
   const name = categoryName || categoryId;
   if (name) {
     const byName = await db.collection('categories')
-      .where({ name: String(name), isDeleted: false })
+      .where({ openid: openId, name: String(name), isDeleted: false })
       .limit(1)
       .get();
     if (byName.data.length > 0) {
@@ -310,23 +397,46 @@ async function resolveCategory(event) {
 }
 
 async function getQuestionsByCategory(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { categoryId, categoryName } = event;
   if (!categoryId && !categoryName) {
     return { success: false, error: 'Missing categoryId' };
   }
 
-  const category = await resolveCategory({ categoryId, categoryName });
+  const category = await resolveCategory({ categoryId, categoryName }, openId);
   const settled = _.nin(['pending', 'processing', 'failed']);
-  const conditions = [{ categoryId: String(categoryId), isDeleted: false, aiStatus: settled }];
+  const conditions = [{
+    openid: openId,
+    categoryId: String(categoryId || ''),
+    isDeleted: false,
+    aiStatus: settled
+  }];
 
   if (category && category._id) {
-    conditions.push({ categoryId: category._id, isDeleted: false, aiStatus: settled });
+    conditions.push({
+      openid: openId,
+      categoryId: category._id,
+      isDeleted: false,
+      aiStatus: settled
+    });
   }
   if (category && category.name) {
-    conditions.push({ category: category.name, isDeleted: false, aiStatus: settled });
+    conditions.push({
+      openid: openId,
+      category: category.name,
+      isDeleted: false,
+      aiStatus: settled
+    });
   }
   if (categoryName) {
-    conditions.push({ category: String(categoryName), isDeleted: false, aiStatus: settled });
+    conditions.push({
+      openid: openId,
+      category: String(categoryName),
+      isDeleted: false,
+      aiStatus: settled
+    });
   }
 
   const result = await db.collection('questions')
@@ -338,8 +448,12 @@ async function getQuestionsByCategory(event) {
 }
 
 async function listPendingQuestions() {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const result = await db.collection('questions')
     .where({
+      openid: openId,
       isDeleted: false,
       aiStatus: _.in(['pending', 'processing', 'failed'])
     })
@@ -350,10 +464,16 @@ async function listPendingQuestions() {
 }
 
 async function retryQuestion(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { id } = event;
   if (!id) {
     return { success: false, error: 'Missing question id' };
   }
+
+  const owned = await loadOwnedQuestion(openId, id);
+  if (!owned) return notFound();
 
   await db.collection('questions')
     .doc(String(id))
@@ -372,9 +492,12 @@ async function retryQuestion(event) {
 }
 
 async function statsByCategory() {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const result = await db.collection('questions')
     .aggregate()
-    .match({ isDeleted: false })
+    .match({ isDeleted: false, openid: openId })
     .group({
       _id: '$category',
       count: $.sum(1)
@@ -385,9 +508,12 @@ async function statsByCategory() {
 }
 
 async function statsByDifficulty() {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const result = await db.collection('questions')
     .aggregate()
-    .match({ isDeleted: false })
+    .match({ isDeleted: false, openid: openId })
     .group({
       _id: '$difficulty',
       count: $.sum(1)
@@ -399,10 +525,8 @@ async function statsByDifficulty() {
 
 // ─── 收藏 / 置顶 / 已掌握 ─────────────────────────────────────────────────────
 //
-// questions 集合本身没有归属字段（createQuestion 写入时只带内容，
-// 见本文件 :75-90），错题是所有人共享的一个池子。
-// 所以标记必须落在「每人对每题一条」的独立记录里，不能写进题目本身 ——
-// 否则 A 收藏一道题，B 那边也会显示成已收藏。
+// 题目已按 openid 隔离，但收藏/置顶仍落在独立集合：每人每题一条，
+// 方便列表筛选，也不把标记写进题目文档。
 //
 // _id 用 `${openid}_${questionId}` 确定性拼接：每人每题只可能有一条，
 // doc().set() 天然幂等，不需要事务也不会写重。
@@ -494,6 +618,177 @@ async function listMarks(event) {
   });
 
   return { success: true, data: map };
+}
+
+// ─── 错题批注 / 笔记 ─────────────────────────────────────────────────────────
+//
+// 与 question_marks 同一个道理：笔记是「每人对每题一条」
+// 的私有数据，必须落在独立集合 question_notes，_id 用 `${openid}_${questionId}`
+// 确定性拼接，doc().set() 幂等。
+const NOTES_COLLECTION = 'question_notes';
+const MAX_NOTE_LEN = 2000;
+
+async function saveNote(event) {
+  const openId = getCallerOpenId();
+  if (!openId) {
+    return { success: false, error: 'No openid' };
+  }
+
+  const questionId = String(event.questionId || '').trim();
+  if (!questionId) {
+    return { success: false, error: 'Missing questionId' };
+  }
+
+  const note = String(event.note == null ? '' : event.note).trim().slice(0, MAX_NOTE_LEN);
+  const now = new Date().toISOString();
+  const _id = `${openId}_${questionId}`;
+
+  // 清空笔记 = 删除记录，不留空文档
+  if (!note) {
+    try {
+      await db.collection(NOTES_COLLECTION).doc(_id).remove();
+    } catch (e) {
+      // 本来就不存在，视为成功
+    }
+    return { success: true, data: { questionId, note: '', updatedAt: '' } };
+  }
+
+  const existing = await db.collection(NOTES_COLLECTION).where({ _id }).limit(1).get();
+  const current = (existing.data || [])[0];
+
+  await db.collection(NOTES_COLLECTION).doc(_id).set({
+    data: {
+      openid: openId,
+      questionId,
+      note,
+      createdAt: (current && current.createdAt) || now,
+      updatedAt: now
+    }
+  });
+
+  return { success: true, data: { questionId, note, updatedAt: now } };
+}
+
+async function getNote(event) {
+  const openId = getCallerOpenId();
+  if (!openId) {
+    return { success: false, error: 'No openid' };
+  }
+
+  const questionId = String(event.questionId || '').trim();
+  if (!questionId) {
+    return { success: false, error: 'Missing questionId' };
+  }
+
+  const res = await db.collection(NOTES_COLLECTION)
+    .where({ _id: `${openId}_${questionId}` })
+    .limit(1)
+    .get();
+  const doc = (res.data || [])[0];
+
+  return {
+    success: true,
+    data: { questionId, note: (doc && doc.note) || '', updatedAt: (doc && doc.updatedAt) || '' }
+  };
+}
+
+// 给一批题目取当前用户的笔记（用于列表上的「有笔记」角标），与 listMarks 同构
+async function listNotes(event) {
+  const openId = getCallerOpenId();
+  if (!openId) {
+    return { success: false, error: 'No openid' };
+  }
+
+  const questionIds = (Array.isArray(event.questionIds) ? event.questionIds : [])
+    .map((id) => String(id || '').trim())
+    .filter(Boolean)
+    .slice(0, 200);
+
+  if (questionIds.length === 0) {
+    return { success: true, data: {} };
+  }
+
+  const res = await db.collection(NOTES_COLLECTION)
+    .where({ openid: openId, questionId: _.in(questionIds) })
+    .limit(200)
+    .get();
+
+  const map = {};
+  (res.data || []).forEach((doc) => {
+    map[doc.questionId] = { note: doc.note || '', updatedAt: doc.updatedAt || '' };
+  });
+
+  return { success: true, data: map };
+}
+
+// ─── 变式题入库 ──────────────────────────────────────────────────────────────
+//
+// answer 云函数的 generateVariants 只生成不入库；学生在前端勾选确认后，
+// 由这里写入题库。带 isVariant / sourceQuestionIds 溯源，aiStatus 直接 ready
+// （答案解析是生成时一起出的，不需要再走 answerWorker）。
+async function saveVariants(event) {
+  if (!getCallerOpenId()) return noOpenId();
+
+  const variants = (Array.isArray(event.variants) ? event.variants : [])
+    .map((v) => ({
+      content: String(v.content || '').trim(),
+      answer: String(v.answer || '').trim(),
+      analysis: String(v.analysis || '').trim(),
+      difficulty: DIFFICULTY_MAP[v.difficulty] || 'MEDIUM',
+      knowledgePoint: String(v.knowledgePoint || '').trim().slice(0, 20)
+    }))
+    .filter((v) => v.content && v.answer)
+    .slice(0, 10);
+
+  if (variants.length === 0) {
+    return { success: false, error: '没有可保存的变式题' };
+  }
+
+  const sourceQuestionIds = (Array.isArray(event.sourceQuestionIds) ? event.sourceQuestionIds : [])
+    .map((id) => String(id || '').trim())
+    .filter(Boolean)
+    .slice(0, 20);
+  const category = String(event.category || '').trim();
+
+  const saved = await Promise.all(
+    variants.map(async (v) => {
+      const tags = ['变式题'];
+      if (v.knowledgePoint) tags.push(v.knowledgePoint);
+
+      const createRes = await createQuestion({
+        content: v.content,
+        imageUrl: '',
+        category,
+        difficulty: v.difficulty,
+        tags,
+        aiConfidence: 0,
+        aiAnswer: v.answer,
+        aiAnalysis: v.analysis,
+        aiStatus: 'ready',
+        skipWorkerNudge: true
+      });
+
+      if (!createRes.success) return null;
+
+      // createQuestion 的白名单不含溯源字段，单独补写
+      const newId = createRes.data._id;
+      try {
+        await db.collection('questions').doc(newId).update({
+          data: { isVariant: true, sourceQuestionIds }
+        });
+      } catch (e) {
+        console.warn('saveVariants trace fields failed:', newId, e.message);
+      }
+
+      return { ...createRes.data, isVariant: true, sourceQuestionIds };
+    })
+  );
+
+  const savedQuestions = saved.filter(Boolean);
+  return {
+    success: true,
+    data: { savedCount: savedQuestions.length, questions: savedQuestions }
+  };
 }
 
 const DIFFICULTY_MAP = {
@@ -664,16 +959,16 @@ ${numbered}
 }
 
 async function generateAnswerForQuestion(event) {
+  const openId = getCallerOpenId();
+  if (!openId) return noOpenId();
+
   const { id } = event;
   if (!id) {
     return { success: false, error: 'Missing question id' };
   }
 
-  const existing = await db.collection('questions').doc(String(id)).get();
-  const doc = existing.data;
-  if (!doc || doc.isDeleted) {
-    return { success: false, error: 'Question not found' };
-  }
+  const doc = await loadOwnedQuestion(openId, id);
+  if (!doc) return notFound();
   if (doc.aiStatus === 'ready' && doc.aiAnalysis) {
     return { success: true, data: { skipped: true } };
   }
@@ -714,6 +1009,8 @@ async function generateAnswerForQuestion(event) {
 }
 
 async function batchSaveQuestions(event) {
+  if (!getCallerOpenId()) return noOpenId();
+
   const { questions, category, difficulty, imageUrl, generateAi = false } = event;
 
   if (!questions || !Array.isArray(questions) || questions.length === 0) {

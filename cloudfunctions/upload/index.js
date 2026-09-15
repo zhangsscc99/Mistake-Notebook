@@ -8,6 +8,34 @@ const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/co
 
 const DASHSCOPE_MODEL = 'qwen3-vl-flash';
 
+function getCallerOpenId() {
+  const wxContext = cloud.getWXContext();
+  return wxContext.OPENID || wxContext.FROM_OPENID || '';
+}
+
+async function findOrCreateCategory(openId, name) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return null;
+  const found = await db.collection('categories')
+    .where({ openid: openId, name: trimmed, isDeleted: false })
+    .limit(1)
+    .get();
+  if (found.data && found.data[0]) return found.data[0];
+  const now = new Date().toISOString();
+  const add = await db.collection('categories').add({
+    data: {
+      name: trimmed,
+      description: '',
+      color: '#4A90E2',
+      openid: openId,
+      isDeleted: false,
+      createdAt: now,
+      updatedAt: now
+    }
+  });
+  return { _id: add._id, name: trimmed, openid: openId };
+}
+
 function callDashScope(messages, temperature = 0.2) {
   return new Promise((resolve, reject) => {
     const data = JSON.stringify({
@@ -64,6 +92,11 @@ exports.main = async (event, context) => {
 };
 
 async function processQuestionPipeline(event) {
+  const openId = getCallerOpenId();
+  if (!openId) {
+    return { success: false, error: 'NO_OPENID', data: { message: '登录状态异常，请重新登录' } };
+  }
+
   const { fileID, category } = event;
 
   if (!fileID) {
@@ -164,24 +197,18 @@ ${recognizedText}
     }
   }
 
-  // Step 5: Map category name to categoryId
+  // Step 5: Map category name to this user's category
   const targetCategory = classification.category || category;
   let categoryId = '';
   if (targetCategory) {
-    const catResult = await db.collection('categories')
-      .where({
-        name: targetCategory,
-        isDeleted: false
-      })
-      .get();
-    if (catResult.data.length > 0) {
-      categoryId = catResult.data[0]._id;
-    }
+    const cat = await findOrCreateCategory(openId, targetCategory);
+    if (cat) categoryId = cat._id;
   }
 
   // Step 6: Save to database
   const now = new Date().toISOString();
   const questionData = {
+    openid: openId,
     content: recognizedText,
     imageUrl: fileID,
     categoryId,

@@ -37,8 +37,21 @@ function mapPendingDoc(doc) {
 }
 
 function startPendingWatch(onSnapshot, onError) {
+  let openId = '';
+  try {
+    const { getCachedProfile } = require('./profile');
+    openId = (getCachedProfile() || {}).openId || '';
+  } catch (e) {
+    openId = '';
+  }
+  if (!openId) {
+    console.warn('pendingWatch skipped: no openid');
+    return { close() {} };
+  }
+
   return db.collection('questions')
     .where({
+      openid: openId,
       isDeleted: false,
       aiStatus: _.in(['pending', 'processing', 'failed'])
     })

@@ -1,0 +1,43 @@
+<!--pages/mistakeReport/mistakeReport.wxml-->
+<view class="report-page">
+
+  <!-- 生成中 -->
+  <view class="state-card" wx:if="{{loading}}">
+    <view class="state-spinner"></view>
+    <view class="state-title">AI 正在深度分析 {{questionCount || ''}} 道错题…</view>
+    <view class="state-sub">正在归类错因、定位薄弱知识点，约需 10-20 秒</view>
+  </view>
+
+  <!-- 失败 -->
+  <view class="state-card" wx:elif="{{error}}">
+    <view class="state-title">生成失败</view>
+    <view class="state-sub">{{error}}</view>
+    <button class="state-btn" bindtap="goBack">返回重选</button>
+  </view>
+
+  <block wx:else>
+    <!-- 报告头 -->
+    <view class="report-header-card">
+      <view class="report-title">{{title}}</view>
+      <view class="report-meta-row">
+        <text class="report-pill">{{questionCount}} 道错题</text>
+        <text class="report-pill" wx:for="{{categories}}" wx:key="*this">{{item}}</text>
+        <text class="report-time" wx:if="{{createdAt}}">{{createdAt}}</text>
+      </view>
+    </view>
+
+    <!-- 报告正文：按【】分节渲染 -->
+    <view class="report-block" wx:for="{{reportBlocks}}" wx:key="index">
+      <view class="report-block-title" wx:if="{{item.title}}">
+        <text class="report-block-bar"></text>
+        <text>{{item.title}}</text>
+      </view>
+      <text class="report-block-body">{{item.text}}</text>
+    </view>
+
+    <view class="report-footer">
+      <text class="report-footer-hint">报告已自动保存，可随时回看</text>
+      <button class="history-btn" bindtap="goHistory">查看历史报告</button>
+    </view>
+  </block>
+</view>

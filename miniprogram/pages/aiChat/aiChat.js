@@ -92,7 +92,11 @@ Page({
     // messages 在好几处被手工重建（:135/:159/:234/:237/:267），
     // 逐条挂字段迟早漏掉某处；页面级读一次，本轮所有用户气泡都对
     avatarFileID: '',
-    nickName: ''
+    nickName: '',
+    // 今日免费额度。remaining 为 -1 表示会员、不限量（与云函数约定一致）
+    quotaRemaining: -1,
+    quotaLimit: 0,
+    isVip: false
   },
 
   onLoad() {
@@ -183,8 +187,14 @@ Page({
       config: { timeout: 15000 },
       data: { action: 'getMemoryStatus' },
       success: (res) => {
-        const data = res.result && res.result.data;
-        if (!res.result || !res.result.success || !data || !data.hasMemory) return;
+        const result = res.result || {};
+        const data = result.data;
+
+        // 额度先处理，且必须放在 hasMemory 的提前 return **之前** ——
+        // 刚上手、还没有任何对话记忆的用户恰恰最需要看到剩余条数
+        this.applyQuota(data && data.quota);
+
+        if (!result.success || !data || !data.hasMemory) return;
         // 这里再读一次 nickName：onShow 里那次异步刷新多半已经落地，
         // 拿到的比 startConversation 时更准
         const greeting = buildGreeting(ctxRaw, data, this.data.nickName);
@@ -194,6 +204,17 @@ Page({
           this.setData({ messages });
         }
       }
+    });
+  },
+
+  // quota 是云函数 answer 的统一形状：{ isVip, limit, used, remaining }，
+  // remaining 为 -1 表示会员不限量
+  applyQuota(quota) {
+    if (!quota) return;
+    this.setData({
+      isVip: !!quota.isVip,
+      quotaLimit: quota.limit || 0,
+      quotaRemaining: typeof quota.remaining === 'number' ? quota.remaining : -1
     });
   },
 
@@ -286,8 +307,21 @@ Page({
       },
       success: (res) => {
         const result = res.result || {};
-        const reply = (result.success && result.data && result.data.reply)
-          ? result.data.reply
+        const data = result.data || {};
+
+        // 额度用尽必须单独判，否则会掉进下面那句「出了点问题」——
+        // 用户看到的就成了一次莫名其妙的技术故障，而不是「该去兑换会员了」
+        if (!result.success && result.error === 'QUOTA_EXCEEDED') {
+          this.applyQuota({ isVip: false, limit: data.limit, remaining: 0 });
+          this.replaceTyping(typingId,
+            data.message || '今日免费对话已用完，可在「我的」用金币兑换会员');
+          return;
+        }
+
+        if (result.success) this.applyQuota(data.quota);
+
+        const reply = (result.success && data.reply)
+          ? data.reply
           : '抱歉，我这边出了点问题，请稍后再试。';
         this.replaceTyping(typingId, reply);
       },

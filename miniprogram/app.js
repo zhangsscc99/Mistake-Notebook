@@ -1,4 +1,6 @@
 // app.js
+const { isLoggedIn, goLogin } = require('./utils/auth');
+
 App({
   // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
   // `if (!wx.cloud) return`，一旦走到那条分支 globalData 就永远不会被赋值，
@@ -29,7 +31,7 @@ App({
       fail: (err) => console.warn('[app] wx.login 失败，上传可能受影响:', err)
     });
 
-    // 首次启动时初始化云数据库（创建默认分类）
+    // 只确保集合存在。默认分类改在登录时按账号创建，不再写入全局题库。
     setTimeout(() => {
       wx.cloud.callFunction({
         name: 'init',
@@ -44,5 +46,12 @@ App({
         }
       });
     }, 1000);
+  },
+
+  onShow: function () {
+    const pages = getCurrentPages();
+    const cur = pages[pages.length - 1];
+    if (cur && cur.route === 'pages/login/login') return;
+    if (!isLoggedIn()) goLogin();
   }
 });
