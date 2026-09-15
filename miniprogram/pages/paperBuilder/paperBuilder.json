@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "组合试卷"
+  "navigationBarTitleText": "组合试卷",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
 }

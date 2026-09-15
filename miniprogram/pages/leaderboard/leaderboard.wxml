@@ -2,9 +2,12 @@
 <view class="board-page">
 
   <view class="board-hero">
-    <view class="hero-title">排行榜</view>
-    <view class="hero-sub" wx:if="{{metric === 'checkin'}}">按连续打卡天数排名 · 昨天或今天打过卡才上榜</view>
-    <view class="hero-sub" wx:else>按已整理错题数量排名</view>
+    <view class="hero-copy">
+      <view class="hero-title">排行榜</view>
+      <view class="hero-sub" wx:if="{{metric === 'checkin'}}">按连续打卡天数排名 · 昨天或今天打过卡才上榜</view>
+      <view class="hero-sub" wx:else>按已整理错题数量排名</view>
+    </view>
+    <button class="hero-share" open-type="share">分享成绩</button>
   </view>
 
   <view class="chip-row">

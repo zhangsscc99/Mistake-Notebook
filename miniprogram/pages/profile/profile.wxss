@@ -70,6 +70,21 @@
   letter-spacing: 0.5rpx;
 }
 
+.hero-level {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10rpx;
+  height: 44rpx;
+  line-height: 44rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: #ffffff;
+  white-space: nowrap;
+}
+
 .hero-sub {
   margin-top: 8rpx;
   font-size: 22rpx;
@@ -330,6 +345,119 @@
   margin: 24rpx 24rpx 0;
 }
 
+.ach-card {
+  padding: 28rpx 28rpx 20rpx;
+}
+
+.ach-level-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.ach-level-main {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.ach-level-num {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #2459ff;
+  white-space: nowrap;
+}
+
+.ach-level-name {
+  margin-left: 12rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0b1633;
+  white-space: nowrap;
+}
+
+.ach-level-xp {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+}
+
+.ach-bar {
+  margin-top: 16rpx;
+  height: 12rpx;
+  border-radius: 999rpx;
+  background: rgba(36, 89, 255, 0.12);
+  overflow: hidden;
+}
+
+.ach-bar-fill {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+}
+
+.ach-bar-hint,
+.ach-count {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.ach-count {
+  margin-top: 20rpx;
+  font-weight: 700;
+  color: #0b1633;
+}
+
+.medal-grid {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 8rpx;
+}
+
+.medal {
+  width: 25%;
+  box-sizing: border-box;
+  padding: 16rpx 4rpx 8rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.38;
+}
+
+.medal.on {
+  opacity: 1;
+}
+
+.medal-mark {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  background: #eef2fa;
+  color: rgba(11, 22, 51, 0.35);
+  font-size: 30rpx;
+  font-weight: 800;
+  line-height: 72rpx;
+  text-align: center;
+}
+
+.medal.on .medal-mark {
+  color: #ffffff;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+  box-shadow: 0 8rpx 18rpx rgba(31, 91, 255, 0.28);
+}
+
+.medal-name {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  font-weight: 700;
+  color: #0b1633;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .section-title {
   font-size: 24rpx;
   font-weight: 600;
@@ -362,6 +490,20 @@
 
 .cell:last-child {
   border-bottom: none;
+}
+
+.cell-share {
+  width: 100% !important;
+  margin: 0;
+  background: transparent;
+  line-height: inherit;
+  border-radius: 0;
+  text-align: left;
+  font-size: inherit;
+}
+
+.cell-share::after {
+  border: none;
 }
 
 .cell-label {

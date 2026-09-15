@@ -11,9 +11,38 @@
 
 /* 顶部 */
 .board-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20rpx;
   padding: 48rpx 32rpx 40rpx;
   background: linear-gradient(135deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
   color: #ffffff;
+}
+
+.hero-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-share {
+  flex-shrink: 0;
+  width: auto !important;
+  height: 56rpx;
+  line-height: 56rpx;
+  margin: 0 0 4rpx;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: #ffffff;
+  white-space: nowrap;
+}
+
+.hero-share::after {
+  border: none;
 }
 
 .hero-title {

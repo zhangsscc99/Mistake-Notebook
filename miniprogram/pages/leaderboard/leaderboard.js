@@ -1,4 +1,5 @@
 // pages/leaderboard/leaderboard.js
+const { boardCard, timelineCard, enableShareMenu } = require('../../utils/share');
 function readScore(row, metric) {
   if (metric === 'questions') {
     return Number(row.score != null ? row.score : row.questionCount) || 0;
@@ -25,10 +26,12 @@ Page({
   },
 
   onLoad: function () {
+    enableShareMenu();
     this.load();
   },
 
   onShow: function () {
+    enableShareMenu();
     if (!this._loadedOnce) {
       this._loadedOnce = true;
       return;
@@ -85,5 +88,13 @@ Page({
       return;
     }
     wx.switchTab({ url: '/pages/profile/profile' });
+  },
+
+  onShareAppMessage: function () {
+    return boardCard(this.data.metric, this.data.me);
+  },
+
+  onShareTimeline: function () {
+    return timelineCard(this.onShareAppMessage().title);
   }
 });

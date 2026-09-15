@@ -2,7 +2,7 @@
   <view class="hero">
     <view class="mark">错</view>
     <view class="title">智卷错题通</view>
-    <view class="subtitle">用微信身份进入，每人一份自己的错题本</view>
+    <view class="subtitle">{{invited ? '同学推荐你来一起整理错题' : '用微信身份进入，每人一份自己的错题本'}}</view>
   </view>
 
   <view class="card">

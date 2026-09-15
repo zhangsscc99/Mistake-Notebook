@@ -2,6 +2,7 @@
 const app = getApp();
 const { ensureCloudSession, isAccessTokenError } = require('../../utils/cloud.js');
 const { getProfile, getCachedProfile, greetingPrefix } = require('../../utils/profile.js');
+const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share.js');
 
 // 昵称最长 20 个码点（cloudfunctions/user/index.js 的 MAX_NICKNAME_LEN），
 // 这里不截断，交给 WXSS 的省略号兜底；但昵称为空时不能留下一个孤零零的逗号
@@ -41,6 +42,7 @@ Page({
   },
 
   onShow: function () {
+    enableShareMenu();
     this.loadRecentRecords();
     this.loadProfile();
   },
@@ -323,5 +325,13 @@ Page({
       const step = fileID ? '云函数' : '上传';
       that.handleCloudError(err, step);
     }
+  },
+
+  onShareAppMessage: function () {
+    return inviteCard();
+  },
+
+  onShareTimeline: function () {
+    return timelineCard();
   }
 });

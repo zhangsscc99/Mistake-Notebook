@@ -9,6 +9,8 @@ const {
   clearProfileCache
 } = require('../../utils/profile');
 const { clearSession } = require('../../utils/auth');
+const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
+const { buildAchievements, EMPTY_ACH } = require('../../utils/achievements');
 
 const MAX_NICKNAME_LEN = 20;
 
@@ -67,7 +69,11 @@ const EMPTY_WALLET = {
   todayBonus: { base: 0, chat: 0, paper: 0, total: 0 },
   recentDays: [],
   favoriteCount: 0,
-  pinnedCount: 0
+  pinnedCount: 0,
+  questionCount: 0,
+  paperCount: 0,
+  noteCount: 0,
+  reportCount: 0
 };
 
 Page({
@@ -93,10 +99,12 @@ Page({
     walletLoaded: false,
     walletError: '',
     checkingIn: false,
-    redeeming: false
+    redeeming: false,
+    ach: EMPTY_ACH
   },
 
   onShow: function () {
+    enableShareMenu();
     this._nickDraft = '';
     // 先用缓存铺上，否则每次切回本页头像昵称都会空一下再出现
     this.applyProfile(getCachedProfile());
@@ -124,7 +132,11 @@ Page({
     return this.callCloud('user', { action: 'getWallet' }, 20000)
       .then((res) => {
         if (!res.success) throw new Error(res.error || '读取失败');
-        this.setData({ wallet: decorateWallet(res.data), walletLoaded: true });
+        this.setData({
+          wallet: decorateWallet(res.data),
+          walletLoaded: true,
+          ach: buildAchievements(res.data)
+        });
       })
       .catch((err) => {
         console.error('[profile] 读取钱包失败', err);
@@ -145,7 +157,11 @@ Page({
       .then((res) => {
         if (!res.success) throw new Error(res.error || '打卡失败');
         const d = res.data || {};
-        this.setData({ wallet: decorateWallet(d), checkingIn: false });
+        this.setData({
+          wallet: decorateWallet(d),
+          checkingIn: false,
+          ach: buildAchievements(d)
+        });
         if (d.alreadyChecked) {
           // 并发连点时后到的那次会走到这里，不是错误，如实说就行
           wx.showToast({ title: '今天已经打过卡了', icon: 'none' });
@@ -477,6 +493,21 @@ Page({
     });
   },
 
+  onMedalTap: function (e) {
+    const id = e.currentTarget.dataset.id;
+    const medals = (this.data.ach && this.data.ach.medals) || [];
+    const medal = medals.filter((m) => m.id === id)[0];
+    if (!medal) return;
+    wx.showModal({
+      title: medal.name,
+      content: medal.unlocked
+        ? medal.desc + '\n\n已点亮'
+        : medal.desc + '\n\n未点亮：' + medal.hint,
+      showCancel: false,
+      confirmText: '知道了'
+    });
+  },
+
   goCategories: function () {
     wx.switchTab({ url: '/pages/categories/categories' });
   },
@@ -490,24 +521,13 @@ Page({
   },
 
   // 打卡分享。分享的动机必须是内容本身，不能是奖励 ——
-  // 微信《滥用分享行为》2.1 明确禁止「完成分享操作立即可获得积分/金币」，
-  // 且金币属于规则定义里的「虚拟奖品/利益」，处罚是阶梯封禁分享能力直至封号。
-  // 所以这里不发币、不写库，标题里也不出现任何奖励暗示。
-  //
-  // 刻意没写 onShareTimeline（朋友圈）：它只能分享**当前页**，没有 path 可改，
-  // 而本页是「我的」—— 接收者打开看到的是他自己那份空白资料（未设置昵称、0 道错题），
-  // 毫无意义。朋友圈分享该挂在首页上，那是本轮之外的事。
-  onShareAppMessage: function () {
+  // 微信《滥用分享行为》2.1 明确禁止「完成分享操作立即可获得积分/金币」。
+  onShareAppMessage: function (res) {
     const streak = (this.data.wallet || {}).checkinStreak || 0;
-    return {
-      title: streak > 0
-        ? `我已连续打卡 ${streak} 天，一起来整理错题吧`
-        : '用 AI 整理错题，一起来打卡吧',
-      // 落首页而不是本页，理由同上：本页对接收者毫无意义
-      path: '/pages/index/index'
-      // imageUrl 故意不传 —— 缺省时微信会自动截当前页（5:4 居中裁切），
-      // 在本页触发正好截到打卡卡片，比项目里任何一张现成图都贴题
-    };
+    const kind = res && res.target && res.target.dataset && res.target.dataset.kind;
+    if (kind === 'checkin') return checkinCard(streak);
+    if (kind === 'invite') return inviteCard();
+    return streak > 0 ? checkinCard(streak) : inviteCard();
   },
 
   showVersionInfo: function () {

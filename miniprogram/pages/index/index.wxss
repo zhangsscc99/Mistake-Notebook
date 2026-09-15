@@ -13,7 +13,7 @@
 .top-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
   padding: 16rpx 28rpx 8rpx;
   position: relative;
   z-index: 10;
@@ -52,6 +52,26 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.top-bar-share {
+  flex-shrink: 0;
+  width: auto !important;
+  height: 56rpx;
+  line-height: 56rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: #ffffff;
+  box-shadow: 0 6rpx 16rpx rgba(11, 22, 51, 0.08);
+}
+
+.top-bar-share::after {
+  border: none;
 }
 
 /* 多色流光光晕（完全复刻 Camera.vue 的 radial-gradient blobs） */

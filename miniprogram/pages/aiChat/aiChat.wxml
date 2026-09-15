@@ -1,6 +1,6 @@
 <!--pages/aiChat/aiChat.wxml-->
-<!-- 高度由 JS 按 windowHeight 给出；量不到时留空，回退到 wxss 的 100vh -->
-<view class="ai-chat-page" style="{{pageHeight > 0 ? 'height:' + pageHeight + 'px' : ''}}">
+<!-- 高度用绝对定位铺满导航栏和 tab 栏之间的区域，不要再用 windowHeight/100vh 去猜 -->
+<view class="ai-chat-page">
 
   <!-- 题目上下文条（点击弹出完整题目浮窗） -->
   <view class="context-bar" wx:if="{{questionContext}}" bindtap="showContext">
@@ -79,7 +79,7 @@
   </scroll-view>
 
   <!-- 底部输入栏 -->
-  <view class="input-bar" style="transform: translateY({{inputBottom > 0 ? -inputBottom : 0}}px);">
+  <view class="input-bar">
     <view class="ai-disclaimer">内容是由AI生成，仅供参考</view>
     <view class="input-row">
       <input
@@ -89,6 +89,7 @@
         placeholder-class="input-placeholder"
         confirm-type="send"
         cursor-spacing="12"
+        adjust-position="{{true}}"
         bindinput="onInput"
         bindfocus="onFocus"
         bindblur="onBlur"

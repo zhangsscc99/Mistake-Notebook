@@ -17,6 +17,7 @@
         mode="aspectFill"></image>
       <text class="top-bar-greet">{{greeting}}</text>
     </view>
+    <button class="top-bar-share" open-type="share">分享</button>
   </view>
 
   <view class="main-section">
@@ -25,7 +26,7 @@
       <!-- 产品介绍（无图片时） -->
       <view class="product-guide" wx:if="{{!tempFilePath}}">
         <view class="guide-header">
-          <view class="guide-title">错题本整理助手</view>
+          <view class="guide-title">智卷错题通</view>
           <view class="guide-subtitle">智能识别 · 自动分类 · 高效复习</view>
         </view>
 

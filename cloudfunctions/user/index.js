@@ -413,10 +413,18 @@ async function buildWallet(openId) {
 
   // 收藏/置顶计数。各自兜底成 0：计数查失败不该让整个钱包打不开，
   // 用户主要看的是金币和打卡状态
-  const [favRes, pinRes] = await Promise.all([
+  const [favRes, pinRes, qRes, paperRes, noteRes, reportRes] = await Promise.all([
     db.collection(MARKS_COLLECTION).where({ openid: openId, favorite: true }).count()
       .catch(() => ({ total: 0 })),
     db.collection(MARKS_COLLECTION).where({ openid: openId, pinned: true }).count()
+      .catch(() => ({ total: 0 })),
+    db.collection('questions').where({ openid: openId, isDeleted: false }).count()
+      .catch(() => ({ total: 0 })),
+    db.collection(PAPER_COLLECTION).where({ openId: openId, isDeleted: false }).count()
+      .catch(() => ({ total: 0 })),
+    db.collection('question_notes').where({ openid: openId }).count()
+      .catch(() => ({ total: 0 })),
+    db.collection('mistake_reports').where({ openid: openId }).count()
       .catch(() => ({ total: 0 }))
   ]);
 
@@ -448,7 +456,11 @@ async function buildWallet(openId) {
       isToday: dayKey === todayKey
     })),
     favoriteCount: (favRes && favRes.total) || 0,
-    pinnedCount: (pinRes && pinRes.total) || 0
+    pinnedCount: (pinRes && pinRes.total) || 0,
+    questionCount: (qRes && qRes.total) || 0,
+    paperCount: (paperRes && paperRes.total) || 0,
+    noteCount: (noteRes && noteRes.total) || 0,
+    reportCount: (reportRes && reportRes.total) || 0
   };
 }
 

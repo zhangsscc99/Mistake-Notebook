@@ -1,6 +1,7 @@
 const { ensureCloudSession } = require('../../utils/cloud');
 const { setLoggedIn, isLoggedIn } = require('../../utils/auth');
 const { setCachedProfile, getProfile } = require('../../utils/profile');
+const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
 
 const MAX_NICKNAME_LEN = 20;
 
@@ -12,10 +13,13 @@ Page({
   data: {
     returning: false,
     nickName: '',
-    submitting: false
+    submitting: false,
+    invited: false
   },
 
-  onLoad: function () {
+  onLoad: function (options) {
+    this.setData({ invited: !!(options && options.from === 'share') });
+    enableShareMenu();
     if (isLoggedIn()) {
       enterHome();
       return;
@@ -92,5 +96,13 @@ Page({
         fail: reject
       });
     });
+  },
+
+  onShareAppMessage: function () {
+    return inviteCard();
+  },
+
+  onShareTimeline: function () {
+    return timelineCard();
   }
 });

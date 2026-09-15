@@ -1,6 +1,7 @@
 const app = getApp();
 const { formatLatex } = require('../../utils/latex');
 const { getProfile, getCachedProfile } = require('../../utils/profile');
+const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
 
 // 把题目文本拆成结构化段落：题干段（逐段独立）+ 各小问块
 function parseQuestionParas(text) {
@@ -87,7 +88,6 @@ Page({
     sending: false,
     scrollToId: '',
     inputBottom: 0,
-    pageHeight: 0,
     // 头像放在页面级，不塞进 messages 的每一项 ——
     // messages 在好几处被手工重建（:135/:159/:234/:237/:267），
     // 逐条挂字段迟早漏掉某处；页面级读一次，本轮所有用户气泡都对
@@ -102,24 +102,11 @@ Page({
   onLoad() {
     this._sessionSaved = false;
     this._activeContext = null;
-    this.measurePageHeight();
-  },
-
-  // tabBar 页的「可使用窗口高度」不含 tab 栏，拿它定高最稳妥，不用去猜 tab 栏多高
-  measurePageHeight() {
-    try {
-      const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
-      if (info && info.windowHeight) {
-        this.setData({ pageHeight: info.windowHeight });
-      }
-    } catch (e) {
-      // 量不到就退回 wxss 里的 100vh 兜底
-      console.warn('[aiChat] 量取窗口高度失败:', e);
-    }
   },
 
   // 本页现在是 tabBar 页：switchTab 不会重跑 onLoad，上下文只能在这里读
   onShow() {
+    enableShareMenu();
     // 必须先于下面所有提前 return —— 否则切回本 tab 时头像昵称不会刷新
     this.loadProfile();
 
@@ -339,5 +326,13 @@ Page({
     ));
     this.setData({ messages, sending: false });
     this.scrollToBottom();
+  },
+
+  onShareAppMessage() {
+    return inviteCard();
+  },
+
+  onShareTimeline() {
+    return timelineCard();
   }
 });

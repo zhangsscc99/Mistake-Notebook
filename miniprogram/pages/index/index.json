@@ -1,3 +1,5 @@
 {
-  "navigationBarTitleText": "拍照整理错题"
+  "navigationBarTitleText": "智卷错题通",
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true
 }

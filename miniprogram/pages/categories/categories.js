@@ -1,6 +1,7 @@
 // pages/categories/categories.js
 const app = getApp();
 const { startPendingWatch, closePendingWatch, fetchPendingQuestions, kickAnswerWorker } = require('../../utils/aiPendingWatch.js');
+const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share.js');
 
 const SYMBOL_MAP = {
   '数学': '数', '物理': '物', '化学': '化', '英语': '英',
@@ -39,6 +40,7 @@ Page({
   },
 
   onShow: function () {
+    enableShareMenu();
     const isPaperBuilderMode = app.globalData.categoriesMode === 'paper-builder';
     this.setData({ isPaperBuilderMode });
     this.fetchStats();
@@ -209,5 +211,13 @@ Page({
 
   goToCamera: function () {
     wx.switchTab({ url: '/pages/index/index' });
+  },
+
+  onShareAppMessage: function () {
+    return inviteCard();
+  },
+
+  onShareTimeline: function () {
+    return timelineCard();
   }
 });

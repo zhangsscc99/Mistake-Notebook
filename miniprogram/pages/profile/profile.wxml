@@ -14,6 +14,7 @@
     </button>
 
     <view class="hero-name">{{nickName || '未设置昵称'}}</view>
+    <view class="hero-level">Lv.{{ach.level}} {{ach.levelName}}</view>
     <view class="hero-sub">智卷错题通 · 终身免费版</view>
 
     <view class="hero-stats">
@@ -85,7 +86,7 @@
              立即可获得积分/金币」，且金币属于规则定义里的「虚拟奖品/利益」，
              处罚是阶梯封禁分享能力直至封号。分享的动机只能是内容本身 -->
         <view class="form-actions share-actions">
-          <button class="share-btn" open-type="share">分享我的打卡</button>
+          <button class="share-btn" open-type="share" data-kind="checkin">分享我的打卡</button>
         </view>
 
         <!-- 会员 -->
@@ -109,6 +110,35 @@
 
     </view>
     <view class="section-hint">每天打卡得金币，金币可兑换对话会员。会员期间 AI 对话不限量。</view>
+  </view>
+
+  <!-- 等级与勋章 -->
+  <view class="section-group">
+    <view class="section-title">成就</view>
+    <view class="cell-list ach-card">
+      <view class="ach-level-row">
+        <view class="ach-level-main">
+          <text class="ach-level-num">Lv.{{ach.level}}</text>
+          <text class="ach-level-name">{{ach.levelName}}</text>
+        </view>
+        <text class="ach-level-xp">{{ach.xp}} 经验</text>
+      </view>
+      <view class="ach-bar">
+        <view class="ach-bar-fill" style="width: {{ach.progressPct}}%;"></view>
+      </view>
+      <view class="ach-bar-hint" wx:if="{{!ach.maxed}}">还差 {{ach.remainXp}} 经验升到 Lv.{{ach.nextLevel}} {{ach.nextName}}</view>
+      <view class="ach-bar-hint" wx:else>已满级</view>
+      <view class="ach-count">已点亮 {{ach.unlocked}} / {{ach.total}} 枚勋章</view>
+      <view class="medal-grid">
+        <view class="medal {{item.unlocked ? 'on' : ''}}"
+          wx:for="{{ach.medals}}" wx:key="id"
+          bindtap="onMedalTap" data-id="{{item.id}}">
+          <view class="medal-mark">{{item.mark}}</view>
+          <text class="medal-name">{{item.name}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="section-hint">打卡、整理错题、写笔记、组卷都能涨经验。点勋章可看点亮条件。</view>
   </view>
 
   <!-- 资料编辑 -->
@@ -173,6 +203,10 @@
         <text class="cell-label">错因分析报告</text>
         <text class="cell-arrow">›</text>
       </view>
+      <button class="cell cell-share" open-type="share" data-kind="invite">
+        <text class="cell-label">邀请同学一起用</text>
+        <text class="cell-arrow">›</text>
+      </button>
     </view>
   </view>
 
