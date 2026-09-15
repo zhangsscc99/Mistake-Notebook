@@ -1,21 +1,40 @@
 <!--pages/variants/variants.wxml-->
 <view class="variants-page">
 
+  <!-- 选择生成数量 -->
+  <view class="pick-card" wx:if="{{stage === 'pick'}}">
+    <text class="hint-title">已选 {{sourceCount}} 道错题</text>
+    <text class="hint-sub">每道被选题至少对应 1 道变式，多出来的是综合加练。整组难度会递进。</text>
+
+    <view class="count-row">
+      <button class="count-btn" bindtap="bumpCount" data-delta="-1" disabled="{{count <= minCount}}">−</button>
+      <view class="count-num-wrap">
+        <text class="count-num">{{count}}</text>
+        <text class="count-unit">道变式题</text>
+      </view>
+      <button class="count-btn" bindtap="bumpCount" data-delta="1" disabled="{{count >= maxCount}}">+</button>
+    </view>
+    <text class="count-hint">最少 {{minCount}} 道，最多 {{maxCount}} 道<text wx:if="{{extraCount > 0}}"> · 含 {{extraCount}} 道综合加练</text></text>
+
+    <button class="state-btn pick-go" bindtap="startGenerate">开始生成</button>
+  </view>
+
   <!-- 生成中 -->
-  <view class="state-card" wx:if="{{loading}}">
+  <view class="state-card" wx:elif="{{stage === 'loading'}}">
     <view class="state-spinner"></view>
-    <view class="state-title">AI 正在根据错题出变式题…</view>
-    <view class="state-sub">根据选中的错题生成 3 道难度递进的变式题，约需 10-20 秒</view>
+    <view class="state-title">AI 正在出 {{count}} 道变式题…</view>
+    <view class="state-sub">每道原题先对应 1 道，难度递进，约需 10-20 秒</view>
   </view>
 
   <!-- 失败 -->
-  <view class="state-card" wx:elif="{{error}}">
+  <view class="state-card" wx:elif="{{stage === 'error'}}">
     <view class="state-title">生成失败</view>
     <view class="state-sub">{{error}}</view>
-    <button class="state-btn" bindtap="goBack">返回重选</button>
+    <button class="state-btn" bindtap="retryPick" wx:if="{{ids.length}}">返回重选数量</button>
+    <button class="state-btn" bindtap="goBack" wx:else>返回重选</button>
   </view>
 
-  <block wx:else>
+  <block wx:elif="{{stage === 'result'}}">
     <view class="hint-card">
       <text class="hint-title">已生成 {{variants.length}} 道变式题</text>
       <text class="hint-sub">勾选后点「加入错题本」才会保存。之后可在「我的 → 已保存的变式题」回看</text>
@@ -31,8 +50,10 @@
       <view class="v-body">
         <view class="v-meta">
           <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+          <text class="v-source {{item.isExtra ? 'extra' : ''}}">{{item.sourceLabel}}</text>
           <text class="v-kp" wx:if="{{item.knowledgePoint}}">{{item.knowledgePoint}}</text>
         </view>
+        <text class="v-source-preview" wx:if="{{item.sourcePreview}}">原题：{{item.sourcePreview}}</text>
         <text class="v-content">{{item.content}}</text>
         <view class="v-answer-toggle" catchtap="toggleAnswer" data-index="{{index}}">
           {{item.showAnswer ? '收起答案' : '查看答案与解析'}}

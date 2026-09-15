@@ -16,7 +16,7 @@
     },
     {
       "name": "answer",
-      "timeout": 60,
+      "timeout": 90,
       "memorySize": 256,
       "runtime": "Nodejs16.13"
     },

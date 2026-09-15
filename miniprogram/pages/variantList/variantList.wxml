@@ -1,16 +1,25 @@
 <!--pages/variantList/variantList.wxml-->
-<view class="variant-list-page">
+<view class="variant-list-page {{editMode ? 'has-batch-bar' : ''}}">
 
   <view class="list-loading" wx:if="{{loading}}">加载中…</view>
 
   <block wx:elif="{{list.length > 0}}">
     <view class="hint-card">
       <text class="hint-title">共 {{list.length}} 道已保存的变式题</text>
-      <text class="hint-sub">这里只显示勾选后加入错题本的题目，未保存的生成结果不会留下</text>
+      <text class="hint-sub">{{editMode ? '勾选要组卷的题目，再点底部确认' : '可把变式题加入组卷。未保存的生成结果不会出现在这里'}}</text>
+      <view class="hint-actions">
+        <button class="hint-btn" bindtap="startBatchExam">{{editMode ? '确认组卷' : '加入组卷'}}</button>
+        <button class="hint-btn hint-btn-ghost" bindtap="cancelEdit" wx:if="{{editMode}}">取消</button>
+      </view>
     </view>
 
-    <view class="variant-card" wx:for="{{list}}" wx:key="id">
+    <view class="variant-card {{item.selected ? 'selected' : ''}}"
+      wx:for="{{list}}" wx:key="id"
+      bindtap="onCardTap" data-id="{{item.id}}">
       <view class="v-index-tag">{{item.index}}</view>
+      <view class="v-select {{item.selected ? 'checked' : ''}}" wx:if="{{editMode}}">
+        <text wx:if="{{item.selected}}">✓</text>
+      </view>
       <view class="v-body">
         <view class="v-meta">
           <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
@@ -18,7 +27,7 @@
           <text class="v-time" wx:if="{{item.createdAtText}}">{{item.createdAtText}}</text>
         </view>
         <text class="v-content">{{item.content}}</text>
-        <view class="v-answer-toggle" bindtap="toggleAnswer" data-id="{{item.id}}">
+        <view class="v-answer-toggle" catchtap="toggleAnswer" data-id="{{item.id}}">
           {{item.showAnswer ? '收起答案' : '查看答案与解析'}}
         </view>
         <view class="v-answer-box" wx:if="{{item.showAnswer}}">
@@ -27,10 +36,11 @@
           <text class="v-answer-label">解析</text>
           <text class="v-answer-text">{{item.aiAnalysis || '暂无解析'}}</text>
         </view>
-        <view class="v-actions">
-          <text class="v-link" bindtap="goCategory" data-categoryid="{{item.categoryId}}" data-category="{{item.category}}">去分类查看</text>
+        <view class="v-actions" wx:if="{{!editMode}}">
+          <text class="v-link" catchtap="goCategory" data-categoryid="{{item.categoryId}}" data-category="{{item.category}}">去分类查看</text>
           <text class="v-delete" catchtap="deleteVariant" data-id="{{item.id}}">删除</text>
         </view>
+        <button class="v-exam-btn" wx:if="{{!editMode}}" catchtap="addOneToExam" data-id="{{item.id}}">加入组卷</button>
       </view>
     </view>
     <view class="list-footer-hint">变式题会同时出现在对应分类里，标签为「变式题」</view>
@@ -40,5 +50,10 @@
     <view class="list-empty-title">还没有保存过变式题</view>
     <view class="list-empty-sub">进入分类，勾选错题生成变式题，再点「加入错题本」才会出现在这里</view>
     <button class="list-empty-btn" bindtap="goCategories">去选择错题</button>
+  </view>
+
+  <view class="save-bar" wx:if="{{editMode && list.length > 0}}">
+    <text class="save-info">{{selectedCount > 0 ? '已选 ' + selectedCount + ' 道' : '勾选题目'}}</text>
+    <button class="save-btn" bindtap="startBatchExam" disabled="{{selectedCount === 0}}">确认组卷</button>
   </view>
 </view>

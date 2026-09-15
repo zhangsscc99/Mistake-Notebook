@@ -21,6 +21,7 @@ const LEARNING_REPORTS_COLLECTION = 'learning_reports';
 // 错因分析 / 变式题的输入题数上限：防御客户端塞巨数组，也控制 prompt 长度
 const MAX_REPORT_QUESTIONS = 20;
 const MAX_VARIANT_QUESTIONS = 10;
+const MAX_VARIANT_OUTPUT = 10;
 const MIN_MULTI_QUESTIONS = 1;
 const MIN_LEARNING_QUESTIONS = 1;
 const LEARNING_SAMPLE_SIZE = 30;
@@ -1082,8 +1083,87 @@ async function deleteLearningReport(event, context) {
 
 // ─── 变式题生成（1 道或多道 → 变式题，前端挑选后入库）────────────────────────
 //
-// 单题即可改编；多题则对准共性考点。只生成不入库 —— 学生勾选确认后
-// 由 question 云函数的 saveVariants 入库，避免质量不佳的题污染题库。
+// 数量由学生指定，但不得少于原题数：每道被选原题至少对应 1 道变式。
+// 多出来的是综合加练。整组难度由服务端按序号递进，不信任模型自报难度。
+// 只生成不入库 —— 学生勾选确认后由 question/saveVariants 写入。
+
+function clampVariantCount(requested, sourceCount) {
+  const n = Math.floor(Number(requested));
+  const min = Math.max(sourceCount, MIN_VARIANT_QUESTIONS);
+  const max = MAX_VARIANT_OUTPUT;
+  if (!Number.isFinite(n)) return min;
+  return Math.max(min, Math.min(max, n));
+}
+
+function progressiveDifficulty(index, total) {
+  if (total <= 1) return 'MEDIUM';
+  if (total === 2) return index === 0 ? 'EASY' : 'HARD';
+  const third = total / 3;
+  if (index < third) return 'EASY';
+  if (index < third * 2) return 'MEDIUM';
+  return 'HARD';
+}
+
+function parseVariantArray(raw) {
+  try {
+    const match = String(raw || '').match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((v) => ({
+        content: String(v.content || '').trim(),
+        answer: String(v.answer || '').trim(),
+        analysis: String(v.analysis || '').trim(),
+        knowledgePoint: String(v.knowledgePoint || '').trim().slice(0, 20),
+        sourceIndex: Math.floor(Number(v.sourceIndex))
+      }))
+      .filter((v) => v.content && v.answer);
+  } catch (e) {
+    console.warn('generateVariants parse failed:', e.message);
+    return [];
+  }
+}
+
+function pairVariantsToSources(parsed, questions, count) {
+  const used = new Set();
+  const paired = [];
+
+  for (let i = 0; i < questions.length; i++) {
+    const want = i + 1;
+    let hitIdx = parsed.findIndex((v, idx) => !used.has(idx) && v.sourceIndex === want);
+    if (hitIdx < 0) {
+      hitIdx = parsed.findIndex((_, idx) => !used.has(idx));
+    }
+    if (hitIdx < 0) break;
+    used.add(hitIdx);
+    paired.push({
+      ...parsed[hitIdx],
+      sourceQuestionId: questions[i]._id,
+      sourceIndex: want,
+      isExtra: false
+    });
+  }
+
+  const extras = parsed.filter((_, idx) => !used.has(idx)).map((v) => ({
+    ...v,
+    sourceQuestionId: '',
+    sourceIndex: 0,
+    isExtra: true
+  }));
+
+  const merged = [...paired, ...extras].slice(0, count);
+  return merged.map((v, i) => ({
+    content: v.content,
+    answer: v.answer,
+    analysis: v.analysis,
+    knowledgePoint: v.knowledgePoint,
+    difficulty: progressiveDifficulty(i, merged.length),
+    sourceQuestionId: v.sourceQuestionId || '',
+    sourceIndex: v.isExtra ? 0 : v.sourceIndex,
+    isExtra: !!v.isExtra
+  }));
+}
 
 async function generateVariants(event, context) {
   const openid = getCallerOpenId(context);
@@ -1097,22 +1177,30 @@ async function generateVariants(event, context) {
     return { success: false, error: '请选择至少 1 道错题' };
   }
 
-  const prompt = `你是一位命题专家。下面是一位学生的 ${questions.length} 道错题，请基于考查的知识点出 3 道「变式题」帮助学生针对性巩固。
+  const count = clampVariantCount(event.count, questions.length);
+  const extraCount = count - questions.length;
+  const extraRule = extraCount > 0
+    ? `3. 第 ${questions.length + 1} 到第 ${count} 道是综合加练，sourceIndex 填 0，在同一批考点上再出，不要再绑某一道原题；`
+    : '3. 没有综合加练题；';
+
+  const prompt = `你是一位命题专家。下面是一位学生的 ${questions.length} 道错题，请出 ${count} 道「变式题」帮助学生针对性巩固。
 
 ${buildQuestionBlock(questions, { withAnalysis: false })}
 
 要求：
-1. 变式题要与原题考点相同但情境、数字或设问方式不同，不能只改几个字；
-2. 3 道题难度递进（第1道比原题略易，第2道相当，第3道略难）；
-3. 每道题都要能独立成立、表述清晰、有确定答案。
+1. 必须恰好返回 ${count} 道题；
+2. 前 ${questions.length} 道必须与原题一一对应：第 i 道变式改编自【第 i 题】，sourceIndex 填 i（从 1 开始），考点相同但情境、数字或设问方式不同，不能只改几个字；
+${extraRule}
+4. 每道题都要能独立成立、表述清晰、有确定答案。
+难度由系统按顺序递进，你不必填写 difficulty。
 
 只返回一个纯 JSON 数组，不要输出任何解释文字，不要使用 markdown 代码块。JSON 字符串内部的换行用 \\n，确保整体可被 JSON.parse 解析。格式：
 [
   {
+    "sourceIndex": 1,
     "content": "变式题题干",
     "answer": "最终答案",
     "analysis": "解题步骤与解析（300字以内）",
-    "difficulty": "EASY 或 MEDIUM 或 HARD",
     "knowledgePoint": "考查的知识点（2-8字）"
   }
 ]`;
@@ -1122,38 +1210,26 @@ ${buildQuestionBlock(questions, { withAnalysis: false })}
     return { success: false, error: '变式题生成失败: ' + JSON.stringify(response) };
   }
 
-  const raw = String(response.choices[0].message.content || '');
-  let variants = [];
-  try {
-    const match = raw.match(/\[[\s\S]*\]/);
-    if (match) {
-      const parsed = JSON.parse(match[0]);
-      if (Array.isArray(parsed)) {
-        variants = parsed
-          .map((v) => ({
-            content: String(v.content || '').trim(),
-            answer: String(v.answer || '').trim(),
-            analysis: String(v.analysis || '').trim(),
-            difficulty: ['EASY', 'MEDIUM', 'HARD'].includes(String(v.difficulty || '').toUpperCase())
-              ? String(v.difficulty).toUpperCase() : 'MEDIUM',
-            knowledgePoint: String(v.knowledgePoint || '').trim().slice(0, 20)
-          }))
-          .filter((v) => v.content && v.answer);
-      }
-    }
-  } catch (e) {
-    console.warn('generateVariants parse failed:', e.message);
+  const parsed = parseVariantArray(response.choices[0].message.content);
+  const variants = pairVariantsToSources(parsed, questions, count);
+
+  if (variants.length < questions.length) {
+    return { success: false, error: '变式题生成不完整，请重试' };
   }
 
-  if (variants.length === 0) {
-    return { success: false, error: '变式题生成失败：无法解析结果，请重试' };
-  }
+  const sources = questions.map((q, i) => ({
+    id: q._id,
+    index: i + 1,
+    preview: truncate(q.content, 40)
+  }));
 
   return {
     success: true,
     data: {
       variants,
       sourceQuestionIds: questions.map((q) => q._id),
+      sources,
+      count,
       categories: Array.from(new Set(questions.map((q) => q.category).filter(Boolean)))
     }
   };

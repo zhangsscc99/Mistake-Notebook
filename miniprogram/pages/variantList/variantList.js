@@ -1,5 +1,8 @@
 // pages/variantList/variantList.js
 // 已保存变式题列表：生成页只出题，勾选「加入错题本」后才会出现在这里。
+const app = getApp();
+const { savePaperToCloud, promptPaperTitle } = require('../../utils/paper.js');
+
 const DIFFICULTY_TEXT = { easy: '简单', medium: '中等', hard: '困难' };
 
 function formatTime(iso) {
@@ -7,10 +10,25 @@ function formatTime(iso) {
   return String(iso).slice(0, 16).replace('T', ' ');
 }
 
+function mapForPaper(q) {
+  return {
+    id: q.id,
+    content: q.content,
+    answer: q.aiAnswer || '待补充',
+    analysis: q.aiAnalysis || 'AI暂未给出解析',
+    categoryId: q.categoryId,
+    categoryName: q.category || q.categoryName,
+    tags: q.tags || [],
+    difficulty: q.difficultyText || q.difficulty
+  };
+}
+
 Page({
   data: {
     loading: true,
-    list: []
+    list: [],
+    editMode: false,
+    selectedCount: 0
   },
 
   onShow() {
@@ -36,14 +54,15 @@ Page({
             ...item,
             index: i + 1,
             showAnswer: false,
+            selected: false,
             difficultyText: DIFFICULTY_TEXT[difficulty] || '中等',
             difficultyClass: difficulty,
             createdAtText: formatTime(item.createdAt)
           };
         });
-        this.setData({ list, loading: false });
+        this.setData({ list, loading: false, editMode: false, selectedCount: 0 });
       },
-      fail: () => this.setData({ list: [], loading: false }),
+      fail: () => this.setData({ list: [], loading: false, editMode: false, selectedCount: 0 }),
       complete: () => wx.stopPullDownRefresh()
     });
   },
@@ -54,6 +73,84 @@ Page({
       String(item.id) === String(id) ? { ...item, showAnswer: !item.showAnswer } : item
     ));
     this.setData({ list });
+  },
+
+  onCardTap(e) {
+    if (!this.data.editMode) return;
+    const id = e.currentTarget.dataset.id;
+    const list = this.data.list.map((item) => (
+      String(item.id) === String(id) ? { ...item, selected: !item.selected } : item
+    ));
+    this.setData({
+      list,
+      selectedCount: list.filter((item) => item.selected).length
+    });
+  },
+
+  startBatchExam() {
+    if (!this.data.editMode) {
+      this.setData({ editMode: true, selectedCount: 0 });
+      wx.showToast({ title: '勾选题目后点确认组卷', icon: 'none' });
+      return;
+    }
+    const selected = this.data.list.filter((item) => item.selected);
+    if (!selected.length) {
+      wx.showToast({ title: '请先选择题目', icon: 'none' });
+      return;
+    }
+    this.commitExam(selected);
+  },
+
+  cancelEdit() {
+    const list = this.data.list.map((item) => ({ ...item, selected: false }));
+    this.setData({ list, editMode: false, selectedCount: 0 });
+  },
+
+  addOneToExam(e) {
+    const id = e.currentTarget.dataset.id;
+    const item = this.data.list.find((q) => String(q.id) === String(id));
+    if (!item) {
+      wx.showToast({ title: '题目信息缺失', icon: 'none' });
+      return;
+    }
+    this.commitExam([item]);
+  },
+
+  commitExam(items) {
+    const mapped = items.map(mapForPaper);
+    const existing = app.globalData.selectedPaperQuestions || [];
+    const merged = [...existing];
+    mapped.forEach((q) => {
+      if (!merged.some((item) => String(item.id) === String(q.id))) {
+        merged.push(q);
+      }
+    });
+
+    promptPaperTitle('变式练习卷')
+      .then((title) => {
+        wx.showLoading({ title: '保存中...', mask: true });
+        return savePaperToCloud(merged, title);
+      })
+      .then((result) => {
+        wx.hideLoading();
+        app.globalData.selectedPaperQuestions = [];
+        const list = this.data.list.map((item) => ({ ...item, selected: false }));
+        this.setData({ list, editMode: false, selectedCount: 0 });
+        wx.switchTab({
+          url: '/pages/paperBuilder/paperBuilder',
+          success: () => {
+            wx.showToast({
+              title: result.localOnly ? '已本地保存' : '试卷保存成功',
+              icon: 'success'
+            });
+          }
+        });
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        if (err && (err.message === 'cancelled' || err.message === 'empty_title')) return;
+        wx.showToast({ title: '保存失败', icon: 'none' });
+      });
   },
 
   goCategory(e) {
@@ -82,7 +179,11 @@ Page({
           success: (r) => {
             const result = r.result || {};
             if (result.success) {
-              this.setData({ list: this.data.list.filter((item) => String(item.id) !== String(id)) });
+              const list = this.data.list.filter((item) => String(item.id) !== String(id));
+              this.setData({
+                list,
+                selectedCount: list.filter((item) => item.selected).length
+              });
               wx.showToast({ title: '已删除', icon: 'success' });
             } else {
               wx.showToast({ title: result.error || '删除失败', icon: 'none' });

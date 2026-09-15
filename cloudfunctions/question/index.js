@@ -771,7 +771,8 @@ async function saveVariants(event) {
       answer: String(v.answer || '').trim(),
       analysis: String(v.analysis || '').trim(),
       difficulty: DIFFICULTY_MAP[v.difficulty] || 'MEDIUM',
-      knowledgePoint: String(v.knowledgePoint || '').trim().slice(0, 20)
+      knowledgePoint: String(v.knowledgePoint || '').trim().slice(0, 20),
+      sourceQuestionId: String(v.sourceQuestionId || '').trim()
     }))
     .filter((v) => v.content && v.answer)
     .slice(0, 10);
@@ -806,17 +807,17 @@ async function saveVariants(event) {
 
       if (!createRes.success) return null;
 
-      // createQuestion 的白名单不含溯源字段，单独补写
       const newId = createRes.data._id;
+      const tracedIds = v.sourceQuestionId ? [v.sourceQuestionId] : sourceQuestionIds;
       try {
         await db.collection('questions').doc(newId).update({
-          data: { isVariant: true, sourceQuestionIds }
+          data: { isVariant: true, sourceQuestionIds: tracedIds }
         });
       } catch (e) {
         console.warn('saveVariants trace fields failed:', newId, e.message);
       }
 
-      return { ...createRes.data, isVariant: true, sourceQuestionIds };
+      return { ...createRes.data, isVariant: true, sourceQuestionIds: tracedIds };
     })
   );
 
