@@ -17,10 +17,13 @@ const USERS_COLLECTION = 'users';
 const CHAT_USAGE_COLLECTION = 'chat_usage';
 const QUESTIONS_COLLECTION = 'questions';
 const REPORTS_COLLECTION = 'mistake_reports';
+const LEARNING_REPORTS_COLLECTION = 'learning_reports';
 // 错因分析 / 变式题的输入题数上限：防御客户端塞巨数组，也控制 prompt 长度
 const MAX_REPORT_QUESTIONS = 20;
 const MAX_VARIANT_QUESTIONS = 10;
 const MIN_MULTI_QUESTIONS = 2;
+const MIN_LEARNING_QUESTIONS = 1;
+const LEARNING_SAMPLE_SIZE = 30;
 const MIN_VARIANT_QUESTIONS = 1;
 // 免费用户每天的对话条数。测试期先给 100，改这一个常量即可调整
 const FREE_DAILY_LIMIT = 100;
@@ -383,6 +386,16 @@ exports.main = async (event, context) => {
         return await getMistakeReport(event, context);
       case 'deleteReport':
         return await deleteMistakeReport(event, context);
+      case 'learningOverview':
+        return await getLearningOverview(event, context);
+      case 'generateLearningReport':
+        return await generateLearningReport(event, context);
+      case 'listLearningReports':
+        return await listLearningReports(event, context);
+      case 'getLearningReport':
+        return await getLearningReport(event, context);
+      case 'deleteLearningReport':
+        return await deleteLearningReport(event, context);
       case 'generateVariants':
         return await generateVariants(event, context);
       default:
@@ -770,6 +783,289 @@ async function deleteMistakeReport(event, context) {
   }
 
   await db.collection(REPORTS_COLLECTION).doc(reportId).remove();
+  return { success: true, data: { reportId } };
+}
+
+// ─── 个性化学习报告（整本错题本总体数据 → 报告，保存历史）────────────────
+//
+// 和错因分析分开：错因是用户勾选的那几道题，这份是账号里的全部统计
+// + 最近一批题抽样。用户点「生成一份」才调模型，进页只读总览。
+
+function normalizeDifficulty(d) {
+  const s = String(d || '').toUpperCase();
+  if (s === 'EASY' || s === '简单') return 'EASY';
+  if (s === 'HARD' || s === '困难' || s === '较难') return 'HARD';
+  return 'MEDIUM';
+}
+
+async function safeCount(promise) {
+  try {
+    const res = await promise;
+    return (res && res.total) || 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+async function ensureLearningReportsCollection(db) {
+  try {
+    await db.createCollection(LEARNING_REPORTS_COLLECTION);
+  } catch (e) {
+    // 已存在或没权限建集合都继续：真正写入失败时再把错误抛给前端
+  }
+}
+
+async function buildLearningOverview(db, openid) {
+  const $ = db.command.aggregate;
+
+  const [
+    questionCount,
+    favoriteCount,
+    pinnedCount,
+    masteredCount,
+    noteCount,
+    paperCount,
+    userRes,
+    catAgg,
+    diffAgg
+  ] = await Promise.all([
+    safeCount(db.collection(QUESTIONS_COLLECTION).where({ openid, isDeleted: false }).count()),
+    safeCount(db.collection('question_marks').where({ openid, favorite: true }).count()),
+    safeCount(db.collection('question_marks').where({ openid, pinned: true }).count()),
+    safeCount(db.collection('question_marks').where({ openid, mastered: true }).count()),
+    safeCount(db.collection('question_notes').where({ openid }).count()),
+    safeCount(db.collection('papers').where({ openId: openid, isDeleted: false }).count()),
+    db.collection(USERS_COLLECTION).where({ _id: openid }).limit(1).get().catch(() => ({ data: [] })),
+    db.collection(QUESTIONS_COLLECTION).aggregate()
+      .match({ openid, isDeleted: false })
+      .group({ _id: '$category', count: $.sum(1) })
+      .end()
+      .catch(() => ({ list: [] })),
+    db.collection(QUESTIONS_COLLECTION).aggregate()
+      .match({ openid, isDeleted: false })
+      .group({ _id: '$difficulty', count: $.sum(1) })
+      .end()
+      .catch(() => ({ list: [] }))
+  ]);
+
+  const user = ((userRes.data || [])[0]) || {};
+  const categories = (catAgg.list || [])
+    .map((row) => ({ name: row._id || '未分类', count: row.count || 0 }))
+    .sort((a, b) => b.count - a.count);
+
+  const difficulties = { EASY: 0, MEDIUM: 0, HARD: 0 };
+  (diffAgg.list || []).forEach((row) => {
+    const key = normalizeDifficulty(row._id);
+    difficulties[key] += row.count || 0;
+  });
+
+  return {
+    questionCount,
+    categoryCount: categories.length,
+    categories,
+    difficulties,
+    masteredCount,
+    favoriteCount,
+    pinnedCount,
+    noteCount,
+    paperCount,
+    checkinStreak: user.checkinStreak || 0,
+    checkinTotalDays: user.checkinTotalDays || 0,
+    stage: user.stage || '',
+    nickName: user.nickName || '',
+    canGenerate: questionCount >= MIN_LEARNING_QUESTIONS,
+    minQuestions: MIN_LEARNING_QUESTIONS
+  };
+}
+
+async function fetchRecentQuestions(db, openid) {
+  try {
+    const res = await db.collection(QUESTIONS_COLLECTION)
+      .where({ openid, isDeleted: false })
+      .orderBy('createdAt', 'desc')
+      .limit(LEARNING_SAMPLE_SIZE)
+      .get();
+    return res.data || [];
+  } catch (e) {
+    const res = await db.collection(QUESTIONS_COLLECTION)
+      .where({ openid, isDeleted: false })
+      .limit(LEARNING_SAMPLE_SIZE)
+      .get();
+    return res.data || [];
+  }
+}
+
+function formatOverviewForPrompt(overview, samples) {
+  const catLine = overview.categories.map((c) => `${c.name} ${c.count}道`).join('、') || '无';
+  const d = overview.difficulties || {};
+  return `学生画像：
+昵称：${overview.nickName || '未设置'}
+学段：${overview.stage || '未设置'}
+错题总数：${overview.questionCount}
+分类分布：${catLine}
+难度：简单 ${d.EASY || 0}、中等 ${d.MEDIUM || 0}、较难 ${d.HARD || 0}
+已掌握标记：${overview.masteredCount}
+收藏 ${overview.favoriteCount}、置顶 ${overview.pinnedCount}
+笔记 ${overview.noteCount} 条、组卷 ${overview.paperCount} 份
+连续打卡 ${overview.checkinStreak} 天、累计 ${overview.checkinTotalDays} 天
+
+最近收录的错题抽样（共 ${samples.length} 道，只用来判断薄弱点，不要逐题讲解）：
+${buildQuestionBlock(samples, { withAnalysis: false })}`;
+}
+
+async function getLearningOverview(event, context) {
+  const openid = getCallerOpenId(context);
+  if (!openid) {
+    return { success: false, error: 'NO_OPENID', data: { message: '登录状态异常，请重新进入小程序' } };
+  }
+  const db = cloud.database();
+  const overview = await buildLearningOverview(db, openid);
+  return { success: true, data: overview };
+}
+
+async function generateLearningReport(event, context) {
+  const openid = getCallerOpenId(context);
+  if (!openid) {
+    return { success: false, error: 'NO_OPENID', data: { message: '登录状态异常，请重新进入小程序' } };
+  }
+
+  const db = cloud.database();
+  await ensureLearningReportsCollection(db);
+
+  const overview = await buildLearningOverview(db, openid);
+  if (!overview.canGenerate) {
+    return { success: false, error: `至少收录 ${MIN_LEARNING_QUESTIONS} 道错题后再生成学习报告` };
+  }
+
+  const samples = await fetchRecentQuestions(db, openid);
+  const prompt = `你是一位资深学习规划老师。请根据这位学生「整本错题本」的总体数据，写一份个性化学习报告。不要做成单题解析，也不要复述错因分析报告。
+
+${formatOverviewForPrompt(overview, samples)}
+
+请严格按以下结构输出（每节用【】开头，不要使用 markdown 代码块，总长度 900 字以内）：
+【学习总评】2-3 句话概括当前学习状态。
+【学科与分类】指出错题集中在哪些分类，可能的原因。
+【难度与掌握】结合难度分布和已掌握数量，判断挑战是否合适。
+【学习习惯】结合打卡、组卷、笔记给出习惯评价。
+【薄弱点】列出 3 个最该优先补的方向。
+【接下来 7 天】给出可执行的 7 天计划，具体到每天做什么类型的练习。`;
+
+  const response = await callDashScope([{ role: 'user', content: prompt }], 0.4);
+  if (!response.choices || response.choices.length === 0) {
+    return { success: false, error: '报告生成失败: ' + JSON.stringify(response) };
+  }
+
+  const report = String(response.choices[0].message.content || '').trim();
+  if (!report) {
+    return { success: false, error: '报告生成失败：内容为空' };
+  }
+
+  const now = new Date().toISOString();
+  const dayKey = cnDayKey();
+  const topCats = overview.categories.slice(0, 3).map((c) => c.name).filter(Boolean);
+  const title = `${dayKey} 学习报告 · ${overview.questionCount}题${topCats.length ? '（' + topCats.join('、') + '）' : ''}`;
+
+  const addRes = await db.collection(LEARNING_REPORTS_COLLECTION).add({
+    data: {
+      openid,
+      title,
+      report,
+      questionCount: overview.questionCount,
+      categories: overview.categories.map((c) => c.name),
+      overview,
+      createdAt: now
+    }
+  });
+
+  return {
+    success: true,
+    data: {
+      reportId: addRes._id,
+      title,
+      report,
+      questionCount: overview.questionCount,
+      categories: overview.categories.map((c) => c.name),
+      createdAt: now
+    }
+  };
+}
+
+async function listLearningReports(event, context) {
+  const openid = getCallerOpenId(context);
+  if (!openid) {
+    return { success: false, error: 'NO_OPENID' };
+  }
+
+  const page = Math.max(0, parseInt(event.page, 10) || 0);
+  const size = Math.min(50, Math.max(1, parseInt(event.size, 10) || 20));
+  const db = cloud.database();
+  await ensureLearningReportsCollection(db);
+
+  let res;
+  try {
+    res = await db.collection(LEARNING_REPORTS_COLLECTION)
+      .where({ openid })
+      .orderBy('createdAt', 'desc')
+      .skip(page * size)
+      .limit(size)
+      .get();
+  } catch (e) {
+    return { success: true, data: { list: [], page, size } };
+  }
+
+  const list = (res.data || []).map((doc) => ({
+    reportId: doc._id,
+    title: doc.title || '学习报告',
+    questionCount: doc.questionCount || 0,
+    categories: doc.categories || [],
+    preview: truncate(doc.report, 80),
+    createdAt: doc.createdAt || ''
+  }));
+
+  return { success: true, data: { list, page, size } };
+}
+
+async function getLearningReport(event, context) {
+  const openid = getCallerOpenId(context);
+  const reportId = String(event.reportId || '').trim();
+  if (!openid || !reportId) {
+    return { success: false, error: 'Missing reportId or openid' };
+  }
+
+  const db = cloud.database();
+  const res = await db.collection(LEARNING_REPORTS_COLLECTION).doc(reportId).get();
+  const doc = res.data;
+  if (!doc || doc.openid !== openid) {
+    return { success: false, error: 'Report not found' };
+  }
+
+  return {
+    success: true,
+    data: {
+      reportId: doc._id,
+      title: doc.title || '学习报告',
+      questionCount: doc.questionCount || 0,
+      categories: doc.categories || [],
+      report: doc.report || '',
+      createdAt: doc.createdAt || ''
+    }
+  };
+}
+
+async function deleteLearningReport(event, context) {
+  const openid = getCallerOpenId(context);
+  const reportId = String(event.reportId || '').trim();
+  if (!openid || !reportId) {
+    return { success: false, error: 'Missing reportId or openid' };
+  }
+
+  const db = cloud.database();
+  const res = await db.collection(LEARNING_REPORTS_COLLECTION).doc(reportId).get();
+  if (!res.data || res.data.openid !== openid) {
+    return { success: false, error: 'Report not found' };
+  }
+
+  await db.collection(LEARNING_REPORTS_COLLECTION).doc(reportId).remove();
   return { success: true, data: { reportId } };
 }
 

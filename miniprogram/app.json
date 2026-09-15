@@ -12,6 +12,8 @@
     "pages/aiChat/aiChat",
     "pages/profile/profile",
     "pages/leaderboard/leaderboard",
+    "pages/learningReport/learningReport",
+    "pages/learningReportView/learningReportView",
     "pages/mistakeReport/mistakeReport",
     "pages/reportList/reportList",
     "pages/variants/variants"

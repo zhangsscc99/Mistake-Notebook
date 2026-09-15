@@ -1,0 +1,121 @@
+<!--pages/learningReport/learningReport.wxml-->
+<view class="lr-page">
+
+  <view class="state" wx:if="{{loading}}">加载中…</view>
+
+  <view class="state" wx:elif="{{error}}">
+    <view class="state-text">{{error}}</view>
+    <view class="state-sub">下拉可以重试</view>
+  </view>
+
+  <block wx:else>
+    <view class="hero">
+      <view class="hero-kicker">根据全部数据</view>
+      <view class="hero-title">学习总览</view>
+      <view class="hero-sub" wx:if="{{overview.stage}}">{{overview.stage}} · 不选题，直接看整本错题本</view>
+      <view class="hero-sub" wx:else>不选题，直接看整本错题本</view>
+    </view>
+
+    <view class="card stats-card">
+      <view class="stat-grid">
+        <view class="stat">
+          <text class="stat-num">{{overview.questionCount}}</text>
+          <text class="stat-lab">错题</text>
+        </view>
+        <view class="stat-div"></view>
+        <view class="stat">
+          <text class="stat-num">{{overview.categoryCount}}</text>
+          <text class="stat-lab">分类</text>
+        </view>
+        <view class="stat-div"></view>
+        <view class="stat">
+          <text class="stat-num">{{overview.checkinStreak}}</text>
+          <text class="stat-lab">连续打卡</text>
+        </view>
+        <view class="stat-div"></view>
+        <view class="stat">
+          <text class="stat-num">{{overview.checkinTotalDays}}</text>
+          <text class="stat-lab">累计打卡</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{overview.categories.length}}">
+      <view class="card-title">分类分布</view>
+      <view class="dist-row" wx:for="{{overview.categories}}" wx:key="name">
+        <text class="dist-name">{{item.name}}</text>
+        <view class="dist-track">
+          <view class="dist-fill" style="width: {{item.pct}}%;"></view>
+        </view>
+        <text class="dist-num">{{item.count}}</text>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{overview.questionCount}}">
+      <view class="card-title">难度结构</view>
+      <view class="diff-row">
+        <view class="diff easy">
+          <text class="diff-num">{{overview.easy}}</text>
+          <text class="diff-lab">简单 {{overview.easyPct}}%</text>
+        </view>
+        <view class="diff medium">
+          <text class="diff-num">{{overview.medium}}</text>
+          <text class="diff-lab">中等 {{overview.mediumPct}}%</text>
+        </view>
+        <view class="diff hard">
+          <text class="diff-num">{{overview.hard}}</text>
+          <text class="diff-lab">较难 {{overview.hardPct}}%</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="card-title">学习习惯</view>
+      <view class="habit-grid">
+        <view class="habit">
+          <text class="habit-num">{{overview.paperCount}}</text>
+          <text class="habit-lab">组卷</text>
+        </view>
+        <view class="habit">
+          <text class="habit-num">{{overview.noteCount}}</text>
+          <text class="habit-lab">笔记</text>
+        </view>
+        <view class="habit">
+          <text class="habit-num">{{overview.favoriteCount}}</text>
+          <text class="habit-lab">收藏</text>
+        </view>
+        <view class="habit">
+          <text class="habit-num">{{overview.masteredCount}}</text>
+          <text class="habit-lab">已掌握</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="gen-wrap">
+      <button
+        class="gen-btn"
+        bindtap="onGenerate"
+        disabled="{{!overview.canGenerate}}">根据全部数据生成报告</button>
+      <view class="gen-hint" wx:if="{{overview.canGenerate}}">约 10–20 秒，生成后会保存，可随时回看</view>
+      <view class="gen-hint" wx:else>
+        收录 1 道错题即可生成。当前还没有错题。
+        <text class="gen-link" bindtap="goCategories"> 去收录</text>
+      </view>
+    </view>
+
+    <view class="hist-title" wx:if="{{list.length}}">历史报告</view>
+    <view class="report-card" wx:for="{{list}}" wx:key="reportId"
+      bindtap="openReport" data-id="{{item.reportId}}">
+      <view class="report-card-main">
+        <view class="report-card-title">{{item.title}}</view>
+        <view class="report-card-preview">{{item.preview}}</view>
+        <view class="report-card-meta">
+          <text class="report-card-pill">{{item.questionCount}} 题</text>
+          <text class="report-card-time">{{item.createdAtText}}</text>
+        </view>
+      </view>
+      <view class="report-card-delete" catchtap="deleteReport" data-id="{{item.reportId}}">删除</view>
+    </view>
+    <view class="list-footer-hint">报告由 AI 根据总体数据生成，仅供参考</view>
+  </block>
+</view>

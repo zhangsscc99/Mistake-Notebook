@@ -1,0 +1,360 @@
+/* pages/learningReport/learningReport.wxss */
+.lr-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding-bottom: 48px;
+  background-color: #eef3fb;
+  background-image:
+    radial-gradient(circle 420rpx at 100% 0%, rgba(82, 183, 255, 0.12) 0%, transparent 60%),
+    radial-gradient(circle 360rpx at 0% 4%, rgba(182, 166, 255, 0.10) 0%, transparent 55%),
+    linear-gradient(rgba(11, 22, 51, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 22, 51, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 44rpx 44rpx, 44rpx 44rpx;
+}
+
+.state {
+  padding: 80px 24px;
+  text-align: center;
+  font-size: 14px;
+  color: rgba(11, 22, 51, 0.45);
+}
+
+.state-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0b1633;
+  margin-bottom: 8px;
+}
+
+.state-sub {
+  font-size: 13px;
+  color: rgba(11, 22, 51, 0.45);
+}
+
+.hero {
+  padding: 36rpx 32rpx 28rpx;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
+  color: #ffffff;
+}
+
+.hero-kicker {
+  font-size: 22rpx;
+  font-weight: 700;
+  opacity: 0.88;
+  letter-spacing: 1rpx;
+}
+
+.hero-title {
+  margin-top: 8rpx;
+  font-size: 40rpx;
+  font-weight: 800;
+}
+
+.hero-sub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  opacity: 0.9;
+}
+
+.card {
+  position: relative;
+  margin: 16px 16px 0;
+  padding: 18px 16px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
+}
+
+.stats-card {
+  margin-top: -12px;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0b1633;
+  margin-bottom: 14px;
+}
+
+.stat-grid {
+  display: flex;
+  align-items: stretch;
+}
+
+.stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: #0b1633;
+  line-height: 1.2;
+}
+
+.stat-lab {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+}
+
+.stat-div {
+  width: 1px;
+  background: rgba(11, 22, 51, 0.08);
+  margin: 4px 0;
+}
+
+.dist-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.dist-row:last-child {
+  margin-bottom: 0;
+}
+
+.dist-name {
+  width: 72px;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0b1633;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dist-track {
+  flex: 1;
+  height: 10px;
+  margin: 0 10px;
+  border-radius: 999px;
+  background: rgba(36, 89, 255, 0.08);
+  overflow: hidden;
+}
+
+.dist-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2459ff, #52b7ff);
+}
+
+.dist-num {
+  width: 36px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.diff-row {
+  display: flex;
+  gap: 10px;
+}
+
+.diff {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 8px;
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.diff-num {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.diff-lab {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.diff.easy {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.diff.medium {
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.12);
+}
+
+.diff.hard {
+  color: #e11d48;
+  background: rgba(225, 29, 72, 0.12);
+}
+
+.habit-grid {
+  display: flex;
+}
+
+.habit {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.habit-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.habit-lab {
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+}
+
+.gen-wrap {
+  margin: 18px 16px 8px;
+}
+
+.gen-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 80rpx !important;
+  min-height: 80rpx !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 28rpx !important;
+  font-weight: 700 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 10px 24px rgba(31, 91, 255, 0.30) !important;
+}
+
+.gen-btn::after {
+  border: none !important;
+}
+
+.gen-btn[disabled] {
+  background: rgba(36, 89, 255, 0.30) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: none !important;
+}
+
+.gen-hint {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.45);
+  line-height: 1.6;
+}
+
+.gen-link {
+  color: #2459ff;
+  font-weight: 700;
+}
+
+.hist-title {
+  margin: 22px 20px 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.report-card {
+  display: flex;
+  align-items: flex-start;
+  margin: 0 16px 12px;
+  padding: 18px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
+}
+
+.report-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.report-card-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0b1633;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.report-card-preview {
+  font-size: 13px;
+  color: rgba(11, 22, 51, 0.55);
+  line-height: 1.6;
+  margin-bottom: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.report-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.report-card-pill {
+  font-size: 11px;
+  font-weight: 700;
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.08);
+  padding: 2px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.report-card-time {
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+}
+
+.report-card-delete {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: rgba(225, 29, 72, 0.75);
+  padding: 4px 2px 4px 12px;
+}
+
+.list-footer-hint {
+  text-align: center;
+  font-size: 12px;
+  color: rgba(11, 22, 51, 0.40);
+  padding: 8px 16px 16px;
+}

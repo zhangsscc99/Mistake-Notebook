@@ -10,6 +10,7 @@ const {
 } = require('../../utils/profile');
 const { clearSession } = require('../../utils/auth');
 const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
+const { renderInvitePoster, savePosterToAlbum } = require('../../utils/invitePoster');
 const { buildAchievements, EMPTY_ACH } = require('../../utils/achievements');
 
 const MAX_NICKNAME_LEN = 20;
@@ -25,6 +26,7 @@ const FAILED_LABELS = {
   avatarFile: '头像图片',
   questionNotes: '错题笔记',
   mistakeReports: '错因分析报告',
+  learningReports: '学习报告',
   checkins: '打卡记录',
   coinLogs: '金币流水',
   chatUsage: '对话配额',
@@ -100,7 +102,11 @@ Page({
     walletError: '',
     checkingIn: false,
     redeeming: false,
-    ach: EMPTY_ACH
+    ach: EMPTY_ACH,
+
+    inviteOpen: false,
+    invitePosterPath: '',
+    invitePosterBusy: false
   },
 
   onShow: function () {
@@ -412,7 +418,7 @@ Page({
 
     wx.showModal({
       title: '注销账号',
-      content: '将永久删除本账号下的：\n· 个人资料（头像、昵称、学段）\n· 全部错题与分类\n· 全部 AI 对话记忆\n· 全部试卷\n· 打卡记录、金币与会员\n· 错题收藏、置顶与笔记\n\n删除后无法恢复。',
+      content: '将永久删除本账号下的：\n· 个人资料（头像、昵称、学段）\n· 全部错题与分类\n· 全部 AI 对话记忆\n· 全部试卷\n· 打卡记录、金币与会员\n· 错题收藏、置顶与笔记\n· 学习报告\n\n删除后无法恢复。',
       confirmText: '继续',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -516,8 +522,64 @@ Page({
     wx.navigateTo({ url: '/pages/leaderboard/leaderboard' });
   },
 
-  goReportList: function () {
-    wx.navigateTo({ url: '/pages/reportList/reportList' });
+  goLearningReport: function () {
+    wx.navigateTo({ url: '/pages/learningReport/learningReport' });
+  },
+
+  onInviteTap: function () {
+    this._inviteToken = Date.now();
+    const token = this._inviteToken;
+    this.setData({
+      inviteOpen: true,
+      invitePosterPath: '',
+      invitePosterBusy: true
+    }, () => {
+      const opts = {
+        nickName: this.data.nickName || '同学',
+        avatarFileID: this.data.avatarFileID || '',
+        levelName: (this.data.ach && this.data.ach.levelName) || ''
+      };
+      renderInvitePoster('invitePoster', opts)
+        .then((path) => {
+          if (this._inviteToken !== token || !this.data.inviteOpen) return;
+          this.setData({ invitePosterPath: path, invitePosterBusy: false });
+        })
+        .catch((err) => {
+          console.error('[profile] 生成邀请图失败', err);
+          if (this._inviteToken !== token) return;
+          this.setData({ invitePosterBusy: false });
+          wx.showToast({ title: '邀请图生成失败，仍可转发', icon: 'none' });
+        });
+    });
+  },
+
+  closeInvite: function () {
+    this._inviteToken = 0;
+    this.setData({ inviteOpen: false, invitePosterBusy: false });
+  },
+
+  noop: function () {},
+
+  onSaveInvitePoster: function () {
+    const path = this.data.invitePosterPath;
+    if (!path) {
+      wx.showToast({
+        title: this.data.invitePosterBusy ? '正在生成邀请图…' : '邀请图还没好',
+        icon: 'none'
+      });
+      return;
+    }
+    wx.showLoading({ title: '保存中', mask: true });
+    savePosterToAlbum(path)
+      .then(() => {
+        wx.hideLoading();
+        wx.showToast({ title: '已保存到相册', icon: 'success' });
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        if (err && err.message === 'cancel') return;
+        wx.showToast({ title: '保存失败', icon: 'none' });
+      });
   },
 
   // 打卡分享。分享的动机必须是内容本身，不能是奖励 ——
@@ -526,7 +588,11 @@ Page({
     const streak = (this.data.wallet || {}).checkinStreak || 0;
     const kind = res && res.target && res.target.dataset && res.target.dataset.kind;
     if (kind === 'checkin') return checkinCard(streak);
-    if (kind === 'invite') return inviteCard();
+    if (kind === 'invite') {
+      const card = inviteCard();
+      if (this.data.invitePosterPath) card.imageUrl = this.data.invitePosterPath;
+      return card;
+    }
     return streak > 0 ? checkinCard(streak) : inviteCard();
   },
 

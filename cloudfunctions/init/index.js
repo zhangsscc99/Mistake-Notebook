@@ -14,6 +14,7 @@ const COLLECTIONS = [
   'question_marks',
   'question_notes',
   'mistake_reports',
+  'learning_reports',
   'checkins',
   'coin_logs',
   'chat_usage'

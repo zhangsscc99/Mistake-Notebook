@@ -854,6 +854,7 @@ async function deleteAccount(openId) {
   await purge(failed, removed, 'papers', 'papers', { openId: openId });
   await purge(failed, removed, 'questionNotes', 'question_notes', { openid: openId });
   await purge(failed, removed, 'mistakeReports', 'mistake_reports', { openid: openId });
+  await purge(failed, removed, 'learningReports', 'learning_reports', { openid: openId });
 
   // 打卡与金币相关。这四个集合统一用小写 openid（本文件新建，不需要迁就历史命名）。
   // 注销是「清除我的数据」，留着打卡和金币流水就名不副实。

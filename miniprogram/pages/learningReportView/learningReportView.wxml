@@ -1,0 +1,39 @@
+<!--pages/learningReportView/learningReportView.wxml-->
+<view class="report-page">
+
+  <view class="state-card" wx:if="{{loading}}">
+    <view class="state-spinner"></view>
+    <view class="state-title" wx:if="{{generating}}">正在根据全部数据生成报告…</view>
+    <view class="state-title" wx:else>正在打开报告…</view>
+    <view class="state-sub" wx:if="{{generating}}">汇总错题分布、打卡和习惯，约需 10-20 秒</view>
+  </view>
+
+  <view class="state-card" wx:elif="{{error}}">
+    <view class="state-title">生成失败</view>
+    <view class="state-sub">{{error}}</view>
+    <button class="state-btn" bindtap="goBack">返回</button>
+  </view>
+
+  <block wx:else>
+    <view class="report-header-card">
+      <view class="report-title">{{title}}</view>
+      <view class="report-meta-row">
+        <text class="report-pill">{{questionCount}} 道错题</text>
+        <text class="report-pill" wx:for="{{categories}}" wx:key="*this">{{item}}</text>
+        <text class="report-time" wx:if="{{createdAt}}">{{createdAt}}</text>
+      </view>
+    </view>
+
+    <view class="report-block" wx:for="{{reportBlocks}}" wx:key="index">
+      <view class="report-block-title" wx:if="{{item.title}}">
+        <text class="report-block-bar"></text>
+        <text>{{item.title}}</text>
+      </view>
+      <text class="report-block-body">{{item.text}}</text>
+    </view>
+
+    <view class="report-footer">
+      <text class="report-footer-hint">报告已保存，可在学习报告页回看</text>
+    </view>
+  </block>
+</view>

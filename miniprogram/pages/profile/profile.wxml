@@ -199,14 +199,14 @@
         <text class="cell-value" wx:if="{{walletLoaded && wallet.checkinStreak > 0}}">连续 {{wallet.checkinStreak}} 天</text>
         <text class="cell-arrow">›</text>
       </view>
-      <view class="cell" bindtap="goReportList">
-        <text class="cell-label">错因分析报告</text>
+      <view class="cell" bindtap="goLearningReport">
+        <text class="cell-label">查询你的个性化学习报告</text>
         <text class="cell-arrow">›</text>
       </view>
-      <button class="cell cell-share" open-type="share" data-kind="invite">
+      <view class="cell" bindtap="onInviteTap">
         <text class="cell-label">邀请同学一起用</text>
         <text class="cell-arrow">›</text>
-      </button>
+      </view>
     </view>
   </view>
 
@@ -238,6 +238,33 @@
         <text class="cell-label">关于错题本</text>
         <text class="cell-arrow">›</text>
       </view>
+    </view>
+  </view>
+
+  <canvas type="2d" id="invitePoster" class="invite-canvas-off"></canvas>
+
+  <view class="invite-mask" wx:if="{{inviteOpen}}" catchtap="closeInvite" catchtouchmove="noop">
+    <view class="invite-sheet" catchtap="noop">
+      <view class="invite-handle"></view>
+      <view class="invite-title">邀请同学一起用</view>
+      <view class="invite-preview">
+        <image
+          wx:if="{{invitePosterPath}}"
+          class="invite-preview-img"
+          src="{{invitePosterPath}}"
+          mode="aspectFit"></image>
+        <view class="invite-preview-busy" wx:if="{{invitePosterBusy}}">正在生成邀请图…</view>
+        <view class="invite-preview-busy" wx:elif="{{!invitePosterPath}}">邀请图生成失败，仍可转发</view>
+      </view>
+      <button
+        class="invite-btn invite-btn-save"
+        bindtap="onSaveInvitePoster"
+        disabled="{{invitePosterBusy || !invitePosterPath}}">保存图片</button>
+      <button
+        class="invite-btn invite-btn-share"
+        open-type="share"
+        data-kind="invite">转发到群聊</button>
+      <view class="invite-cancel" bindtap="closeInvite">取消</view>
     </view>
   </view>
 
