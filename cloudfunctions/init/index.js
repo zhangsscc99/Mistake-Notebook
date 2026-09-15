@@ -17,7 +17,14 @@ const COLLECTIONS = [
   'learning_reports',
   'checkins',
   'coin_logs',
-  'chat_usage'
+  'chat_usage',
+  'classes',
+  'class_members',
+  'teacher_messages',
+  'class_notebooks',
+  'assignments',
+  'assignment_submissions',
+  'parent_reports'
 ];
 
 async function ensureCollection(name) {
