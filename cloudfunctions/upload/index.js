@@ -13,13 +13,47 @@ function getCallerOpenId() {
   return wxContext.OPENID || wxContext.FROM_OPENID || '';
 }
 
+const DEFAULT_CATEGORY_NAMES = [
+  '数学', '物理', '化学', '英语', '语文', '生物', '历史', '地理', '计算机/编程', '政治'
+];
+
+async function seedPersonalCategories(openId) {
+  const now = new Date().toISOString();
+  for (const name of DEFAULT_CATEGORY_NAMES) {
+    const found = await db.collection('categories')
+      .where({ openid: openId, name, isDeleted: false })
+      .limit(1)
+      .get();
+    if (found.data && found.data.length) continue;
+    await db.collection('categories').add({
+      data: {
+        name,
+        description: name + '相关题目',
+        color: '#4A90E2',
+        openid: openId,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+  }
+}
+
 async function findExistingCategory(openId, name) {
   const trimmed = String(name || '').trim();
-  const result = await db.collection('categories')
+  let result = await db.collection('categories')
     .where({ openid: openId })
     .limit(100)
     .get();
-  const list = (result.data || []).filter((cat) => !cat.isDeleted);
+  let list = (result.data || []).filter((cat) => !cat.isDeleted);
+  if (!list.length) {
+    await seedPersonalCategories(openId);
+    result = await db.collection('categories')
+      .where({ openid: openId })
+      .limit(100)
+      .get();
+    list = (result.data || []).filter((cat) => !cat.isDeleted);
+  }
   if (trimmed) {
     const exact = list.find((cat) => String(cat.name || '').trim() === trimmed);
     if (exact) return exact;

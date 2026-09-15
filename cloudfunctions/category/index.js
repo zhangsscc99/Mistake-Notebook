@@ -118,10 +118,51 @@ async function foldUnofficialCategories(openId) {
   }
 }
 
+async function seedPersonalCategories(openId) {
+  const now = new Date().toISOString();
+  for (const name of DEFAULT_CATEGORY_NAMES) {
+    const found = await db.collection('categories')
+      .where({ openid: openId, name, isDeleted: false })
+      .limit(1)
+      .get();
+    if (found.data && found.data.length) continue;
+    await db.collection('categories').add({
+      data: {
+        name,
+        description: name + '相关题目',
+        color: '#4A90E2',
+        openid: openId,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+  }
+}
+
+function countWhere(openId, extra) {
+  return Object.assign({
+    openid: openId,
+    isDeleted: false,
+    aiStatus: settledStatus()
+  }, extra);
+}
+
+async function countQuestionsInCategory(openId, cat) {
+  const countResult = await db.collection('questions')
+    .where(_.or([
+      countWhere(openId, { categoryId: cat._id }),
+      countWhere(openId, { category: cat.name })
+    ]))
+    .count();
+  return countResult.total;
+}
+
 async function listCategories() {
   const openId = getCallerOpenId();
   if (!openId) return noOpenId();
 
+  await seedPersonalCategories(openId);
   await collapseDuplicateCategories(openId);
   await foldUnofficialCategories(openId);
 
@@ -133,17 +174,10 @@ async function listCategories() {
   const categories = categoriesResult.data;
 
   const categoriesWithCounts = await Promise.all(categories.map(async (cat) => {
-    const countResult = await db.collection('questions')
-      .where({
-        openid: openId,
-        categoryId: cat._id,
-        isDeleted: false,
-        aiStatus: settledStatus()
-      })
-      .count();
+    const questionCount = await countQuestionsInCategory(openId, cat);
     return normalizeCategory({
       ...cat,
-      questionCount: countResult.total
+      questionCount
     });
   }));
 
@@ -183,20 +217,13 @@ async function getCategory(event) {
     return { success: false, error: 'Category not found' };
   }
 
-  const countResult = await db.collection('questions')
-    .where({
-      openid: openId,
-      categoryId: category._id,
-      isDeleted: false,
-      aiStatus: settledStatus()
-    })
-    .count();
+  const questionCount = await countQuestionsInCategory(openId, category);
 
   return {
     success: true,
     data: normalizeCategory({
       ...category,
-      questionCount: countResult.total
+      questionCount
     })
   };
 }

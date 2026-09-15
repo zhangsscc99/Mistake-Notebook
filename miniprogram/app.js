@@ -31,6 +31,16 @@ App({
       fail: (err) => console.warn('[app] wx.login 失败，上传可能受影响:', err)
     });
 
+    // 本地已登录但云端可能还没有用户档/默认分类（旧会话、跳过登录页）。
+    // 补一次 ensure，避免题目写下之后在「分类」里找不到文件夹。
+    if (isLoggedIn()) {
+      wx.cloud.callFunction({
+        name: 'user',
+        data: { action: 'ensure' },
+        fail: (err) => console.warn('[app] ensure 账号失败:', err)
+      });
+    }
+
     // 只确保集合存在。默认分类改在登录时按账号创建，不再写入全局题库。
     setTimeout(() => {
       wx.cloud.callFunction({

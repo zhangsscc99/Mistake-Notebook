@@ -67,8 +67,45 @@ function matchExistingCategory(list, categoryId, categoryName) {
   }) || null;
 }
 
+const DEFAULT_CATEGORIES = [
+  { name: '数学', description: '数学相关题目', color: '#E8A855' },
+  { name: '物理', description: '物理相关题目', color: '#4A90E2' },
+  { name: '化学', description: '化学相关题目', color: '#7ED321' },
+  { name: '英语', description: '英语相关题目', color: '#F5A623' },
+  { name: '语文', description: '语文相关题目', color: '#BD10E0' },
+  { name: '生物', description: '生物相关题目', color: '#50E3C2' },
+  { name: '历史', description: '历史相关题目', color: '#D0021B' },
+  { name: '地理', description: '地理相关题目', color: '#8B572A' },
+  { name: '计算机/编程', description: '计算机与编程相关题目', color: '#2A9D8F' },
+  { name: '政治', description: '政治相关题目', color: '#C471ED' }
+];
+
+async function seedPersonalCategories(openId) {
+  const now = new Date().toISOString();
+  for (const cat of DEFAULT_CATEGORIES) {
+    const found = await db.collection('categories')
+      .where({ openid: openId, name: cat.name, isDeleted: false })
+      .limit(1)
+      .get();
+    if (found.data && found.data.length) continue;
+    await db.collection('categories').add({
+      data: {
+        ...cat,
+        openid: openId,
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+  }
+}
+
 async function findExistingCategory(openId, categoryId, categoryName) {
-  const list = await listUserCategories(openId);
+  let list = await listUserCategories(openId);
+  if (!list.length) {
+    await seedPersonalCategories(openId);
+    list = await listUserCategories(openId);
+  }
   return matchExistingCategory(list, categoryId, categoryName) || list[0] || null;
 }
 
