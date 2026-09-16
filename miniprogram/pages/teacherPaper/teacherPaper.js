@@ -24,6 +24,7 @@ Page({
   },
   onShow() {
     this.setData({ pickCount: pickIds().length });
+    if (this._ready) this.reload();
   },
   onPullDownRefresh() { this.reload().finally(() => wx.stopPullDownRefresh()); },
 
@@ -34,6 +35,7 @@ Page({
     const selectedClass = classes.find((c) => c.id === pick.classId) || classes[0] || {};
     this.setData({ classes, selectedClass });
     await this.reload();
+    this._ready = true;
   },
 
   async reload() {
@@ -98,7 +100,7 @@ Page({
     return await new Promise((resolve) => wx.showModal({
       title: label,
       editable: true,
-      placeholderText: '例如：周测错题卷',
+      placeholderText: '例如：周五错题题单',
       confirmText: '确定',
       success: (r) => resolve(r.confirm ? (r.content || '').trim() : '')
     }));
@@ -120,28 +122,22 @@ Page({
   async savePaper() {
     const ids = this.requirePick();
     if (!ids) return;
-    const title = await this.askTitle('试卷名称');
+    const title = await this.askTitle('题单名称');
     if (!title) return;
     const r = await callTeacher('savePaper', { classId: this.data.selectedClass.id, title, questionIds: ids });
-    wx.showToast({ title: r.success ? '试卷已保存' : (r.error || '保存失败'), icon: r.success ? 'success' : 'none' });
+    wx.showToast({ title: r.success ? '题单已保存' : (r.error || '保存失败'), icon: r.success ? 'success' : 'none' });
     if (r.success) this.reload();
   },
 
-  async publishNotebook() {
-    const ids = this.requirePick();
-    if (!ids) return;
-    const title = await this.askTitle('错题本名称');
-    if (!title) return;
-    const r = await callTeacher('publishNotebook', { classId: this.data.selectedClass.id, title, questionIds: ids });
-    wx.showToast({ title: r.success ? '已推送给班级' : (r.error || '发布失败'), icon: r.success ? 'success' : 'none' });
-    if (r.success) this.reload();
-  },
-
-  createHomework() {
+  goSend() {
     const classId = this.data.selectedClass.id || '';
+    if (!classId) {
+      wx.showToast({ title: '请先选择班级', icon: 'none' });
+      return;
+    }
     const source = pickIds().length ? 'pick' : 'hot';
     wx.navigateTo({
-      url: `/pages/teacherAssignmentCreate/teacherAssignmentCreate?source=${source}&classId=${classId}`
+      url: `/pages/teacherAssignmentCreate/teacherAssignmentCreate?mode=practice&source=${source}&classId=${classId}`
     });
   }
 });

@@ -1,9 +1,17 @@
 <view class="teacher-shell create-page">
   <view class="teacher-hero">
-    <view class="hero-kicker">ASSIGN</view>
-    <view class="hero-title">布置作业</view>
-    <view class="hero-sub">选班级、题目来源和截止时间。学生作答后，在作业详情里按人批改</view>
+    <view class="hero-kicker">SEND</view>
+    <view class="hero-title">发给班级</view>
+    <view class="hero-sub">同一套题可以发成练习或作业。练习给学生看题；作业需要作答，可设截止并批改</view>
   </view>
+
+  <view class="section-head"><text class="section-title">发给班级的方式</text></view>
+  <view class="chip-row">
+    <view class="chip {{kind === 'practice' ? 'on' : ''}}" data-kind="practice" bindtap="setKind">练习</view>
+    <view class="chip {{kind === 'homework' ? 'on' : ''}}" data-kind="homework" bindtap="setKind">作业</view>
+  </view>
+  <view class="hint" wx:if="{{kind === 'practice'}}">学生在「我的班级」查看题目，不用提交</view>
+  <view class="hint" wx:if="{{kind === 'homework'}}">学生需要作答提交，老师可在作业页打分</view>
 
   <view class="section-head"><text class="section-title">班级</text></view>
   <view class="chip-row">
@@ -11,38 +19,40 @@
   </view>
   <view class="empty-block" wx:if="{{!classes.length}}">还没有班级<text>先去「班级」新建</text></view>
 
-  <view class="section-head"><text class="section-title">作业名称</text></view>
+  <view class="section-head"><text class="section-title">名称</text></view>
   <view class="white-card">
-    <input class="field" value="{{title}}" placeholder="例如：周五错题练习" maxlength="30" bindinput="onTitle" />
+    <input class="field" value="{{title}}" placeholder="{{kind === 'homework' ? '例如：周五作业' : '例如：周五练习'}}" maxlength="30" bindinput="onTitle" />
   </view>
 
-  <view class="section-head"><text class="section-title">截止时间</text></view>
-  <view class="white-card row-card">
-    <picker mode="date" value="{{dueDate}}" bindchange="onDue">
-      <view class="field">{{dueDate || '可选，不设则不限制'}}</view>
-    </picker>
-    <text class="clear" wx:if="{{dueDate}}" catchtap="clearDue">清除</text>
-  </view>
+  <block wx:if="{{kind === 'homework'}}">
+    <view class="section-head"><text class="section-title">截止时间</text></view>
+    <view class="white-card row-card">
+      <picker mode="date" value="{{dueDate}}" bindchange="onDue">
+        <view class="field">{{dueDate || '可选，不设则不限制'}}</view>
+      </picker>
+      <text class="clear" wx:if="{{dueDate}}" catchtap="clearDue">清除</text>
+    </view>
+  </block>
 
   <view class="section-head"><text class="section-title">题目来源</text></view>
   <view class="chip-row">
     <view class="chip {{source === 'hot' ? 'on' : ''}}" data-source="hot" bindtap="setSource">高频错题 {{hotCount}}</view>
-    <view class="chip {{source === 'paper' ? 'on' : ''}}" data-source="paper" bindtap="setSource">已存试卷</view>
+    <view class="chip {{source === 'paper' ? 'on' : ''}}" data-source="paper" bindtap="setSource">已存题单</view>
     <view class="chip {{source === 'pick' ? 'on' : ''}}" data-source="pick" bindtap="setSource">当前选题 {{pickCount}}</view>
   </view>
-  <view class="hint" wx:if="{{source === 'hot'}}">将把当前班级最高频的错题布置下去（每题一份）</view>
+  <view class="hint" wx:if="{{source === 'hot'}}">将把当前班级最高频的错题发出去（每题一份）</view>
   <view class="hint" wx:if="{{source === 'pick' && !pickCount}}">还没有选题<text class="link" bindtap="goPick">去错题页勾选</text></view>
   <view class="hint" wx:if="{{source === 'pick' && pickCount}}">使用错题页带到组卷的 {{pickCount}} 道题</view>
 
   <block wx:if="{{source === 'paper'}}">
     <view class="white-card {{selectedPaperId === item.id ? 'on-paper' : ''}}" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" bindtap="selectPaper">
       <view class="paper-title">{{item.title}}</view>
-      <view class="paper-meta">{{item.questionCount}} 道题</view>
+      <view class="paper-meta">{{item.questionCount}} 道题 · 草稿</view>
     </view>
-    <view class="empty-block" wx:if="{{!papers.length}}">这个班还没有试卷<text>先去组卷页保存一份</text></view>
+    <view class="empty-block" wx:if="{{!papers.length}}">这个班还没有题单草稿<text>先去组卷页存一份</text></view>
   </block>
 
   <view class="submit-wrap">
-    <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">布置给学生</button>
+    <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">发给班级</button>
   </view>
 </view>

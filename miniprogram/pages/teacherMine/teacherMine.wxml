@@ -15,7 +15,7 @@
   <view class="section-head"><text class="section-title">教学</text></view>
   <view class="white-card">
     <view class="cell" bindtap="goAssignments">
-      <text class="cell-label">作业布置与批改</text>
+      <text class="cell-label">作业批改</text>
       <text class="cell-arrow">›</text>
     </view>
     <view class="cell" bindtap="goPaper">

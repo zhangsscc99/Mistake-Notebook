@@ -25,7 +25,7 @@ Page({
   },
 
   goCreate() {
-    wx.navigateTo({ url: '/pages/teacherAssignmentCreate/teacherAssignmentCreate' });
+    wx.navigateTo({ url: '/pages/teacherAssignmentCreate/teacherAssignmentCreate?mode=homework' });
   },
 
   openDetail(e) {

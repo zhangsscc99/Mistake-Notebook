@@ -9,7 +9,7 @@ const SUGGESTIONS = [
 
 function greetingFor(cls, stats) {
   if (!cls || !cls.id) {
-    return '你好老师，我是班级教学助手，不是学生答疑。先去「班级」建班并把加入码发给学生，他们在学生端录入错题后，我就能帮你看高频错题、薄弱学科，并建议组卷或布置作业。';
+    return '你好老师，我是班级教学助手，不是学生答疑。先去「班级」建班并把加入码发给学生，他们在学生端录入错题后，我就能帮你看高频错题、薄弱学科，并建议组卷后发给班级。';
   }
   const name = cls.name || '当前班级';
   const total = (stats && stats.total) || 0;

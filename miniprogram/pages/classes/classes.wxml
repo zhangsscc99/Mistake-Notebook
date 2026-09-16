@@ -2,20 +2,27 @@
   <view class="classes-header">
     <view class="header-kicker">MY CLASSES</view>
     <view class="header-title">我的班级</view>
-    <view class="header-sub">通过审核后可查看班级错题本和作业</view>
+    <view class="header-sub">老师发给班级的练习和作业会显示在这里</view>
   </view>
-  <view class="section-title" wx:if="{{notebooks.length}}">班级错题本</view>
-  <view class="notebook-card" wx:for="{{notebooks}}" wx:key="id">
-    <view class="notebook-title">{{item.title}}</view>
-    <view class="notebook-meta">{{item.className}} · {{item.questionCount}} 道题</view>
-    <view class="notebook-q" wx:for="{{item.questions}}" wx:key="id" wx:for-item="q" wx:for-index="qi">{{qi + 1}}. {{q.content}}</view>
+
+  <view class="section-label" wx:if="{{tasks.length}}">班级任务</view>
+  <view
+    class="task-card"
+    wx:for="{{tasks}}"
+    wx:key="key"
+    data-id="{{item.id}}"
+    data-type="{{item.type}}"
+    bindtap="openTask">
+    <view class="task-top">
+      <text class="badge {{item.type === 'homework' ? 'hw' : 'practice'}}">{{item.badge}}</text>
+    </view>
+    <view class="task-title">{{item.title}}</view>
+    <view class="task-meta">{{item.meta}}</view>
+    <view class="task-action">{{item.action}}</view>
   </view>
-  <view class="section-title" wx:if="{{assignments.length}}">待完成作业</view>
-  <view class="assignment-card" wx:for="{{assignments}}" wx:key="_id" data-id="{{item._id}}" bindtap="openAssignment">
-    <view class="notebook-title">{{item.title}}</view>
-    <view class="notebook-meta">{{item.questionCount}} 道题 · {{item.dueAt || '未设置截止时间'}}</view>
-    <view class="assignment-action">{{item.submissionStatus === 'graded' ? '已批改 · ' + item.submissionScore + '分' : item.submissionStatus === 'submitted' ? '已提交，等待批改' : '开始作答 ›'}}</view>
-  </view>
+  <view class="empty" wx:if="{{!loading && classes.length && !tasks.length}}">老师还没有发给班级任务<text>练习和作业都会出现在这里</text></view>
+
+  <view class="section-label" wx:if="{{classes.length}}">已加入</view>
   <view class="class-card" wx:for="{{classes}}" wx:key="id">
     <view class="class-name">{{item.name}}</view>
     <view class="class-meta">{{item.grade || '未设置学段'}} · {{item.teacherName}}</view>

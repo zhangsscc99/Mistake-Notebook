@@ -21,6 +21,7 @@
     "pages/teacherMine/teacherMine",
     "pages/teacherReport/teacherReport",
     "pages/classes/classes",
+    "pages/classPractice/classPractice",
     "pages/teacherNotebook/teacherNotebook",
     "pages/teacherAssignments/teacherAssignments",
     "pages/teacherAssignmentCreate/teacherAssignmentCreate",

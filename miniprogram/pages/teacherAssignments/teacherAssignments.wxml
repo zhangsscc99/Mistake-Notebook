@@ -1,9 +1,9 @@
 <view class="teacher-shell hw-page">
   <view class="teacher-hero">
     <view class="hero-kicker">HOMEWORK</view>
-    <view class="hero-title">作业</view>
-    <view class="hero-sub">在这里布置和批改。和错题、组卷分开，学生作答后才能打分</view>
-    <button class="ghost-btn hero-btn" bindtap="goCreate">＋ 布置作业</button>
+    <view class="hero-title">作业批改</view>
+    <view class="hero-sub">学生提交后在这里打分。发练习或作业请走组卷「发给班级」</view>
+    <button class="ghost-btn hero-btn" bindtap="goCreate">＋ 发给班级</button>
   </view>
 
   <view class="white-card tap-card" wx:for="{{assignments}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
@@ -15,5 +15,5 @@
       <text class="badge status-graded">已批 {{item.graded}}</text>
     </view>
   </view>
-  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>点上方「布置作业」，从试卷、高频错题或已选题出题</text></view>
+  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>点上方「发给班级」，选作业后学生作答，再回到这里打分</text></view>
 </view>

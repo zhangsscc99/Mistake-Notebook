@@ -188,6 +188,7 @@ exports.main = async (event) => {
       joinClass,
       myClasses,
       myNotebooks,
+      myNotebookDetail,
       myAssignments,
       myAssignmentDetail,
       submitAssignment
@@ -996,10 +997,36 @@ async function myNotebooks() {
       title: n.title,
       questionCount: (n.questionIds || []).length,
       className: (cls.data && cls.data.name) || '班级',
+      createdAt: n.createdAt || '',
       questions: (qs.data || []).map((q) => ({ id: q._id, content: q.content || '' }))
     };
   }));
   return { success: true, data: notebooks };
+}
+
+async function myNotebookDetail(event) {
+  const studentId = openId();
+  const id = String(event.id || event.notebookId || '');
+  if (!studentId || !id) return fail('参数不完整');
+  const n = (await db.collection('class_notebooks').doc(id).get()).data;
+  if (!n || n.isDeleted) return fail('练习不存在');
+  const member = await findMembership(n.classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
+  }
+  const questions = await questionsByIds(n.questionIds || []);
+  const cls = await db.collection('classes').doc(n.classId).get().catch(() => ({ data: null }));
+  return {
+    success: true,
+    data: {
+      id: n._id,
+      title: n.title,
+      className: (cls.data && cls.data.name) || '班级',
+      createdAt: n.createdAt || '',
+      questionCount: questions.length,
+      questions
+    }
+  };
 }
 
 async function myAssignments() {

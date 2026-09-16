@@ -31,13 +31,13 @@ Page({
         index: i + 1
       }));
       this.setData({
-        title: d.title || (type === 'notebook' ? '班级错题本' : '班级试卷'),
-        kindLabel: type === 'notebook' ? '已推送给学生' : '仅老师可见的题单',
+        title: d.title || (type === 'notebook' ? '班级练习' : '题单草稿'),
+        kindLabel: type === 'notebook' ? '已发给学生的练习' : '仅老师可见的题单草稿',
         meta: `${questions.length} 道题 · ${formatDay(d.createdAt) || ''}`,
         questions
       });
       wx.setNavigationBarTitle({
-        title: type === 'notebook' ? '错题本' : '试卷'
+        title: type === 'notebook' ? '练习' : '题单草稿'
       });
     } catch (e) {
       wx.showToast({ title: e.message || '加载失败', icon: 'none' });
