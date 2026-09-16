@@ -39,9 +39,8 @@
     </view>
     <view class="empty-block" wx:if="{{!roster.length}}">班里还没有学生</view>
     <view class="empty-block" wx:elif="{{!visibleRoster.length}}">没有叫这个名字的学生</view>
-
     <view class="submit-wrap">
-      <button class="danger-btn" loading="{{recalling}}" disabled="{{recalling}}" bindtap="recallAssignment">撤回作业</button>
+      <button class="danger-btn" bindtap="recall">撤回作业</button>
     </view>
   </block>
 
@@ -65,7 +64,7 @@
         <input class="score-input" type="digit" value="{{gradeScore}}" placeholder="按对错预填，可改" maxlength="4" bindinput="onScore" />
       </view>
       <view class="sheet-sub" wx:if="{{markHint}}">{{markHint}}</view>
-      <textarea class="comment-input" value="{{gradeComment}}" maxlength="120" placeholder="一句评语，选填" auto-height="{{true}}" bindinput="onComment" />
+      <textarea class="comment-input" value="{{gradeComment}}" maxlength="200" placeholder="评语，选填" auto-height="{{true}}" bindinput="onComment" />
       <button class="primary-btn" loading="{{grading}}" disabled="{{grading}}" bindtap="confirmGrade">确认批改</button>
     </view>
   </view>

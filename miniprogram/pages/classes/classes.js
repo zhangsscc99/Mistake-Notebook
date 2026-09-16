@@ -8,10 +8,7 @@ function homeworkAction(item) {
   if (item.submissionStatus === 'graded') {
     return item.submissionScore == null ? '已批改' : ('已批改 · ' + item.submissionScore + '分');
   }
-  const overdue = item.overdue || isPastDue(item.dueAt);
-  if (overdue) {
-    return item.submissionStatus === 'submitted' ? '已截止 · 已交 ›' : '已截止';
-  }
+  if (isPastDue(item.dueAt) && item.submissionStatus === 'pending') return '已截止';
   if (item.submissionStatus === 'submitted') return '已提交，可查看 ›';
   return '开始作答 ›';
 }
@@ -56,7 +53,7 @@ Page({
         id: x._id || x.id,
         type: 'homework',
         title: x.title || '班级作业',
-        meta: `${(x.questionIds || []).length} 道题 · ${x.dueAt ? ('截止 ' + formatDay(x.dueAt)) : '未设截止'}`,
+        meta: `${(x.questionIds || []).length} 道题 · ${x.dueAt ? ((isPastDue(x.dueAt) ? '已截止 ' : '截止 ') + formatDay(x.dueAt)) : '未设截止'}`,
         createdAt: x.createdAt || '',
         badge: '作业',
         action: homeworkAction(x)

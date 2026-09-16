@@ -9,9 +9,7 @@ Page({
     title: '',
     kindLabel: '',
     meta: '',
-    questions: [],
-    ready: false,
-    recalling: false
+    questions: []
   },
 
   onLoad(options) {
@@ -26,7 +24,7 @@ Page({
       this.setData({ loading: false, title: '未找到' });
       return;
     }
-    this.setData({ loading: true, ready: false });
+    this.setData({ loading: true });
     try {
       const action = type === 'notebook' ? 'notebookDetail' : 'paperDetail';
       const r = await callTeacher(action, { id });
@@ -41,8 +39,7 @@ Page({
         title: d.title || (type === 'notebook' ? '班级练习' : '题单草稿'),
         kindLabel: type === 'notebook' ? '已发给学生的练习' : '仅老师可见的题单草稿',
         meta: `${questions.length} 道题 · ${formatDay(d.createdAt) || ''}`,
-        questions,
-        ready: true
+        questions
       });
       wx.setNavigationBarTitle({
         title: type === 'notebook' ? '练习' : '题单草稿'
@@ -66,38 +63,22 @@ Page({
     wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' });
   },
 
-  recallSet() {
-    if (this.data.recalling || !this.data.id) return;
-    const isNotebook = this.data.type === 'notebook';
-    wx.showModal({
-      title: isNotebook ? '撤回练习' : '撤回题单',
-      content: isNotebook
-        ? '学生将立刻看不到这份练习。题目不会删除。'
-        : '题单会从档案里拿掉。题目不会删除，需要时可以重新组卷。',
-      confirmText: '撤回',
+  async recall() {
+    const isPaper = this.data.type === 'paper';
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: isPaper ? '删除题单' : '撤回练习',
+      content: isPaper ? '删除后学生本来也看不见。只是从老师的草稿列表拿掉。' : '撤回后学生在「我的班级」将看不到这份练习。',
+      confirmText: isPaper ? '删除' : '撤回',
       confirmColor: '#e11d48',
-      success: (res) => {
-        if (res.confirm) this.doRecall(isNotebook);
-      }
+      success: (r) => resolve(!!r.confirm)
+    }));
+    if (!ok) return;
+    const action = isPaper ? 'recallPaper' : 'recallNotebook';
+    const r = await callTeacher(action, { id: this.data.id });
+    wx.showToast({
+      title: r.success ? (isPaper ? '已删除' : '已撤回') : (r.error || '操作失败'),
+      icon: r.success ? 'success' : 'none'
     });
-  },
-
-  async doRecall(isNotebook) {
-    if (this.data.recalling) return;
-    this.setData({ recalling: true });
-    try {
-      const action = isNotebook ? 'deleteNotebook' : 'deletePaper';
-      const r = await callTeacher(action, { id: this.data.id });
-      if (!r.success) throw new Error(r.error || '撤回失败');
-      wx.showToast({ title: '已撤回', icon: 'success' });
-      setTimeout(() => {
-        const pages = getCurrentPages();
-        if (pages.length > 1) wx.navigateBack();
-        else wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' });
-      }, 400);
-    } catch (e) {
-      wx.showToast({ title: e.message || '撤回失败', icon: 'none' });
-      this.setData({ recalling: false });
-    }
+    if (r.success) setTimeout(() => wx.navigateBack(), 500);
   }
 });

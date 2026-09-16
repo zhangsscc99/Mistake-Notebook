@@ -55,11 +55,13 @@
   font-weight: 800;
 }
 
-.comment-line {
-  margin-top: 12rpx;
+.comment-card {
+  margin-top: 16rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.18);
   font-size: 24rpx;
   line-height: 1.5;
-  opacity: 0.9;
 }
 
 .q-card {

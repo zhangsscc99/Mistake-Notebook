@@ -1,4 +1,4 @@
-const { callTeacher, formatDay } = require('../../utils/teacher');
+const { callTeacher, formatDay, isPastDue } = require('../../utils/teacher');
 
 function filterRoster(roster, keyword) {
   const kw = String(keyword || '').trim().toLowerCase();
@@ -26,10 +26,9 @@ Page({
     gradeStudent: {},
     gradeItems: [],
     gradeScore: '',
-    gradeComment: '',
     markHint: '',
-    grading: false,
-    recalling: false
+    gradeComment: '',
+    grading: false
   },
 
   onLoad(options) {
@@ -54,7 +53,7 @@ Page({
       this.setData({
         title: d.title || '作业',
         className: d.className || '',
-        dueText: d.dueAt ? formatDay(d.dueAt) : '未设截止',
+        dueText: d.dueAt ? (formatDay(d.dueAt) + (isPastDue(d.dueAt) ? ' · 已截止' : '')) : '未设截止',
         studentCount: d.studentCount || 0,
         submitted: d.submitted || 0,
         missing: d.missing || 0,
@@ -129,7 +128,7 @@ Page({
     this.setData({ gradeScore: e.detail.value || '' });
   },
   onComment(e) {
-    this.setData({ gradeComment: e.detail.value || '' });
+    this.setData({ gradeComment: (e.detail.value || '').slice(0, 200) });
   },
 
   markQuestion(e) {
@@ -173,7 +172,7 @@ Page({
         submissionId: s.submissionId,
         score,
         marks,
-        comment: this.data.gradeComment || ''
+        comment: this.data.gradeComment
       });
       if (!g.success) throw new Error(g.error || '批改失败');
       wx.showToast({ title: '已批改', icon: 'success' });
@@ -186,34 +185,19 @@ Page({
     }
   },
 
-  recallAssignment() {
-    if (this.data.recalling || !this.data.id) return;
-    wx.showModal({
+  async recall() {
+    const id = this.data.id;
+    if (!id) return;
+    const ok = await new Promise((resolve) => wx.showModal({
       title: '撤回作业',
-      content: '学生将立刻看不到这份作业。已交作答会留在库里，但不能再提交。',
+      content: '学生将看不到这份作业，老师作业列表里也会拿掉。',
       confirmText: '撤回',
       confirmColor: '#e11d48',
-      success: (res) => {
-        if (res.confirm) this.doRecall();
-      }
-    });
-  },
-
-  async doRecall() {
-    if (this.data.recalling) return;
-    this.setData({ recalling: true });
-    try {
-      const r = await callTeacher('deleteAssignment', { assignmentId: this.data.id });
-      if (!r.success) throw new Error(r.error || '撤回失败');
-      wx.showToast({ title: '已撤回', icon: 'success' });
-      setTimeout(() => {
-        const pages = getCurrentPages();
-        if (pages.length > 1) wx.navigateBack();
-        else wx.reLaunch({ url: '/pages/teacherAssignments/teacherAssignments' });
-      }, 400);
-    } catch (e) {
-      wx.showToast({ title: e.message || '撤回失败', icon: 'none' });
-      this.setData({ recalling: false });
-    }
+      success: (r) => resolve(!!r.confirm)
+    }));
+    if (!ok) return;
+    const r = await callTeacher('recallAssignment', { assignmentId: id });
+    wx.showToast({ title: r.success ? '已撤回' : (r.error || '撤回失败'), icon: r.success ? 'success' : 'none' });
+    if (r.success) setTimeout(() => wx.navigateBack(), 500);
   }
 });

@@ -1,11 +1,11 @@
-const { callTeacher, formatDay } = require('../../utils/teacher');
+const { callTeacher, formatDay, isPastDue } = require('../../utils/teacher');
 
 function statusCopy(status, score, overdue) {
   if (status === 'graded') {
     return score == null ? '已批改' : ('已批改 · ' + score + '分');
   }
   if (overdue) {
-    return status === 'submitted' ? '已截止，不能再改' : '已截止，不能提交';
+    return status === 'submitted' ? '已截止，等待老师批改' : '已过截止时间，不能再提交';
   }
   if (status === 'submitted') return '已提交，等待批改。批改前还可修改再交';
   return '写下答案后提交。老师批改后就不能再改';
@@ -19,10 +19,10 @@ Page({
     status: 'pending',
     statusText: '',
     scoreText: '',
-    comment: '',
     readOnly: false,
     canSubmit: true,
     submitLabel: '提交作业',
+    comment: '',
     questions: [],
     answers: [],
     submitting: false
@@ -57,17 +57,16 @@ Page({
       const answers = questions.map((_, i) => String((d.answers && d.answers[i]) || ''));
       const status = d.submissionStatus || 'pending';
       const score = d.submissionScore;
-      const overdue = !!d.overdue;
-      const canSubmit = d.canSubmit !== false && !overdue;
+      const overdue = !!d.overdue || isPastDue(d.dueAt);
       this.setData({
         title: d.title || '班级作业',
-        meta: (d.dueAt ? ('截止 ' + formatDay(d.dueAt)) : '未设截止') + ' · ' + questions.length + ' 道题',
+        meta: (d.dueAt ? ('截止 ' + formatDay(d.dueAt)) : '未设截止') + (overdue ? ' · 已截止' : '') + ' · ' + questions.length + ' 道题',
         status,
         statusText: statusCopy(status, score, overdue),
         scoreText: status === 'graded' && score != null ? String(score) : '',
-        comment: status === 'graded' ? String(d.comment || '') : '',
+        comment: d.comment || '',
         readOnly: !!d.readOnly || overdue,
-        canSubmit,
+        canSubmit: d.canSubmit !== false && !overdue,
         submitLabel: status === 'submitted' ? '重新提交' : '提交作业',
         questions,
         answers

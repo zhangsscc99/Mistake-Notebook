@@ -67,10 +67,19 @@ function normalizeMarks(raw, n) {
 }
 
 function isPastDue(dueAt) {
-  const raw = String(dueAt || '');
-  const day = raw.indexOf('T') > 0 ? raw.split('T')[0] : raw.slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
-  return Date.now() > new Date(day + 'T23:59:59.999+08:00').getTime();
+  const s = String(dueAt || '').trim();
+  if (!s) return false;
+  const day = s.indexOf('T') > 0 ? s.split('T')[0] : s.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    const t = Date.parse(s);
+    return Number.isFinite(t) && Date.now() > t;
+  }
+  const end = Date.parse(day + 'T23:59:59+08:00');
+  return Number.isFinite(end) && Date.now() > end;
+}
+
+function clipComment(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
 }
 
 async function ownedClasses(teacherId) {
@@ -237,6 +246,9 @@ exports.main = async (event) => {
       assignmentSubmissions,
       assignmentDetail,
       gradeAssignment,
+      recallAssignment,
+      recallPaper,
+      recallNotebook,
       parentReport,
       listParentReports,
       parentReportDetail,
@@ -247,10 +259,7 @@ exports.main = async (event) => {
       saveBankQuestions,
       listBank,
       deleteBankQuestion,
-      listPickedQuestions,
-      deletePaper,
-      deleteNotebook,
-      deleteAssignment
+      listPickedQuestions
     };
     const fn = teacherActions[event.action];
     if (!fn) return fail(`Unknown action: ${event.action}`);
@@ -566,28 +575,6 @@ async function listPickedQuestions(teacherId, event) {
   return { success: true, data: await questionsByIds(ids) };
 }
 
-async function softDeleteOwned(teacherId, collection, id, missingMsg) {
-  if (!id) return fail(missingMsg || '缺少记录');
-  const doc = (await db.collection(collection).doc(id).get()).data;
-  if (!doc || doc.teacherId !== teacherId || doc.isDeleted) return fail('无权撤回');
-  await db.collection(collection).doc(id).update({
-    data: { isDeleted: true, updatedAt: new Date().toISOString() }
-  });
-  return { success: true, data: { id } };
-}
-
-async function deletePaper(teacherId, event) {
-  return softDeleteOwned(teacherId, 'class_papers', String(event.id || ''), '缺少题单');
-}
-
-async function deleteNotebook(teacherId, event) {
-  return softDeleteOwned(teacherId, 'class_notebooks', String(event.id || ''), '缺少练习');
-}
-
-async function deleteAssignment(teacherId, event) {
-  return softDeleteOwned(teacherId, 'assignments', String(event.assignmentId || event.id || ''), '缺少作业');
-}
-
 async function deleteBankQuestion(teacherId, event) {
   const id = String(event.id || '');
   if (!id) return fail('缺少题目');
@@ -868,7 +855,7 @@ async function gradeAssignment(teacherId, event) {
   const sub = r.data;
   if (!sub) return fail('提交记录不存在');
   const a = (await db.collection('assignments').doc(sub.assignmentId).get()).data;
-  if (!a || a.teacherId !== teacherId || a.isDeleted) return fail('无权批改该作业');
+  if (!a || a.teacherId !== teacherId) return fail('无权批改该作业');
   const n = (a.questionIds || []).length;
   const marks = normalizeMarks(event.marks, n);
   const marked = marks.filter(Boolean).length;
@@ -878,7 +865,7 @@ async function gradeAssignment(teacherId, event) {
     if (marked === n && n) score = Math.round(marks.filter((m) => m === 'right').length / n * 100);
     else return fail('请输入有效分数');
   }
-  const comment = String(event.comment || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+  const comment = clipComment(event.comment);
   await db.collection('assignment_submissions').doc(id).update({
     data: {
       score,
@@ -890,6 +877,40 @@ async function gradeAssignment(teacherId, event) {
     }
   });
   return { success: true, data: { id, score, marks, comment, status: 'graded' } };
+}
+
+async function recallAssignment(teacherId, event) {
+  const id = String(event.assignmentId || event.id || '');
+  if (!id) return fail('缺少作业');
+  const a = (await db.collection('assignments').doc(id).get()).data;
+  if (!a || a.teacherId !== teacherId || a.isDeleted) return fail('无权撤回该作业');
+  const now = new Date().toISOString();
+  await db.collection('assignments').doc(id).update({
+    data: { isDeleted: true, updatedAt: now }
+  });
+  return { success: true };
+}
+
+async function recallPaper(teacherId, event) {
+  const id = String(event.id || event.paperId || '');
+  if (!id) return fail('缺少题单');
+  const p = (await db.collection('class_papers').doc(id).get()).data;
+  if (!p || p.teacherId !== teacherId || p.isDeleted) return fail('无权删除该题单');
+  await db.collection('class_papers').doc(id).update({
+    data: { isDeleted: true, updatedAt: new Date().toISOString() }
+  });
+  return { success: true };
+}
+
+async function recallNotebook(teacherId, event) {
+  const id = String(event.id || event.notebookId || '');
+  if (!id) return fail('缺少练习');
+  const n = (await db.collection('class_notebooks').doc(id).get()).data;
+  if (!n || n.teacherId !== teacherId || n.isDeleted) return fail('无权撤回该练习');
+  await db.collection('class_notebooks').doc(id).update({
+    data: { isDeleted: true, updatedAt: new Date().toISOString() }
+  });
+  return { success: true };
 }
 
 async function parentReport(teacherId, event) {
@@ -1186,8 +1207,7 @@ async function myAssignments() {
     return {
       ...a,
       submissionStatus: (sub && sub.status) || 'pending',
-      submissionScore: sub && sub.score == null ? null : sub && sub.score,
-      overdue: isPastDue(a.dueAt)
+      submissionScore: sub && sub.score == null ? null : sub && sub.score
     };
   }));
   return { success: true, data: rows };
@@ -1222,9 +1242,9 @@ async function myAssignmentDetail(event) {
       questions,
       submissionStatus: status,
       submissionScore: sub && typeof sub.score === 'number' ? sub.score : null,
+      comment: (sub && sub.comment) || '',
       answers,
       marks,
-      comment: (sub && sub.comment) || '',
       submittedAt: (sub && (sub.submittedAt || sub.createdAt)) || '',
       overdue,
       canSubmit: !graded && !overdue,
@@ -1245,7 +1265,7 @@ async function submitAssignment(event) {
   }
   const old = ((await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get()).data || [])[0];
   if (old && old.status === 'graded') return fail('已批改，不能再提交');
-  if (isPastDue(a.dueAt)) return fail('已过截止时间，不能提交');
+  if (isPastDue(a.dueAt)) return fail('已过截止时间');
   const now = new Date().toISOString();
   const data = {
     assignmentId: id,

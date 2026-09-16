@@ -1,9 +1,5 @@
 .detail-page { padding-bottom: 48rpx; }
 
-.submit-wrap {
-  margin: 24rpx;
-}
-
 .q-index {
   font-size: 22rpx;
   font-weight: 800;
@@ -82,7 +78,7 @@
 }
 
 .sheet-list {
-  height: 46vh;
+  height: 38vh;
   margin: 16rpx 0 8rpx;
 }
 
@@ -170,5 +166,8 @@
   background: #f4f7ff;
   font-size: 26rpx;
   color: #0b1633;
-  line-height: 1.5;
+}
+
+.submit-wrap {
+  margin: 24rpx 24rpx 8rpx;
 }

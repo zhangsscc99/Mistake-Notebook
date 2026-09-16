@@ -26,10 +26,6 @@
   margin: 24rpx;
 }
 
-.submit-wrap .danger-btn {
-  margin-top: 16rpx;
-}
-
 .q-index {
   font-size: 22rpx;
   font-weight: 800;

@@ -5,7 +5,7 @@
     <view class="sub">{{meta}}</view>
     <view class="status-pill {{status}}" wx:if="{{statusText}}">{{statusText}}</view>
     <view class="score-line" wx:if="{{status === 'graded' && scoreText}}">{{scoreText}} 分</view>
-    <view class="comment-line" wx:if="{{comment}}">老师评语：{{comment}}</view>
+    <view class="comment-card" wx:if="{{status === 'graded' && comment}}">{{comment}}</view>
   </view>
 
   <view class="loading" wx:if="{{loading}}">加载作业…</view>

@@ -1,4 +1,4 @@
-const { callTeacher, formatDay } = require('../../utils/teacher');
+const { callTeacher, formatDay, isPastDue } = require('../../utils/teacher');
 
 Page({
   data: { assignments: [] },
@@ -19,7 +19,7 @@ Page({
     const r = await callTeacher('teacherAssignments');
     const assignments = ((r.success && r.data) || []).map((a) => ({
       ...a,
-      dueText: a.dueAt ? formatDay(a.dueAt) : '未设截止'
+      dueText: a.dueAt ? ((isPastDue(a.dueAt) ? '已截止 ' : '截止 ') + formatDay(a.dueAt)) : '未设截止'
     }));
     this.setData({ assignments });
   },

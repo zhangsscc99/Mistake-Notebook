@@ -22,11 +22,16 @@ function formatDay(iso) {
   return s.indexOf('T') > 0 ? s.split('T')[0] : s.slice(0, 10);
 }
 
-// 截止日期当天（北京时间）23:59:59 仍可交，过了才拦截。未设截止则不限。
 function isPastDue(dueAt) {
-  const day = formatDay(dueAt);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
-  return Date.now() > new Date(day + 'T23:59:59.999+08:00').getTime();
+  const s = String(dueAt || '').trim();
+  if (!s) return false;
+  const day = formatDay(s);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    const t = Date.parse(s);
+    return Number.isFinite(t) && Date.now() > t;
+  }
+  const end = Date.parse(day + 'T23:59:59+08:00');
+  return Number.isFinite(end) && Date.now() > end;
 }
 
 module.exports = {
