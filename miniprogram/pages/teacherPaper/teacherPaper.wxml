@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">PAPER</view>
     <view class="hero-title">班级组卷</view>
-    <view class="hero-sub">从全班错题选题，再发给班级做练习或作业。题单草稿只老师能看见</view>
+    <view class="hero-sub">从全班错题或老师拍照题库选题，再发给班级。题单草稿只老师能看见</view>
     <view class="hero-stats">
       <view class="hero-stat" data-key="papers" bindtap="jumpStat"><text>{{papers.length}}</text><label>题单</label></view>
       <view class="hero-divider"></view>
@@ -19,7 +19,8 @@
   <view class="pick-banner" wx:if="{{pickCount}}">已选 {{pickCount}} 道题带到这里。点「发给班级」选练习或作业，或先存成题单草稿</view>
 
   <view class="action-grid">
-    <view class="white-card" bindtap="goPick"><view class="paper-title">选题组卷</view><view class="paper-meta">打开全班错题勾选</view></view>
+    <view class="white-card" bindtap="goPick"><view class="paper-title">选题组卷</view><view class="paper-meta">学生错题或班级题库</view></view>
+    <view class="white-card" bindtap="goCapture"><view class="paper-title">拍照录入</view><view class="paper-meta">拍试卷存进这个班的题库</view></view>
     <view class="white-card" bindtap="goSend"><view class="paper-title">发给班级</view><view class="paper-meta">练习给学生看题，作业需作答批改</view></view>
     <view class="white-card" bindtap="savePaper"><view class="paper-title">存为题单</view><view class="paper-meta">仅老师可见的草稿</view></view>
   </view>

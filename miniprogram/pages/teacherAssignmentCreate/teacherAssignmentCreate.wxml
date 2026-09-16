@@ -37,12 +37,23 @@
   <view class="section-head"><text class="section-title">题目来源</text></view>
   <view class="chip-row">
     <view class="chip {{source === 'hot' ? 'on' : ''}}" data-source="hot" bindtap="setSource">高频错题 {{hotCount}}</view>
+    <view class="chip {{source === 'bank' ? 'on' : ''}}" data-source="bank" bindtap="setSource">班级题库 {{bankCount}}</view>
     <view class="chip {{source === 'paper' ? 'on' : ''}}" data-source="paper" bindtap="setSource">已存题单</view>
     <view class="chip {{source === 'pick' ? 'on' : ''}}" data-source="pick" bindtap="setSource">当前选题 {{pickCount}}</view>
   </view>
   <view class="hint" wx:if="{{source === 'hot'}}">将把当前班级最高频的错题发出去（每题一份）</view>
+  <view class="hint" wx:if="{{source === 'bank' && !bankCount}}">这个班还没有题库<text class="link" bindtap="goCapture">去拍照录入</text></view>
+  <view class="hint" wx:if="{{source === 'bank' && bankCount}}">点选要发出去的题，可多选</view>
   <view class="hint" wx:if="{{source === 'pick' && !pickCount}}">还没有选题<text class="link" bindtap="goPick">去错题页勾选</text></view>
   <view class="hint" wx:if="{{source === 'pick' && pickCount}}">使用错题页带到组卷的 {{pickCount}} 道题</view>
+
+  <block wx:if="{{source === 'bank'}}">
+    <view class="white-card {{selectedBankMap[item.id] ? 'on-paper' : ''}}" wx:for="{{bankQuestions}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleBank">
+      <view class="paper-title">{{item.content}}</view>
+      <view class="paper-meta">{{item.category || '未分类'}} · 老师录入</view>
+    </view>
+    <view class="empty-block" wx:if="{{!bankQuestions.length}}">这个班还没有题库<text>先去组卷页拍照录入</text></view>
+  </block>
 
   <block wx:if="{{source === 'paper'}}">
     <view class="white-card {{selectedPaperId === item.id ? 'on-paper' : ''}}" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" bindtap="selectPaper">

@@ -1,4 +1,4 @@
-const { callTeacher } = require('../../utils/teacher');
+const { callTeacher, shortText } = require('../../utils/teacher');
 
 function pickIds() {
   const pick = getApp().globalData.teacherPick || {};
@@ -17,6 +17,9 @@ Page({
     source: 'hot',
     pickCount: 0,
     hotCount: 0,
+    bankCount: 0,
+    bankQuestions: [],
+    selectedBankMap: {},
     submitting: false
   },
 
@@ -43,18 +46,26 @@ Page({
   async reloadSources() {
     const classId = this.data.selectedClass.id;
     if (!classId) {
-      this.setData({ papers: [], hotCount: 0 });
+      this.setData({ papers: [], hotCount: 0, bankCount: 0, bankQuestions: [], selectedBankMap: {} });
       return;
     }
-    const [papers, stats] = await Promise.all([
+    const [papers, stats, bank] = await Promise.all([
       callTeacher('listPapers', { classId }),
-      callTeacher('classStats', { classId })
+      callTeacher('classStats', { classId }),
+      callTeacher('listBank', { classId })
     ]);
     const hot = ((stats.success && stats.data && stats.data.hot) || []);
+    const bankQuestions = ((bank.success && bank.data) || []).map((q) => ({
+      ...q,
+      content: shortText(q.content, 42)
+    }));
     this.setData({
       papers: (papers.success && papers.data) || [],
       hotCount: hot.length,
-      selectedPaperId: ''
+      bankCount: bankQuestions.length,
+      bankQuestions,
+      selectedPaperId: '',
+      selectedBankMap: {}
     });
   },
 
@@ -83,12 +94,27 @@ Page({
     this.setData({ source });
   },
 
-  selectPaper(e) {
-    this.setData({ selectedPaperId: e.currentTarget.dataset.id, source: 'paper' });
+  toggleBank(e) {
+    const id = e.currentTarget.dataset.id;
+    if (!id) return;
+    const selectedBankMap = Object.assign({}, this.data.selectedBankMap);
+    if (selectedBankMap[id]) delete selectedBankMap[id];
+    else selectedBankMap[id] = true;
+    this.setData({ selectedBankMap, source: 'bank' });
   },
 
   goPick() {
     wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions?pick=1' });
+  },
+
+  goCapture() {
+    const classId = this.data.selectedClass.id;
+    if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
+    wx.navigateTo({ url: '/pages/teacherCapture/teacherCapture?classId=' + classId });
+  },
+
+  selectPaper(e) {
+    this.setData({ selectedPaperId: e.currentTarget.dataset.id, source: 'paper' });
   },
 
   resolveIds() {
@@ -120,6 +146,14 @@ Page({
         return null;
       }
       return { questionIds: this.resolveIds(), paperId };
+    }
+    if (this.data.source === 'bank') {
+      const questionIds = Object.keys(this.data.selectedBankMap || {});
+      if (!questionIds.length) {
+        wx.showToast({ title: '请从题库勾选题目', icon: 'none' });
+        return null;
+      }
+      return { questionIds, paperId: '' };
     }
     const questionIds = pickIds();
     if (!questionIds.length) {

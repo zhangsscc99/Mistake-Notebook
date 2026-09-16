@@ -17,6 +17,8 @@
     "pages/teacherQuestions/teacherQuestions",
     "pages/teacherChat/teacherChat",
     "pages/teacherPaper/teacherPaper",
+    "pages/teacherCapture/teacherCapture",
+    "pages/teacherBankPicker/teacherBankPicker",
     "pages/teacherSetDetail/teacherSetDetail",
     "pages/teacherMine/teacherMine",
     "pages/teacherReport/teacherReport",

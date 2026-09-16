@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">TEACHER</view>
     <view class="hero-title">{{nickName || '教师'}}</view>
-    <view class="hero-sub">点上方数字可进入对应模块。这里没有拍照和个人错题本</view>
+    <view class="hero-sub">拍照录入进班级题库，不进个人错题本。点上方数字可进入对应模块</view>
     <view class="hero-stats">
       <view class="hero-stat" data-focus="" bindtap="goClass"><text>{{classCount}}</text><label>班级</label></view>
       <view class="hero-divider"></view>

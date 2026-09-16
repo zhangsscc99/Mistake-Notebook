@@ -45,7 +45,9 @@ function mapQuestion(q) {
     imageUrl: q.imageUrl || '',
     openid: q.openid || '',
     aiStatus: q.aiStatus || '',
-    createdAt: q.createdAt || ''
+    createdAt: q.createdAt || '',
+    source: q.source || '',
+    classId: q.classId || ''
   };
 }
 function contentKey(text) {
@@ -127,7 +129,7 @@ async function questionsByOpenIds(ids, limit) {
       .orderBy('createdAt', 'desc')
       .limit(cap - rows.length)
       .get();
-    rows.push(...(r.data || []));
+    rows.push(...(r.data || []).filter((q) => q.source !== 'teacher_bank'));
   }
   return rows;
 }
@@ -222,7 +224,10 @@ exports.main = async (event) => {
       chat,
       joinRequests,
       approveJoin,
-      rejectJoin
+      rejectJoin,
+      saveBankQuestions,
+      listBank,
+      deleteBankQuestion
     };
     const fn = teacherActions[event.action];
     if (!fn) return fail(`Unknown action: ${event.action}`);
@@ -472,6 +477,78 @@ async function classStats(teacherId, event) {
       hot
     }
   };
+}
+
+const BANK_DIFFICULTY = { '简单': 'EASY', '中等': 'MEDIUM', '困难': 'HARD', EASY: 'EASY', MEDIUM: 'MEDIUM', HARD: 'HARD' };
+
+async function saveBankQuestions(teacherId, event) {
+  const classId = String(event.classId || '');
+  await assertOwnedClass(teacherId, classId);
+  const items = Array.isArray(event.questions) ? event.questions : [];
+  if (!items.length) return fail('请选择题目');
+  const category = String(event.category || '').trim() || '未分类';
+  const difficulty = BANK_DIFFICULTY[event.difficulty] || 'MEDIUM';
+  const now = new Date().toISOString();
+  const ids = [];
+  for (const item of items.slice(0, 40)) {
+    const content = String(item.text || item.content || '').trim();
+    if (!content) continue;
+    const r = await db.collection('questions').add({
+      data: {
+        openid: teacherId,
+        teacherId,
+        classId,
+        source: 'teacher_bank',
+        content,
+        imageUrl: item.imageUrl || event.imageUrl || '',
+        pageFileIDs: Array.isArray(item.pageFileIDs) ? item.pageFileIDs : [],
+        pageSpans: Array.isArray(item.pageSpans) ? item.pageSpans : [],
+        category,
+        categoryId: '',
+        difficulty,
+        tags: [item.type, item.subject].filter(Boolean),
+        ocrConfidence: Number(item.confidence) || 0,
+        aiStatus: 'ready',
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+    ids.push(r._id);
+  }
+  if (!ids.length) return fail('没有可保存的题目');
+  return { success: true, data: { ids, savedCount: ids.length } };
+}
+
+async function listBank(teacherId, event) {
+  const classId = String(event.classId || '');
+  await assertOwnedClass(teacherId, classId);
+  const r = await db.collection('questions')
+    .where({ openid: teacherId, isDeleted: false })
+    .orderBy('createdAt', 'desc')
+    .limit(100)
+    .get();
+  const rows = (r.data || []).filter((q) => q.source === 'teacher_bank' && q.classId === classId);
+  return {
+    success: true,
+    data: rows.map((q) => ({
+      ...mapQuestion(q),
+      nickName: '老师录入'
+    }))
+  };
+}
+
+async function deleteBankQuestion(teacherId, event) {
+  const id = String(event.id || '');
+  if (!id) return fail('缺少题目');
+  const q = (await db.collection('questions').doc(id).get()).data;
+  if (!q || q.isDeleted) return fail('题目不存在');
+  const owner = q.teacherId || q.openid;
+  if (owner !== teacherId || q.source !== 'teacher_bank') return fail('无权删除');
+  await db.collection('questions').doc(id).update({
+    data: { isDeleted: true, updatedAt: new Date().toISOString() }
+  });
+  return { success: true };
 }
 
 async function publishNotebook(teacherId, event) {

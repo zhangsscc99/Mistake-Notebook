@@ -1,0 +1,16 @@
+@import "../questionPicker/questionPicker.wxss";
+
+.picker-page {
+  background-color: #eef3fb;
+  background-image:
+    radial-gradient(circle 420rpx at 100% 0%, rgba(82, 183, 255, 0.12) 0%, transparent 60%),
+    radial-gradient(circle 360rpx at 0% 4%, rgba(182, 166, 255, 0.10) 0%, transparent 55%),
+    linear-gradient(rgba(11, 22, 51, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 22, 51, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 44rpx 44rpx, 44rpx 44rpx;
+}
+
+.question-card {
+  background: #fff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+}

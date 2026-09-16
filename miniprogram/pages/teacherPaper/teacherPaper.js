@@ -67,6 +67,15 @@ Page({
     wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions?pick=1' });
   },
 
+  goCapture() {
+    const classId = this.data.selectedClass.id || '';
+    if (!classId) {
+      wx.showToast({ title: '请先选择班级', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/teacherCapture/teacherCapture?classId=' + classId });
+  },
+
   jumpStat(e) {
     const key = e.currentTarget.dataset.key;
     if (key === 'assignments') {
