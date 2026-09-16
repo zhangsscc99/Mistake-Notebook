@@ -21,7 +21,12 @@ Page({
     roster: [],
     visibleRoster: [],
     keyword: '',
-    showRosterSearch: false
+    showRosterSearch: false,
+    gradeOpen: false,
+    gradeStudent: {},
+    gradeItems: [],
+    gradeScore: '',
+    grading: false
   },
 
   onLoad(options) {
@@ -92,20 +97,46 @@ Page({
     if (s.statusKey === 'missing') {
       return wx.showToast({ title: '该生尚未提交', icon: 'none' });
     }
-    const answers = (s.answers || []).map((a, i) => `${i + 1}. ${a || '（空）'}`).join('\n');
-    wx.showModal({
-      title: s.nickName,
-      content: `${s.status}\n\n作答：\n${answers || '无'}`,
-      editable: true,
-      placeholderText: '输入分数后确认批改',
-      confirmText: '批改',
-      success: async (x) => {
-        if (!x.confirm) return;
-        if (!s.submissionId) return;
-        const g = await callTeacher('gradeAssignment', { submissionId: s.submissionId, score: x.content });
-        wx.showToast({ title: g.success ? '已批改' : (g.error || '批改失败'), icon: g.success ? 'success' : 'none' });
-        if (g.success) this.load();
-      }
+    const gradeItems = this.data.questions.map((q, i) => ({
+      index: q.index,
+      content: q.content || '',
+      answer: String((s.answers && s.answers[i]) || '')
+    }));
+    this.setData({
+      gradeOpen: true,
+      gradeStudent: s,
+      gradeItems,
+      gradeScore: s.score == null ? '' : String(s.score)
     });
+  },
+
+  noop() {},
+  closeGrade() {
+    if (this.data.grading) return;
+    this.setData({ gradeOpen: false });
+  },
+  onScore(e) {
+    this.setData({ gradeScore: e.detail.value || '' });
+  },
+
+  async confirmGrade() {
+    const s = this.data.gradeStudent || {};
+    if (!s.submissionId || this.data.grading) return;
+    const score = Number(this.data.gradeScore);
+    if (Number.isNaN(score) || score < 0) {
+      return wx.showToast({ title: '请输入有效分数', icon: 'none' });
+    }
+    this.setData({ grading: true });
+    try {
+      const g = await callTeacher('gradeAssignment', { submissionId: s.submissionId, score });
+      if (!g.success) throw new Error(g.error || '批改失败');
+      wx.showToast({ title: '已批改', icon: 'success' });
+      this.setData({ gradeOpen: false });
+      this.load();
+    } catch (e) {
+      wx.showToast({ title: e.message || '批改失败', icon: 'none' });
+    } finally {
+      this.setData({ grading: false });
+    }
   }
 });

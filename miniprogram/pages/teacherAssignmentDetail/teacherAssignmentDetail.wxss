@@ -43,3 +43,84 @@
 .badge.status-missing { color: #e11d48; background: rgba(225, 29, 72, 0.12); }
 .badge.status-submitted { color: #d97706; background: rgba(217, 119, 6, 0.12); }
 .badge.status-graded { color: #16a34a; background: rgba(22, 163, 74, 0.12); }
+
+.sheet-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 80;
+  background: rgba(11, 22, 51, 0.36);
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 82vh;
+  padding: 28rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+}
+
+.sheet-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.sheet-sub {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.sheet-list {
+  height: 46vh;
+  margin: 16rpx 0 8rpx;
+}
+
+.grade-q {
+  padding: 18rpx 0;
+  border-bottom: 1px solid rgba(11, 22, 51, 0.06);
+}
+
+.grade-answer {
+  margin-top: 12rpx;
+  padding: 16rpx;
+  border-radius: 14rpx;
+  background: #f4f7ff;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #0b1633;
+  white-space: pre-wrap;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  margin: 8rpx 0 16rpx;
+  padding: 0 8rpx;
+  height: 80rpx;
+  background: #f4f7ff;
+  border-radius: 16rpx;
+}
+
+.score-label {
+  flex-shrink: 0;
+  margin-right: 16rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+  color: #0b1633;
+  white-space: nowrap;
+}
+
+.score-input {
+  flex: 1;
+  height: 80rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #2459ff;
+}

@@ -8,7 +8,7 @@ function homeworkAction(item) {
   if (item.submissionStatus === 'graded') {
     return item.submissionScore == null ? '已批改' : ('已批改 · ' + item.submissionScore + '分');
   }
-  if (item.submissionStatus === 'submitted') return '已提交，等待批改';
+  if (item.submissionStatus === 'submitted') return '已提交，可查看 ›';
   return '开始作答 ›';
 }
 

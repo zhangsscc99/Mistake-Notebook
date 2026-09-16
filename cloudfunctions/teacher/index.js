@@ -1139,8 +1139,29 @@ async function myAssignmentDetail(event) {
   if (memberStatus(member) !== 'approved') {
     return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
   }
-  const q = await db.collection('questions').where({ _id: _.in(a.questionIds || []), isDeleted: false }).get();
-  return { success: true, data: { ...a, questions: q.data || [] } };
+  const questions = await questionsByIds(a.questionIds || []);
+  const found = await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get();
+  const sub = (found.data || [])[0];
+  const status = (sub && sub.status) || 'pending';
+  const saved = Array.isArray(sub && sub.answers) ? sub.answers : [];
+  const answers = questions.map((_, i) => String(saved[i] != null ? saved[i] : ''));
+  return {
+    success: true,
+    data: {
+      id: a._id,
+      title: a.title,
+      classId: a.classId,
+      dueAt: a.dueAt || '',
+      createdAt: a.createdAt,
+      questions,
+      submissionStatus: status,
+      submissionScore: sub && typeof sub.score === 'number' ? sub.score : null,
+      answers,
+      submittedAt: (sub && (sub.submittedAt || sub.createdAt)) || '',
+      canSubmit: status !== 'graded',
+      readOnly: status === 'graded'
+    }
+  };
 }
 
 async function submitAssignment(event) {
@@ -1153,10 +1174,19 @@ async function submitAssignment(event) {
   if (memberStatus(member) !== 'approved') {
     return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
   }
+  const old = ((await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get()).data || [])[0];
+  if (old && old.status === 'graded') return fail('已批改，不能再提交');
   const now = new Date().toISOString();
-  const old = await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get();
-  const data = { assignmentId: id, studentId, answers: event.answers || [], status: 'submitted', score: null, submittedAt: now, updatedAt: now };
-  if ((old.data || [])[0]) await db.collection('assignment_submissions').doc(old.data[0]._id).update({ data });
+  const data = {
+    assignmentId: id,
+    studentId,
+    answers: Array.isArray(event.answers) ? event.answers : [],
+    status: 'submitted',
+    score: null,
+    submittedAt: now,
+    updatedAt: now
+  };
+  if (old) await db.collection('assignment_submissions').doc(old._id).update({ data });
   else await db.collection('assignment_submissions').add({ data });
   return { success: true, data: { status: 'submitted', submittedAt: now } };
 }

@@ -1,1 +1,35 @@
-<view class="assignment-page"><view class="head"><view class="title">{{assignment.title}}</view><view class="sub">共 {{questions.length}} 道题</view></view><view class="question" wx:for="{{questions}}" wx:key="id"><view class="question-text">{{index+1}}. {{item.content}}</view><textarea class="answer" data-index="{{index}}" bindinput="onAnswer" value="{{answers[index]}}" placeholder="写下你的答案或解题过程" auto-height="{{true}}" /></view><button class="submit" bindtap="submit">提交作业</button></view>
+<view class="assignment-page {{canSubmit ? 'has-submit' : ''}}">
+  <view class="head">
+    <view class="kicker">作业</view>
+    <view class="title">{{title}}</view>
+    <view class="sub">{{meta}}</view>
+    <view class="status-pill {{status}}" wx:if="{{statusText}}">{{statusText}}</view>
+    <view class="score-line" wx:if="{{status === 'graded' && scoreText}}">{{scoreText}} 分</view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载作业…</view>
+
+  <view class="q-card" wx:for="{{questions}}" wx:key="id">
+    <view class="q-index">第 {{item.index}} 题</view>
+    <view class="q-content">{{item.content}}</view>
+    <view class="img-frame" wx:if="{{item.imageUrl}}">
+      <image class="q-image" src="{{item.imageUrl}}" mode="aspectFill" binderror="clearImage" data-index="{{index}}"></image>
+      <view class="img-preview" catchtap="previewImage" data-url="{{item.imageUrl}}">查看原图</view>
+    </view>
+    <textarea
+      class="answer {{readOnly ? 'locked' : ''}}"
+      data-index="{{index}}"
+      value="{{answers[index]}}"
+      placeholder="{{readOnly ? '未作答' : '写下你的答案或解题过程'}}"
+      disabled="{{readOnly}}"
+      auto-height="{{true}}"
+      maxlength="2000"
+      bindinput="onAnswer"
+    />
+  </view>
+  <view class="empty" wx:if="{{!loading && !questions.length}}">这份作业里没有可显示的题目</view>
+
+  <view class="submit-wrap" wx:if="{{!loading && canSubmit}}">
+    <button class="submit" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">{{submitLabel}}</button>
+  </view>
+</view>
