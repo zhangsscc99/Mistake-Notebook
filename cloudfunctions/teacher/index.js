@@ -45,11 +45,41 @@ function mapQuestion(q) {
     imageUrl: q.imageUrl || '',
     openid: q.openid || '',
     aiStatus: q.aiStatus || '',
-    createdAt: q.createdAt || ''
+    createdAt: q.createdAt || '',
+    source: q.source || '',
+    classId: q.classId || ''
   };
 }
 function contentKey(text) {
   return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+}
+
+function normalizeMarks(raw, n) {
+  const src = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const v = src[i];
+    if (v === true || v === 'right' || v === 'correct') out.push('right');
+    else if (v === false || v === 'wrong' || v === 'incorrect') out.push('wrong');
+    else out.push('');
+  }
+  return out;
+}
+
+function isPastDue(dueAt) {
+  const s = String(dueAt || '').trim();
+  if (!s) return false;
+  const day = s.indexOf('T') > 0 ? s.split('T')[0] : s.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    const t = Date.parse(s);
+    return Number.isFinite(t) && Date.now() > t;
+  }
+  const end = Date.parse(day + 'T23:59:59+08:00');
+  return Number.isFinite(end) && Date.now() > end;
+}
+
+function clipComment(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
 }
 
 async function ownedClasses(teacherId) {
@@ -64,9 +94,56 @@ async function assertOwnedClass(teacherId, classId) {
   return cls;
 }
 
-async function classStudentIds(classId) {
+function memberStatus(m) {
+  if (!m || m.isDeleted) return '';
+  if (m.status === 'pending' || m.status === 'rejected' || m.status === 'approved') return m.status;
+  return 'approved';
+}
+
+async function listClassMembers(classId) {
   const r = await db.collection('class_members').where({ classId, isDeleted: false }).get();
-  return Array.from(new Set((r.data || []).map((m) => m.studentId).filter(Boolean)));
+  return r.data || [];
+}
+
+async function approvedMembers(classId) {
+  return (await listClassMembers(classId)).filter((m) => memberStatus(m) === 'approved');
+}
+
+async function pendingMembers(classId) {
+  return (await listClassMembers(classId)).filter((m) => memberStatus(m) === 'pending');
+}
+
+async function classStudentIds(classId) {
+  return Array.from(new Set((await approvedMembers(classId)).map((m) => m.studentId).filter(Boolean)));
+}
+
+async function approvedClassIds(studentId) {
+  const r = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
+  return (r.data || []).filter((m) => memberStatus(m) === 'approved').map((m) => m.classId);
+}
+
+async function findMembership(classId, studentId) {
+  const r = await db.collection('class_members').where({ classId, studentId }).limit(5).get();
+  const rows = r.data || [];
+  return rows.find((m) => !m.isDeleted) || rows[0] || null;
+}
+
+async function mapMemberUsers(members) {
+  const ids = Array.from(new Set(members.map((m) => m.studentId).filter(Boolean)));
+  if (!ids.length) return [];
+  const users = await db.collection('users').where({ _id: _.in(ids) }).get();
+  const userMap = {};
+  (users.data || []).forEach((u) => { userMap[u._id] = u; });
+  return members.map((m) => {
+    const u = userMap[m.studentId] || {};
+    return {
+      id: m.studentId,
+      nickName: u.nickName || '',
+      avatarFileID: u.avatarFileID || '',
+      requestedAt: m.requestedAt || m.createdAt || '',
+      lastActiveAt: u.updatedAt || ''
+    };
+  });
 }
 
 async function questionsByOpenIds(ids, limit) {
@@ -80,7 +157,7 @@ async function questionsByOpenIds(ids, limit) {
       .orderBy('createdAt', 'desc')
       .limit(cap - rows.length)
       .get();
-    rows.push(...(r.data || []));
+    rows.push(...(r.data || []).filter((q) => q.source !== 'teacher_bank'));
   }
   return rows;
 }
@@ -141,6 +218,7 @@ exports.main = async (event) => {
       joinClass,
       myClasses,
       myNotebooks,
+      myNotebookDetail,
       myAssignments,
       myAssignmentDetail,
       submitAssignment
@@ -168,10 +246,20 @@ exports.main = async (event) => {
       assignmentSubmissions,
       assignmentDetail,
       gradeAssignment,
+      recallAssignment,
+      recallPaper,
+      recallNotebook,
       parentReport,
       listParentReports,
       parentReportDetail,
-      chat
+      chat,
+      joinRequests,
+      approveJoin,
+      rejectJoin,
+      saveBankQuestions,
+      listBank,
+      deleteBankQuestion,
+      listPickedQuestions
     };
     const fn = teacherActions[event.action];
     if (!fn) return fail(`Unknown action: ${event.action}`);
@@ -185,12 +273,17 @@ exports.main = async (event) => {
 
 async function dashboard(teacherId) {
   const raw = await ownedClasses(teacherId);
-  const classes = await Promise.all(raw.map(async (c) => ({
-    ...normalizeClass(c),
-    studentCount: (await db.collection('class_members').where({ classId: c._id, isDeleted: false }).count()).total
-  })));
+  const classes = await Promise.all(raw.map(async (c) => {
+    const members = await listClassMembers(c._id);
+    return {
+      ...normalizeClass(c),
+      studentCount: members.filter((m) => memberStatus(m) === 'approved').length,
+      pendingCount: members.filter((m) => memberStatus(m) === 'pending').length
+    };
+  }));
   const selected = classes[0];
   const list = selected ? await students(teacherId, { classId: selected.id }) : { data: [] };
+  const pending = selected ? await joinRequests(teacherId, { classId: selected.id }) : { data: [] };
   let notebookCount = 0;
   try {
     notebookCount = (await db.collection('class_notebooks').where({ teacherId, isDeleted: false }).count()).total;
@@ -203,7 +296,9 @@ async function dashboard(teacherId) {
     data: {
       classes,
       students: list.data || [],
+      pendingStudents: pending.data || [],
       studentCount: classes.reduce((n, c) => n + (c.studentCount || 0), 0),
+      pendingCount: classes.reduce((n, c) => n + (c.pendingCount || 0), 0),
       assignmentCount,
       notebookCount
     }
@@ -223,8 +318,8 @@ async function createClass(teacherId, event) {
 
 async function students(teacherId, event) {
   const classId = event.classId;
-  const cls = await assertOwnedClass(teacherId, classId);
-  const members = (await db.collection('class_members').where({ classId, isDeleted: false }).get()).data || [];
+  await assertOwnedClass(teacherId, classId);
+  const members = await approvedMembers(classId);
   if (!members.length) return { success: true, data: [] };
   const ids = members.map((m) => m.studentId);
   const users = await db.collection('users').where({ _id: _.in(ids) }).get();
@@ -252,8 +347,10 @@ async function studentQuestions(teacherId, event) {
   const studentId = String(event.studentId || '');
   const classId = String(event.classId || '');
   await assertOwnedClass(teacherId, classId);
-  const member = (await db.collection('class_members').where({ classId, studentId, isDeleted: false }).count()).total;
-  if (!member) return fail('学生不在该班级');
+  const member = await findMembership(classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '学生不在该班级');
+  }
   const r = await db.collection('questions').where({ openid: studentId, isDeleted: false }).orderBy('createdAt', 'desc').limit(50).get();
   return { success: true, data: (r.data || []).map(mapQuestion) };
 }
@@ -263,9 +360,10 @@ async function studentOverview(teacherId, event) {
   const studentId = String(event.studentId || '');
   if (!studentId) return fail('缺少学生');
   const cls = await assertOwnedClass(teacherId, classId);
-  const members = (await db.collection('class_members').where({ classId, studentId, isDeleted: false }).limit(1).get()).data || [];
-  const member = members[0];
-  if (!member) return fail('学生不在该班级');
+  const member = await findMembership(classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '学生不在该班级');
+  }
   const users = (await db.collection('users').where({ _id: studentId }).limit(1).get()).data || [];
   const user = users[0] || {};
   const qrows = (await db.collection('questions').where({ openid: studentId, isDeleted: false }).orderBy('createdAt', 'desc').limit(100).get()).data || [];
@@ -411,6 +509,83 @@ async function classStats(teacherId, event) {
       hot
     }
   };
+}
+
+const BANK_DIFFICULTY = { '简单': 'EASY', '中等': 'MEDIUM', '困难': 'HARD', EASY: 'EASY', MEDIUM: 'MEDIUM', HARD: 'HARD' };
+
+async function saveBankQuestions(teacherId, event) {
+  const classId = String(event.classId || '');
+  await assertOwnedClass(teacherId, classId);
+  const items = Array.isArray(event.questions) ? event.questions : [];
+  if (!items.length) return fail('请选择题目');
+  const category = String(event.category || '').trim() || '未分类';
+  const difficulty = BANK_DIFFICULTY[event.difficulty] || 'MEDIUM';
+  const now = new Date().toISOString();
+  const ids = [];
+  for (const item of items.slice(0, 40)) {
+    const content = String(item.text || item.content || '').trim();
+    if (!content) continue;
+    const r = await db.collection('questions').add({
+      data: {
+        openid: teacherId,
+        teacherId,
+        classId,
+        source: 'teacher_bank',
+        content,
+        imageUrl: item.imageUrl || event.imageUrl || '',
+        pageFileIDs: Array.isArray(item.pageFileIDs) ? item.pageFileIDs : [],
+        pageSpans: Array.isArray(item.pageSpans) ? item.pageSpans : [],
+        category,
+        categoryId: '',
+        difficulty,
+        tags: [item.type, item.subject].filter(Boolean),
+        ocrConfidence: Number(item.confidence) || 0,
+        aiStatus: 'ready',
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now
+      }
+    });
+    ids.push(r._id);
+  }
+  if (!ids.length) return fail('没有可保存的题目');
+  return { success: true, data: { ids, savedCount: ids.length } };
+}
+
+async function listBank(teacherId, event) {
+  const classId = String(event.classId || '');
+  await assertOwnedClass(teacherId, classId);
+  const r = await db.collection('questions')
+    .where({ openid: teacherId, isDeleted: false })
+    .orderBy('createdAt', 'desc')
+    .limit(100)
+    .get();
+  const rows = (r.data || []).filter((q) => q.source === 'teacher_bank' && q.classId === classId);
+  return {
+    success: true,
+    data: rows.map((q) => ({
+      ...mapQuestion(q),
+      nickName: '老师录入'
+    }))
+  };
+}
+
+async function listPickedQuestions(teacherId, event) {
+  const ids = Array.isArray(event.questionIds) ? event.questionIds.filter(Boolean).slice(0, 80) : [];
+  return { success: true, data: await questionsByIds(ids) };
+}
+
+async function deleteBankQuestion(teacherId, event) {
+  const id = String(event.id || '');
+  if (!id) return fail('缺少题目');
+  const q = (await db.collection('questions').doc(id).get()).data;
+  if (!q || q.isDeleted) return fail('题目不存在');
+  const owner = q.teacherId || q.openid;
+  if (owner !== teacherId || q.source !== 'teacher_bank') return fail('无权删除');
+  await db.collection('questions').doc(id).update({
+    data: { isDeleted: true, updatedAt: new Date().toISOString() }
+  });
+  return { success: true };
 }
 
 async function publishNotebook(teacherId, event) {
@@ -566,7 +741,7 @@ async function assignmentDetail(teacherId, event) {
   const a = (await db.collection('assignments').doc(id).get()).data;
   if (!a || a.teacherId !== teacherId || a.isDeleted) return fail('无权访问该作业');
   const cls = await assertOwnedClass(teacherId, a.classId);
-  const members = (await db.collection('class_members').where({ classId: a.classId, isDeleted: false }).get()).data || [];
+  const members = await approvedMembers(a.classId);
   const studentIds = members.map((m) => m.studentId);
   const users = studentIds.length ? ((await db.collection('users').where({ _id: _.in(studentIds) }).get()).data || []) : [];
   const names = {};
@@ -595,7 +770,9 @@ async function assignmentDetail(teacherId, event) {
       statusKey,
       status,
       score: s && typeof s.score === 'number' ? s.score : null,
+      comment: (s && s.comment) || '',
       answers: (s && s.answers) || [],
+      marks: normalizeMarks(s && s.marks, (a.questionIds || []).length),
       submissionId: s ? s._id : '',
       submittedAt: (s && (s.submittedAt || s.createdAt)) || ''
     };
@@ -631,7 +808,7 @@ async function teacherAssignments(teacherId) {
   classes.forEach((c) => { classNames[c._id] = c.name; });
   const classSize = {};
   await Promise.all(classIds.map(async (id) => {
-    classSize[id] = (await db.collection('class_members').where({ classId: id, isDeleted: false }).count()).total;
+    classSize[id] = (await approvedMembers(id)).length;
   }));
   const aIds = list.map((a) => a._id);
   const subs = [];
@@ -673,23 +850,73 @@ async function teacherAssignments(teacherId) {
 
 async function gradeAssignment(teacherId, event) {
   const id = String(event.submissionId || '');
-  const score = Number(event.score);
-  if (!id || Number.isNaN(score) || score < 0) return fail('请输入有效分数');
+  if (!id) return fail('缺少提交记录');
   const r = await db.collection('assignment_submissions').doc(id).get();
   const sub = r.data;
   if (!sub) return fail('提交记录不存在');
   const a = (await db.collection('assignments').doc(sub.assignmentId).get()).data;
   if (!a || a.teacherId !== teacherId) return fail('无权批改该作业');
+  const n = (a.questionIds || []).length;
+  const marks = normalizeMarks(event.marks, n);
+  const marked = marks.filter(Boolean).length;
+  if (marked && marked !== n) return fail('请把每道题标成对或错');
+  let score = Number(event.score);
+  if (Number.isNaN(score) || score < 0) {
+    if (marked === n && n) score = Math.round(marks.filter((m) => m === 'right').length / n * 100);
+    else return fail('请输入有效分数');
+  }
+  const comment = clipComment(event.comment);
   await db.collection('assignment_submissions').doc(id).update({
-    data: { score, status: 'graded', gradedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    data: {
+      score,
+      marks,
+      comment,
+      status: 'graded',
+      gradedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
   });
-  return { success: true, data: { id, score, status: 'graded' } };
+  return { success: true, data: { id, score, marks, comment, status: 'graded' } };
+}
+
+async function recallAssignment(teacherId, event) {
+  const id = String(event.assignmentId || event.id || '');
+  if (!id) return fail('缺少作业');
+  const a = (await db.collection('assignments').doc(id).get()).data;
+  if (!a || a.teacherId !== teacherId || a.isDeleted) return fail('无权撤回该作业');
+  const now = new Date().toISOString();
+  await db.collection('assignments').doc(id).update({
+    data: { isDeleted: true, updatedAt: now }
+  });
+  return { success: true };
+}
+
+async function recallPaper(teacherId, event) {
+  const id = String(event.id || event.paperId || '');
+  if (!id) return fail('缺少题单');
+  const p = (await db.collection('class_papers').doc(id).get()).data;
+  if (!p || p.teacherId !== teacherId || p.isDeleted) return fail('无权删除该题单');
+  await db.collection('class_papers').doc(id).update({
+    data: { isDeleted: true, updatedAt: new Date().toISOString() }
+  });
+  return { success: true };
+}
+
+async function recallNotebook(teacherId, event) {
+  const id = String(event.id || event.notebookId || '');
+  if (!id) return fail('缺少练习');
+  const n = (await db.collection('class_notebooks').doc(id).get()).data;
+  if (!n || n.teacherId !== teacherId || n.isDeleted) return fail('无权撤回该练习');
+  await db.collection('class_notebooks').doc(id).update({
+    data: { isDeleted: true, updatedAt: new Date().toISOString() }
+  });
+  return { success: true };
 }
 
 async function parentReport(teacherId, event) {
   const classId = String(event.classId || '');
   const cls = await assertOwnedClass(teacherId, classId);
-  const members = (await db.collection('class_members').where({ classId, isDeleted: false }).get()).data || [];
+  const members = await approvedMembers(classId);
   const ids = members.map((m) => m.studentId);
   const users = ids.length ? ((await db.collection('users').where({ _id: _.in(ids) }).get()).data || []) : [];
   const assignments = (await db.collection('assignments').where({ classId, isDeleted: false }).get()).data || [];
@@ -827,6 +1054,46 @@ async function chat(teacherId, event) {
   return { success: true, data: { reply: String(reply).trim(), classId: target } };
 }
 
+async function joinRequests(teacherId, event) {
+  const classId = String(event.classId || '');
+  await assertOwnedClass(teacherId, classId);
+  const pending = await pendingMembers(classId);
+  if (!pending.length) return { success: true, data: [] };
+  return { success: true, data: await mapMemberUsers(pending) };
+}
+
+async function approveJoin(teacherId, event) {
+  const classId = String(event.classId || '');
+  const studentId = String(event.studentId || '');
+  if (!studentId) return fail('缺少学生');
+  await assertOwnedClass(teacherId, classId);
+  const member = await findMembership(classId, studentId);
+  if (!member || member.isDeleted) return fail('没有这条申请');
+  const now = new Date().toISOString();
+  if (memberStatus(member) === 'approved') {
+    return { success: true, data: { classId, studentId, alreadyJoined: true } };
+  }
+  await db.collection('class_members').doc(member._id).update({
+    data: { status: 'approved', isDeleted: false, approvedAt: now, updatedAt: now }
+  });
+  return { success: true, data: { classId, studentId } };
+}
+
+async function rejectJoin(teacherId, event) {
+  const classId = String(event.classId || '');
+  const studentId = String(event.studentId || '');
+  if (!studentId) return fail('缺少学生');
+  await assertOwnedClass(teacherId, classId);
+  const member = await findMembership(classId, studentId);
+  if (!member || member.isDeleted) return fail('没有这条申请');
+  if (memberStatus(member) === 'approved') return fail('该学生已在班级中');
+  const now = new Date().toISOString();
+  await db.collection('class_members').doc(member._id).update({
+    data: { status: 'rejected', rejectedAt: now, updatedAt: now }
+  });
+  return { success: true, data: { classId, studentId } };
+}
+
 async function joinClass(event) {
   const studentId = openId();
   const joinCode = String(event.joinCode || '').trim().toUpperCase();
@@ -834,13 +1101,29 @@ async function joinClass(event) {
   const r = await db.collection('classes').where({ joinCode, isDeleted: false }).limit(1).get();
   const cls = (r.data || [])[0];
   if (!cls) return fail('加入码无效');
-  const existing = await db.collection('class_members').where({ classId: cls._id, studentId, isDeleted: false }).count();
-  if (existing.total > 0) return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: true } };
+  const existing = await findMembership(cls._id, studentId);
+  const status = memberStatus(existing);
+  if (status === 'approved') {
+    return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: true, pending: false } };
+  }
+  if (status === 'pending') {
+    return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: false, pending: true } };
+  }
   const now = new Date().toISOString();
-  await db.collection('class_members').add({
-    data: { classId: cls._id, studentId, isDeleted: false, createdAt: now, updatedAt: now }
-  });
-  return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: false } };
+  const data = {
+    classId: cls._id,
+    studentId,
+    status: 'pending',
+    isDeleted: false,
+    requestedAt: now,
+    updatedAt: now
+  };
+  if (existing) {
+    await db.collection('class_members').doc(existing._id).update({ data });
+  } else {
+    await db.collection('class_members').add({ data: { ...data, createdAt: now } });
+  }
+  return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: false, pending: true } };
 }
 
 async function myClasses() {
@@ -848,11 +1131,20 @@ async function myClasses() {
   if (!studentId) return fail('未获取到用户身份');
   const memberships = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
   const classes = await Promise.all((memberships.data || []).map(async (m) => {
+    const status = memberStatus(m);
+    if (status === 'rejected' || !status) return null;
     const r = await db.collection('classes').doc(m.classId).get();
     const c = r.data;
     if (!c || c.isDeleted) return null;
     const t = await teacherDoc(c.teacherId);
-    return { id: c._id, name: c.name, grade: c.grade || '', teacherName: (t && t.nickName) || '教师', joinedAt: m.createdAt || '' };
+    return {
+      id: c._id,
+      name: c.name,
+      grade: c.grade || '',
+      teacherName: (t && t.nickName) || '教师',
+      joinedAt: m.createdAt || '',
+      status
+    };
   }));
   return { success: true, data: classes.filter(Boolean) };
 }
@@ -860,8 +1152,7 @@ async function myClasses() {
 async function myNotebooks() {
   const studentId = openId();
   if (!studentId) return fail('未获取到用户身份');
-  const memberships = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
-  const ids = (memberships.data || []).map((m) => m.classId);
+  const ids = await approvedClassIds(studentId);
   if (!ids.length) return { success: true, data: [] };
   const r = await db.collection('class_notebooks').where({ classId: _.in(ids), isDeleted: false }).orderBy('createdAt', 'desc').limit(30).get();
   const notebooks = await Promise.all((r.data || []).map(async (n) => {
@@ -872,17 +1163,42 @@ async function myNotebooks() {
       title: n.title,
       questionCount: (n.questionIds || []).length,
       className: (cls.data && cls.data.name) || '班级',
+      createdAt: n.createdAt || '',
       questions: (qs.data || []).map((q) => ({ id: q._id, content: q.content || '' }))
     };
   }));
   return { success: true, data: notebooks };
 }
 
+async function myNotebookDetail(event) {
+  const studentId = openId();
+  const id = String(event.id || event.notebookId || '');
+  if (!studentId || !id) return fail('参数不完整');
+  const n = (await db.collection('class_notebooks').doc(id).get()).data;
+  if (!n || n.isDeleted) return fail('练习不存在');
+  const member = await findMembership(n.classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
+  }
+  const questions = await questionsByIds(n.questionIds || []);
+  const cls = await db.collection('classes').doc(n.classId).get().catch(() => ({ data: null }));
+  return {
+    success: true,
+    data: {
+      id: n._id,
+      title: n.title,
+      className: (cls.data && cls.data.name) || '班级',
+      createdAt: n.createdAt || '',
+      questionCount: questions.length,
+      questions
+    }
+  };
+}
+
 async function myAssignments() {
   const studentId = openId();
   if (!studentId) return fail('未获取到用户身份');
-  const ms = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
-  const ids = (ms.data || []).map((m) => m.classId);
+  const ids = await approvedClassIds(studentId);
   if (!ids.length) return { success: true, data: [] };
   const r = await db.collection('assignments').where({ classId: _.in(ids), isDeleted: false }).orderBy('createdAt', 'desc').limit(30).get();
   const rows = await Promise.all((r.data || []).map(async (a) => {
@@ -902,10 +1218,39 @@ async function myAssignmentDetail(event) {
   const id = String(event.assignmentId || '');
   const a = (await db.collection('assignments').doc(id).get()).data;
   if (!a || a.isDeleted) return fail('作业不存在');
-  const member = await db.collection('class_members').where({ classId: a.classId, studentId, isDeleted: false }).count();
-  if (!member.total) return fail('不在该班级');
-  const q = await db.collection('questions').where({ _id: _.in(a.questionIds || []), isDeleted: false }).get();
-  return { success: true, data: { ...a, questions: q.data || [] } };
+  const member = await findMembership(a.classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
+  }
+  const questions = await questionsByIds(a.questionIds || []);
+  const found = await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get();
+  const sub = (found.data || [])[0];
+  const status = (sub && sub.status) || 'pending';
+  const saved = Array.isArray(sub && sub.answers) ? sub.answers : [];
+  const answers = questions.map((_, i) => String(saved[i] != null ? saved[i] : ''));
+  const marks = normalizeMarks(sub && sub.marks, questions.length);
+  const overdue = isPastDue(a.dueAt);
+  const graded = status === 'graded';
+  return {
+    success: true,
+    data: {
+      id: a._id,
+      title: a.title,
+      classId: a.classId,
+      dueAt: a.dueAt || '',
+      createdAt: a.createdAt,
+      questions,
+      submissionStatus: status,
+      submissionScore: sub && typeof sub.score === 'number' ? sub.score : null,
+      comment: (sub && sub.comment) || '',
+      answers,
+      marks,
+      submittedAt: (sub && (sub.submittedAt || sub.createdAt)) || '',
+      overdue,
+      canSubmit: !graded && !overdue,
+      readOnly: graded || overdue
+    }
+  };
 }
 
 async function submitAssignment(event) {
@@ -914,12 +1259,26 @@ async function submitAssignment(event) {
   if (!studentId || !id) return fail('参数不完整');
   const a = (await db.collection('assignments').doc(id).get()).data;
   if (!a || a.isDeleted) return fail('作业不存在');
-  const member = (await db.collection('class_members').where({ classId: a.classId, studentId, isDeleted: false }).count()).total;
-  if (!member) return fail('不在该班级');
+  const member = await findMembership(a.classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
+  }
+  const old = ((await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get()).data || [])[0];
+  if (old && old.status === 'graded') return fail('已批改，不能再提交');
+  if (isPastDue(a.dueAt)) return fail('已过截止时间');
   const now = new Date().toISOString();
-  const old = await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get();
-  const data = { assignmentId: id, studentId, answers: event.answers || [], status: 'submitted', score: null, submittedAt: now, updatedAt: now };
-  if ((old.data || [])[0]) await db.collection('assignment_submissions').doc(old.data[0]._id).update({ data });
+  const data = {
+    assignmentId: id,
+    studentId,
+    answers: Array.isArray(event.answers) ? event.answers : [],
+    status: 'submitted',
+    score: null,
+    marks: [],
+    comment: '',
+    submittedAt: now,
+    updatedAt: now
+  };
+  if (old) await db.collection('assignment_submissions').doc(old._id).update({ data });
   else await db.collection('assignment_submissions').add({ data });
   return { success: true, data: { status: 'submitted', submittedAt: now } };
 }

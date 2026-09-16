@@ -1,3 +1,5 @@
+@import "./components/teacher-tabbar/teacher-shell.wxss";
+
 /**app.wxss**/
 page {
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,

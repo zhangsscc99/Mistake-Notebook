@@ -5,41 +5,16 @@ const {
   STAGES,
   getProfile,
   getCachedProfile,
-  setCachedProfile,
-  clearProfileCache
+  setCachedProfile
 } = require('../../utils/profile');
-const { clearSession, goLogin, dismissLoginOverlay } = require('../../utils/auth');
+const { clearSession, goLogin, dismissLoginOverlay, bounceTeacherOffStudentShell } = require('../../utils/auth');
+const { performDeleteAccount, finishDeleteAccount } = require('../../utils/account');
 const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
 const { renderInvitePoster, savePosterToAlbum, saveFailHint } = require('../../utils/invitePoster');
 const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
 const { buildAchievements, EMPTY_ACH } = require('../../utils/achievements');
 
 const MAX_NICKNAME_LEN = 20;
-
-// 服务端 failed[].target 是内部标识（chatMemories / papers / users / avatarFile），
-// 直接拼进弹窗会漏出英文命名，所以在这里翻成人话。
-// 认不出来的标识原样显示 —— 宁可难看也不能吞掉一条失败项。
-const FAILED_LABELS = {
-  chatMemories: '对话记忆',
-  papers: '试卷',
-  users: '个人资料',
-  'users:read': '个人资料',
-  avatarFile: '头像图片',
-  questionNotes: '错题笔记',
-  mistakeReports: '错因分析报告',
-  learningReports: '学习报告',
-  checkins: '打卡记录',
-  coinLogs: '金币流水',
-  chatUsage: '对话配额',
-  questionMarks: '错题收藏',
-  questions: '错题',
-  categories: '分类'
-};
-
-function failedLabel(item) {
-  const target = (item && item.target) || '';
-  return FAILED_LABELS[target] || target || '未知项目';
-}
 
 // 云函数返回的是 UTC ISO，这里按北京时间显示。
 // +8 之后取 UTC 字段，不能取本地字段 —— 用户手机时区不一定在北京
@@ -111,6 +86,7 @@ Page({
   },
 
   onShow: function () {
+    if (bounceTeacherOffStudentShell()) return;
     dismissLoginOverlay();
     enableShareMenu();
     this._nickDraft = '';
@@ -423,7 +399,7 @@ Page({
 
     wx.showModal({
       title: '注销账号',
-      content: '将永久删除本账号下的：\n· 个人资料（头像、昵称、学段）\n· 全部错题与分类\n· 全部 AI 对话记忆\n· 全部试卷\n· 打卡记录、金币与会员\n· 错题收藏、置顶与笔记\n· 学习报告\n\n删除后无法恢复。',
+      content: '将永久删除本账号下的：\n· 个人资料（头像、昵称、学段、身份）\n· 全部错题与分类\n· 加入的班级记录与作业提交\n· 全部 AI 对话记忆\n· 全部试卷\n· 打卡记录、金币与会员\n· 错题收藏、置顶与笔记\n· 学习报告\n\n删除后无法恢复。同一微信再次登录需要重新选择学生或老师。',
       confirmText: '继续',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -435,7 +411,7 @@ Page({
   confirmDeleteAccount: function () {
     wx.showModal({
       title: '最后确认',
-      content: '再次确认删除全部云端数据？\n\n微信账号不受影响。下次进入需要重新登录，将是一份空白错题本。',
+      content: '再次确认删除全部云端数据？\n\n微信账号不受影响。注销后同一微信可以重新选择学生或老师。',
       confirmText: '确认删除',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -448,37 +424,11 @@ Page({
     this.setData({ deleting: true });
     wx.showLoading({ title: '注销中...', mask: true });
 
-    this.callCloud('user', { action: 'deleteAccount' }, 60000)
+    performDeleteAccount()
       .then((res) => {
-        if (!res.success) throw new Error(res.error || '注销失败');
-
-        const failed = (res.data && res.data.failed) || [];
-
-        // 定点清理，不用 wx.clearStorageSync() —— 那会连 appSettings
-        // （自动分类 / 图片质量 / 自动备份）一起抹掉，而用户只是想删账号数据。
-        clearProfileCache();
-        clearSession();
-        try {
-          wx.removeStorageSync('savedPapers');
-        } catch (err) {
-          // ignore
-        }
-        app.globalData.selectedPaperQuestions = [];
-        app.globalData.recognitionDraft = null;
         this.setData({ deleting: false });
         wx.hideLoading();
-
-        if (failed.length) {
-          wx.showModal({
-            title: '部分数据未能清除',
-            content: '以下项目删除失败：' + failed.map(failedLabel).join('、') + '\n请稍后重试。',
-            showCancel: false,
-            success: () => goLogin({ force: true })
-          });
-        } else {
-          wx.showToast({ title: '账号已注销', icon: 'success' });
-          setTimeout(() => goLogin({ force: true }), 400);
-        }
+        finishDeleteAccount(res);
       })
       .catch((err) => {
         this.setData({ deleting: false });
@@ -491,7 +441,7 @@ Page({
   onLogout: function () {
     wx.showModal({
       title: '退出登录',
-      content: '退出后不会删除云端数据。下次用微信登录仍是同一个错题本。',
+      content: '退出后不会删除云端数据，身份也不会改变。下次用微信登录仍是同一个账号。',
       confirmText: '退出',
       success: (res) => {
         if (!res.confirm) return;
@@ -526,10 +476,10 @@ Page({
 
   joinClass: function () {
     wx.showModal({
-      title: '加入教师班级',
+      title: '申请加入班级',
       editable: true,
-      placeholderText: '输入 6 位班级加入码',
-      confirmText: '加入',
+      placeholderText: '输入老师给的班级加入码',
+      confirmText: '申请',
       success: (res) => {
         if (!res.confirm || !res.content.trim()) return;
         wx.cloud.callFunction({
@@ -537,9 +487,15 @@ Page({
           data: { action: 'joinClass', joinCode: res.content.trim() },
           success: (result) => {
             const body = result.result || {};
-            wx.showToast({ title: body.success ? (body.data.alreadyJoined ? '你已在班级中' : '加入成功') : (body.error || '加入失败'), icon: body.success ? 'success' : 'none' });
+            if (!body.success) {
+              wx.showToast({ title: body.error || '申请失败', icon: 'none' });
+              return;
+            }
+            const data = body.data || {};
+            const title = data.alreadyJoined ? '你已在班级中' : (data.pending ? '已提交申请' : '加入成功');
+            wx.showToast({ title, icon: 'success' });
           },
-          fail: () => wx.showToast({ title: '加入失败，请稍后重试', icon: 'none' })
+          fail: () => wx.showToast({ title: '申请失败，请稍后重试', icon: 'none' })
         });
       }
     });

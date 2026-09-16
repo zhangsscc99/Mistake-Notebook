@@ -18,6 +18,20 @@ function decorateQuestions(questions, hot) {
   });
 }
 
+function filterStudents(students, query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return students || [];
+  return (students || []).filter((s) => String(s.name || '').toLowerCase().indexOf(q) >= 0);
+}
+
+function studentLabelOf(students, studentId) {
+  if (!studentId) return '全班';
+  const s = (students || []).find((x) => x.id === studentId);
+  return (s && s.name) || '已选学生';
+}
+
+const STUDENT_CHIP_LIMIT = 8;
+
 function filterQuestions(questions, opts) {
   const category = opts.category || '';
   const studentId = opts.studentId || '';
@@ -45,18 +59,33 @@ Page({
     categoryChips: [{ name: '全部', value: '', count: 0 }],
     category: '',
     studentId: '',
+    studentLabel: '全班',
+    compactStudentFilter: false,
+    studentPickerOpen: false,
+    studentQuery: '',
+    pickerStudents: [],
     keyword: '',
     onlyHot: false,
     stats: { total: 0, hot: [], studentCount: 0, byCategory: [] },
     hotCount: 0,
+    bankCount: 0,
+    sourceFilter: 'mistakes',
+    mistakeQuestions: [],
+    bankQuestions: [],
     picking: false,
     selectedMap: {},
     selectedCount: 0
   },
 
   onLoad(options) {
-    this.setData({ picking: options && options.pick === '1' });
+    const picking = !!(options && options.pick === '1');
+    const sourceFilter = options && options.bank === '1' ? 'bank' : 'mistakes';
+    this._preferClassId = (options && options.classId) || '';
+    this.setData({ picking, sourceFilter });
     this.boot();
+  },
+  onShow() {
+    if (this._ready) this.reload();
   },
   onPullDownRefresh() { this.reload().finally(() => wx.stopPullDownRefresh()); },
 
@@ -68,25 +97,49 @@ Page({
       return wx.showToast({ title: dash.error || '加载失败', icon: 'none' });
     }
     const classes = dash.data.classes || [];
-    const selectedClass = classes[0] || {};
+    const pick = getApp().globalData.teacherPick || {};
+    const selectedClass = classes.find((c) => c.id === this._preferClassId)
+      || classes.find((c) => c.id === pick.classId)
+      || classes[0]
+      || {};
     this.setData({ classes, selectedClass });
     await this.reload();
+    this._ready = true;
   },
 
   syncView(patch) {
     const next = Object.assign({}, this.data, patch || {});
-    const visibleQuestions = filterQuestions(next.questions, {
+    const sourceFilter = next.sourceFilter || 'mistakes';
+    const pool = sourceFilter === 'bank' ? (next.bankQuestions || []) : (next.mistakeQuestions || []);
+    const studentId = sourceFilter === 'bank' ? '' : next.studentId;
+    const onlyHot = sourceFilter === 'bank' ? false : next.onlyHot;
+    const visibleQuestions = filterQuestions(pool, {
       category: next.category,
-      studentId: next.studentId,
+      studentId,
       keyword: next.keyword,
-      onlyHot: next.onlyHot
+      onlyHot
     });
     const visibleAllSelected = visibleQuestions.length > 0
       && visibleQuestions.every((q) => next.selectedMap[q.id]);
+    const catMap = {};
+    pool.forEach((q) => {
+      const name = q.category || '未分类';
+      catMap[name] = (catMap[name] || 0) + 1;
+    });
+    const categoryChips = [{ name: '全部', value: '', count: pool.length }].concat(
+      Object.keys(catMap).map((name) => ({ name, value: name, count: catMap[name] }))
+    );
     this.setData(Object.assign({}, patch, {
+      sourceFilter,
+      questions: pool,
       visibleQuestions,
       visibleCount: visibleQuestions.length,
-      visibleAllSelected
+      visibleAllSelected,
+      onlyHot,
+      studentId,
+      categoryChips,
+      studentLabel: studentLabelOf(next.students, studentId),
+      compactStudentFilter: sourceFilter !== 'bank' && (next.students || []).length > STUDENT_CHIP_LIMIT
     }));
   },
 
@@ -96,35 +149,44 @@ Page({
     try {
       if (!classId) {
         this.syncView({
+          mistakeQuestions: [],
+          bankQuestions: [],
           questions: [],
           students: [],
+          compactStudentFilter: false,
+          studentLabel: '全班',
           stats: { total: 0, hot: [], studentCount: 0, byCategory: [] },
           hotCount: 0,
+          bankCount: 0,
           categoryChips: [{ name: '全部', value: '', count: 0 }]
         });
         return;
       }
-      const [qs, st, stu] = await Promise.all([
+      const [qs, st, stu, bank] = await Promise.all([
         callTeacher('teacherQuestions', { classId }),
         callTeacher('classStats', { classId }),
-        callTeacher('students', { classId })
+        callTeacher('students', { classId }),
+        callTeacher('listBank', { classId })
       ]);
       const stats = (st.success && st.data) || { total: 0, hot: [], studentCount: 0, byCategory: [] };
-      const questions = decorateQuestions((qs.success && qs.data && qs.data.questions) || [], stats.hot);
-      const byCategory = stats.byCategory || [];
-      const categoryChips = [{ name: '全部', value: '', count: stats.total || questions.length }].concat(
-        byCategory.map((c) => ({ name: c.name, value: c.name, count: c.count }))
-      );
+      const mistakeQuestions = decorateQuestions((qs.success && qs.data && qs.data.questions) || [], stats.hot);
+      const bankQuestions = ((bank.success && bank.data) || []).map((q) => ({
+        ...q,
+        isHot: false,
+        hotCount: 0,
+        hotStudents: 0
+      }));
       const students = ((stu.success && stu.data) || []).map((s) => ({
         id: s.id,
         name: s.nickName || '未设置昵称',
         questionCount: s.questionCount || 0
       }));
       this.syncView({
-        questions,
+        mistakeQuestions,
+        bankQuestions,
         stats,
         hotCount: (stats.hot || []).length,
-        categoryChips,
+        bankCount: bankQuestions.length,
         students
       });
     } finally {
@@ -142,8 +204,25 @@ Page({
       category: '',
       studentId: '',
       keyword: '',
-      onlyHot: false
+      onlyHot: false,
+      sourceFilter: 'mistakes'
     }, () => this.reload());
+  },
+
+  showMistakes() {
+    if (this.data.sourceFilter === 'mistakes') return;
+    this.syncView({ sourceFilter: 'mistakes', category: '', onlyHot: false });
+  },
+
+  showBank() {
+    if (this.data.sourceFilter === 'bank') return;
+    this.syncView({ sourceFilter: 'bank', category: '', studentId: '', onlyHot: false });
+  },
+
+  goCapture() {
+    const classId = this.data.selectedClass.id;
+    if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
+    wx.navigateTo({ url: '/pages/teacherCapture/teacherCapture?classId=' + classId });
   },
 
   selectCategory(e) {
@@ -154,9 +233,35 @@ Page({
 
   selectStudent(e) {
     const id = e.currentTarget.dataset.id === 'all' ? '' : (e.currentTarget.dataset.id || '');
-    if (id === this.data.studentId) return;
-    this.syncView({ studentId: id });
+    if (id === this.data.studentId && !this.data.studentPickerOpen) return;
+    this.syncView({
+      studentId: id,
+      studentPickerOpen: false,
+      studentQuery: ''
+    });
   },
+
+  openStudentPicker() {
+    this.setData({
+      studentPickerOpen: true,
+      studentQuery: '',
+      pickerStudents: this.data.students
+    });
+  },
+
+  closeStudentPicker() {
+    this.setData({ studentPickerOpen: false, studentQuery: '' });
+  },
+
+  onPickerSearch(e) {
+    const studentQuery = e.detail.value || '';
+    this.setData({
+      studentQuery,
+      pickerStudents: filterStudents(this.data.students, studentQuery)
+    });
+  },
+
+  noop() {},
 
   onSearch(e) {
     this.syncView({ keyword: e.detail.value || '' });
@@ -189,23 +294,45 @@ Page({
     const id = e.currentTarget.dataset.id;
     if (!this.data.picking) {
       const q = this.data.questions.find((x) => x.id === id);
-      if (q) {
-        const extra = [
-          q.nickName ? `来自：${q.nickName}` : '',
-          q.isHot ? `班级高频 ${q.hotCount} 次 / ${q.hotStudents} 人` : ''
-        ].filter(Boolean).join('\n');
+      if (!q) return;
+      if (this.data.sourceFilter === 'bank') {
         wx.showModal({
-          title: q.category || '班级错题',
-          content: `${q.content || ''}${extra ? `\n\n${extra}` : ''}`,
-          showCancel: false
+          title: q.category || '班级题库',
+          content: q.content || '',
+          confirmText: '删除',
+          confirmColor: '#e11d48',
+          cancelText: '关闭',
+          success: (r) => {
+            if (r.confirm) this.deleteBank(id);
+          }
         });
+        return;
       }
+      const extra = [
+        q.nickName ? `来自：${q.nickName}` : '',
+        q.isHot ? `班级高频 ${q.hotCount} 次 / ${q.hotStudents} 人` : ''
+      ].filter(Boolean).join('\n');
+      wx.showModal({
+        title: q.category || '学生错题',
+        content: `${q.content || ''}${extra ? `\n\n${extra}` : ''}`,
+        showCancel: false
+      });
       return;
     }
     const map = Object.assign({}, this.data.selectedMap);
     if (map[id]) delete map[id];
     else map[id] = true;
     this.syncView({ selectedMap: map, selectedCount: Object.keys(map).length });
+  },
+
+  async deleteBank(id) {
+    const r = await callTeacher('deleteBankQuestion', { id });
+    if (!r.success) return wx.showToast({ title: r.error || '删除失败', icon: 'none' });
+    wx.showToast({ title: '已删除', icon: 'success' });
+    const map = Object.assign({}, this.data.selectedMap);
+    delete map[id];
+    this.setData({ selectedMap: map, selectedCount: Object.keys(map).length });
+    this.reload();
   },
 
   confirmPick() {

@@ -13,13 +13,17 @@
     "pages/profile/profile",
     "pages/teacher/teacher",
     "pages/teacherStudent/teacherStudent",
+    "pages/teacherRoster/teacherRoster",
     "pages/teacherQuestions/teacherQuestions",
     "pages/teacherChat/teacherChat",
     "pages/teacherPaper/teacherPaper",
+    "pages/teacherCapture/teacherCapture",
+    "pages/teacherBankPicker/teacherBankPicker",
     "pages/teacherSetDetail/teacherSetDetail",
     "pages/teacherMine/teacherMine",
     "pages/teacherReport/teacherReport",
     "pages/classes/classes",
+    "pages/classPractice/classPractice",
     "pages/teacherNotebook/teacherNotebook",
     "pages/teacherAssignments/teacherAssignments",
     "pages/teacherAssignmentCreate/teacherAssignmentCreate",
@@ -81,10 +85,5 @@
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
-  "sitemapLocation": "sitemap.json",
-  "permission": {
-    "scope.writePhotosAlbum": {
-      "desc": "用于把邀请海报保存到相册，方便发给同学"
-    }
-  }
+  "sitemapLocation": "sitemap.json"
 }

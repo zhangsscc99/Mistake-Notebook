@@ -4,11 +4,11 @@ const {
   isLoggedIn,
   restoreSessionFromCloud,
   isOptedOut,
-  leaveLoginToTab,
   getSessionRole,
-  enterByRole
+  enterByRole,
+  hasLockedRole
 } = require('../../utils/auth');
-const { setCachedProfile, getCachedProfile } = require('../../utils/profile');
+const { setCachedProfile, getCachedProfile, getProfile } = require('../../utils/profile');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
 const { pickAvatarPhoto, isCancel } = require('../../utils/avatar');
 
@@ -21,6 +21,10 @@ function clipNick(raw) {
   return [...nick].slice(0, MAX_NICKNAME_LEN).join('');
 }
 
+function roleLabel(role) {
+  return role === 'teacher' ? '老师' : '学生';
+}
+
 Page({
   data: {
     returning: false,
@@ -30,7 +34,8 @@ Page({
     submitting: false,
     invited: false,
     checking: true,
-    intentRole: 'student'
+    intentRole: 'student',
+    roleLocked: false
   },
 
   onLoad: function (options) {
@@ -43,33 +48,52 @@ Page({
     this.bounceOrStay();
   },
 
-  // 登录页不能叠在 Tab 上。除了主动退出，一律立刻切回原来的工作台。
   bounceOrStay: function () {
     if (isOptedOut()) {
       this.applyKnownProfile(getCachedProfile());
-      this.setData({ checking: false });
+      this.refreshLockedRole();
       return;
     }
-    if (isLoggedIn()) {
+    if (isLoggedIn() && hasLockedRole(getSessionRole())) {
       enterByRole(getSessionRole());
       return;
     }
+
     this.applyKnownProfile(getCachedProfile());
-    setTimeout(() => leaveLoginToTab(), 60);
-    restoreSessionFromCloud().catch(() => {});
+    restoreSessionFromCloud()
+      .then((result) => {
+        const profile = (result && result.profile) || getCachedProfile();
+        this.applyKnownProfile(profile);
+        if (result && result.loggedIn && hasLockedRole(profile.role)) {
+          enterByRole(profile.role);
+          return;
+        }
+        this.setData({ checking: false });
+      })
+      .catch(() => {
+        this.setData({ checking: false });
+      });
+  },
+
+  refreshLockedRole: function () {
+    getProfile({ force: true })
+      .then((p) => this.applyKnownProfile(p))
+      .catch(() => {})
+      .then(() => this.setData({ checking: false }));
   },
 
   applyKnownProfile: function (p) {
     const nick = clipNick(p && p.nickName);
     const avatarFileID = (p && p.avatarFileID) || '';
     const returning = !!(p && (p.hasProfile || nick || avatarFileID));
+    const locked = hasLockedRole(p && p.role);
     const patch = {
       returning,
       nickName: returning ? (nick || DEFAULT_NICK) : DEFAULT_NICK,
-      avatarFileID: returning ? avatarFileID : ''
+      avatarFileID: returning ? avatarFileID : '',
+      roleLocked: locked
     };
-    // 只有库里已经选过身份才预填；不要把「没写 role」当成学生，否则会冲掉用户刚点的老师
-    if (p && (p.role === 'teacher' || p.role === 'student')) patch.intentRole = p.role;
+    if (locked) patch.intentRole = p.role;
     this.setData(patch);
   },
 
@@ -100,12 +124,27 @@ Page({
   },
 
   selectRole: function (e) {
+    if (this.data.roleLocked || this.data.submitting) return;
     const intentRole = e.currentTarget.dataset.role === 'teacher' ? 'teacher' : 'student';
     this.setData({ intentRole });
   },
 
   onLogin: function () {
-    this.doLogin();
+    if (this.data.submitting) return;
+    if (this.data.roleLocked) {
+      this.doLogin();
+      return;
+    }
+    const label = roleLabel(this.data.intentRole);
+    wx.showModal({
+      title: '确认身份',
+      content: '你将以' + label + '身份进入。一个微信只能绑定一种身份，选定后不能更改，除非注销账号。',
+      confirmText: '确定',
+      cancelText: '再想想',
+      success: (res) => {
+        if (res.confirm) this.doLogin();
+      }
+    });
   },
 
   doLogin: function () {
@@ -121,6 +160,7 @@ Page({
 
     let created = false;
     let openId = '';
+    let enterRole = this.data.intentRole;
 
     ensureCloudSession()
       .then(() => this.callUser({ action: 'ensure' }))
@@ -128,13 +168,35 @@ Page({
         if (!res.success) throw new Error(res.error || '登录失败');
         created = !!(res.data && res.data.created);
         openId = (res.data && res.data.openId) || '';
-        return this.callUser({ action: 'setRole', role: this.data.intentRole });
+        const cloudRole = res.data && res.data.role;
+        if (hasLockedRole(cloudRole)) {
+          enterRole = cloudRole;
+          this.setData({ roleLocked: true, intentRole: cloudRole });
+          setCachedProfile(res.data);
+          return res;
+        }
+        return this.callUser({ action: 'setRole', role: this.data.intentRole }).then((roleRes) => {
+          if (roleRes.success) return roleRes;
+          if (roleRes.error === 'ROLE_LOCKED' && hasLockedRole(roleRes.data && roleRes.data.role)) {
+            enterRole = roleRes.data.role;
+            this.setData({ roleLocked: true, intentRole: roleRes.data.role });
+            return { success: true, data: roleRes.data };
+          }
+          throw new Error(roleRes.message || (roleRes.error === 'ROLE_LOCKED'
+            ? '该微信已绑定身份，不能更改'
+            : (roleRes.error || '保存身份失败')));
+        });
       })
       .then((res) => {
-        if (!res.success) throw new Error(res.error || '保存身份失败');
+        if (!res.success) {
+          throw new Error(res.message || (res.error === 'ROLE_LOCKED'
+            ? '该微信已绑定身份，不能更改'
+            : (res.error || '保存身份失败')));
+        }
         openId = (res.data && res.data.openId) || openId;
+        if (hasLockedRole(res.data && res.data.role)) enterRole = res.data.role;
         setCachedProfile(res.data);
-        setLoggedIn(openId, this.data.intentRole);
+        setLoggedIn(openId, enterRole);
       })
       .then(() => this.callUser({ action: 'updateProfile', nickName: nick })
         .then((up) => {
@@ -149,7 +211,7 @@ Page({
           title: created ? '账号已创建' : '欢迎回来',
           icon: 'success'
         });
-        setTimeout(() => enterByRole(this.data.intentRole), 400);
+        setTimeout(() => enterByRole(enterRole), 400);
       })
       .catch((err) => {
         console.error('[login] 失败', err);

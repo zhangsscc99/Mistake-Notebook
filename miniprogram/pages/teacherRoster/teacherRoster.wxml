@@ -1,0 +1,24 @@
+<view class="teacher-shell roster-page">
+  <view class="teacher-hero">
+    <view class="hero-kicker">CLASS</view>
+    <view class="hero-title">{{className || '班级学生'}}</view>
+    <view class="hero-sub">共 {{students.length}} 人。输入昵称可快速找到学生</view>
+  </view>
+
+  <view class="search-box">
+    <input class="search-input" value="{{keyword}}" placeholder="搜索学生昵称" confirm-type="search" bindinput="onSearch" />
+    <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">清除</text>
+  </view>
+
+  <view class="white-card row-card" wx:for="{{visible}}" wx:key="id" bindtap="showStudent" data-id="{{item.id}}">
+    <view class="student-avatar">{{item.mark}}</view>
+    <view class="student-info">
+      <view class="student-name">{{item.nickName}}</view>
+      <view class="student-meta">错题 {{item.questionCount || 0}} 道 · 点开查看</view>
+    </view>
+    <text class="student-arrow">›</text>
+  </view>
+  <view class="empty-block" wx:if="{{!loading && !visible.length && students.length}}">没有叫这个名字的学生</view>
+  <view class="empty-block" wx:if="{{!loading && !students.length}}">班级还没有学生</view>
+  <view class="loading-line" wx:if="{{loading}}">加载学生…</view>
+</view>

@@ -2,7 +2,7 @@ const app = getApp();
 const { formatLatex } = require('../../utils/latex');
 const { getProfile, getCachedProfile } = require('../../utils/profile');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
-const { dismissLoginOverlay } = require('../../utils/auth');
+const { dismissLoginOverlay, bounceTeacherOffStudentShell } = require('../../utils/auth');
 
 // 把题目文本拆成结构化段落：题干段（逐段独立）+ 各小问块
 function parseQuestionParas(text) {
@@ -107,6 +107,7 @@ Page({
 
   // 本页现在是 tabBar 页：switchTab 不会重跑 onLoad，上下文只能在这里读
   onShow() {
+    if (bounceTeacherOffStudentShell()) return;
     dismissLoginOverlay();
     enableShareMenu();
     // 必须先于下面所有提前 return —— 否则切回本 tab 时头像昵称不会刷新

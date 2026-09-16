@@ -1,0 +1,15 @@
+<view class="practice-page">
+  <view class="head">
+    <view class="kicker">练习</view>
+    <view class="title">{{title}}</view>
+    <view class="sub">{{meta}}</view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载题目…</view>
+
+  <view class="q-card" wx:for="{{questions}}" wx:key="id">
+    <view class="q-index">第 {{item.index}} 题</view>
+    <view class="q-content">{{item.content}}</view>
+  </view>
+  <view class="empty" wx:if="{{!loading && !questions.length}}">这份练习里没有可显示的题目</view>
+</view>

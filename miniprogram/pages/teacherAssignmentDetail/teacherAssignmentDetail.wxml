@@ -22,17 +22,50 @@
     </view>
     <view class="empty-block" wx:if="{{!questions.length}}">题目可能已被删除</view>
 
-    <view class="section-head"><text class="section-title">学生</text></view>
-    <view class="white-card tap-card" wx:for="{{roster}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="openStudent">
+    <view class="section-head"><text class="section-title">学生</text><text class="section-note">{{roster.length}} 人</text></view>
+    <view class="search-box" wx:if="{{showRosterSearch}}">
+      <input class="search-input" value="{{keyword}}" placeholder="搜索学生昵称" confirm-type="search" bindinput="onSearch" />
+      <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">清除</text>
+    </view>
+    <view class="white-card tap-card" wx:for="{{visibleRoster}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="openStudent">
       <view class="row-card">
         <view class="mark">{{item.mark}}</view>
         <view style="flex:1; min-width:0;">
           <view class="stu-name">{{item.nickName}}</view>
-          <view class="stu-meta">{{item.statusKey === 'missing' ? '尚未提交' : '点开查看作答并打分'}}</view>
+          <view class="stu-meta">{{item.statusKey === 'missing' ? '尚未提交' : (item.statusKey === 'graded' ? '点开查看作答' : '点开查看作答并打分')}}</view>
         </view>
         <text class="badge status-{{item.statusKey}}">{{item.status}}</text>
       </view>
     </view>
     <view class="empty-block" wx:if="{{!roster.length}}">班里还没有学生</view>
+    <view class="empty-block" wx:elif="{{!visibleRoster.length}}">没有叫这个名字的学生</view>
+    <view class="submit-wrap">
+      <button class="danger-btn" bindtap="recall">撤回作业</button>
+    </view>
   </block>
+
+  <view class="sheet-mask" wx:if="{{gradeOpen}}" catchtap="closeGrade">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-title">{{gradeStudent.nickName}}</view>
+      <view class="sheet-sub">{{gradeStudent.status}}</view>
+      <scroll-view class="sheet-list" scroll-y>
+        <view class="grade-q" wx:for="{{gradeItems}}" wx:key="index">
+          <view class="q-index">第 {{item.index}} 题</view>
+          <view class="q-content">{{item.content}}</view>
+          <view class="grade-answer">{{item.answer || '（空）'}}</view>
+          <view class="mark-row">
+            <view class="mark-chip {{item.result === 'right' ? 'on-right' : ''}}" data-index="{{index}}" data-result="right" bindtap="markQuestion">对</view>
+            <view class="mark-chip {{item.result === 'wrong' ? 'on-wrong' : ''}}" data-index="{{index}}" data-result="wrong" bindtap="markQuestion">错</view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="score-row">
+        <text class="score-label">分数</text>
+        <input class="score-input" type="digit" value="{{gradeScore}}" placeholder="按对错预填，可改" maxlength="4" bindinput="onScore" />
+      </view>
+      <view class="sheet-sub" wx:if="{{markHint}}">{{markHint}}</view>
+      <textarea class="comment-input" value="{{gradeComment}}" maxlength="200" placeholder="评语，选填" auto-height="{{true}}" bindinput="onComment" />
+      <button class="primary-btn" loading="{{grading}}" disabled="{{grading}}" bindtap="confirmGrade">确认批改</button>
+    </view>
+  </view>
 </view>

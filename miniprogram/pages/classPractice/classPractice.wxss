@@ -1,0 +1,67 @@
+.practice-page {
+  min-height: 100vh;
+  padding-bottom: 48rpx;
+  color: #0b1633;
+  background-color: #eef3fb;
+  background-image:
+    radial-gradient(circle 420rpx at 100% 0%, rgba(82, 183, 255, 0.12) 0%, transparent 60%),
+    radial-gradient(circle 360rpx at 0% 4%, rgba(182, 166, 255, 0.10) 0%, transparent 55%),
+    linear-gradient(rgba(11, 22, 51, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 22, 51, 0.025) 1px, transparent 1px);
+  background-size: auto, auto, 44rpx 44rpx, 44rpx 44rpx;
+}
+
+.head {
+  padding: 44rpx 32rpx 36rpx;
+  color: #fff;
+  background: linear-gradient(90deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
+}
+
+.kicker {
+  font-size: 20rpx;
+  letter-spacing: 3rpx;
+  opacity: 0.72;
+}
+
+.title {
+  margin-top: 12rpx;
+  font-size: 38rpx;
+  font-weight: 800;
+}
+
+.sub {
+  margin-top: 10rpx;
+  font-size: 23rpx;
+  opacity: 0.82;
+}
+
+.q-card {
+  position: relative;
+  margin: 18rpx 24rpx 0;
+  padding: 28rpx 24rpx 24rpx;
+  border-radius: 20rpx;
+  background: #fff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
+}
+
+.q-index {
+  font-size: 22rpx;
+  font-weight: 800;
+  color: #2459ff;
+}
+
+.q-content {
+  margin-top: 12rpx;
+  font-size: 28rpx;
+  line-height: 1.55;
+  color: #0b1633;
+}
+
+.loading,
+.empty {
+  padding: 90rpx 24rpx;
+  text-align: center;
+  color: rgba(11, 22, 51, 0.48);
+  font-size: 25rpx;
+}

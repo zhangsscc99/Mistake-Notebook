@@ -2,11 +2,11 @@
   <view class="teacher-hero">
     <view class="hero-kicker">PAPER</view>
     <view class="hero-title">班级组卷</view>
-    <view class="hero-sub">点上方数字查看试卷、错题本或作业。从全班错题选题后可保存、推送或布置</view>
+    <view class="hero-sub">先到题目页勾选，带到这里看明细，再发给班级或存成题单。拍照只进题库，不会自动组卷</view>
     <view class="hero-stats">
-      <view class="hero-stat" data-key="papers" bindtap="jumpStat"><text>{{papers.length}}</text><label>试卷</label></view>
+      <view class="hero-stat" data-key="papers" bindtap="jumpStat"><text>{{papers.length}}</text><label>题单</label></view>
       <view class="hero-divider"></view>
-      <view class="hero-stat" data-key="notebooks" bindtap="jumpStat"><text>{{notebooks.length}}</text><label>错题本</label></view>
+      <view class="hero-stat" data-key="notebooks" bindtap="jumpStat"><text>{{notebooks.length}}</text><label>练习</label></view>
       <view class="hero-divider"></view>
       <view class="hero-stat" data-key="assignments" bindtap="jumpStat"><text>{{assignments.length}}</text><label>作业</label></view>
     </view>
@@ -16,35 +16,60 @@
     <view class="chip {{selectedClass.id === item.id ? 'on' : ''}}" wx:for="{{classes}}" wx:key="id" data-id="{{item.id}}" bindtap="selectClass">{{item.name}}</view>
   </view>
 
-  <view class="pick-banner" wx:if="{{pickCount}}">已选 {{pickCount}} 道题带到这里。可保存试卷或推送错题本；布置作业请走作业页</view>
-
-  <view class="action-grid">
-    <view class="white-card" bindtap="goPick"><view class="paper-title">选题组卷</view><view class="paper-meta">打开全班错题勾选</view></view>
-    <view class="white-card" bindtap="publishNotebook"><view class="paper-title">推送错题本</view><view class="paper-meta">发给全班练习</view></view>
-    <view class="white-card" bindtap="createHomework"><view class="paper-title">布置作业</view><view class="paper-meta">打开发布页，可设截止时间</view></view>
-    <view class="white-card" bindtap="savePaper"><view class="paper-title">保存试卷</view><view class="paper-meta">先存老师端题单</view></view>
+  <view class="section-head">
+    <text class="section-title">本次组卷{{pickCount && cartBelongsHere ? ' · ' + pickCount + ' 道' : ''}}</text>
+    <text class="section-note" wx:if="{{pickCount && cartBelongsHere}}" bindtap="clearCart">清空</text>
   </view>
 
-  <view id="section-papers" class="section-head"><text class="section-title">已保存试卷</text></view>
+  <view class="loading-line" wx:if="{{cartLoading}}">加载本次选题…</view>
+
+  <view class="empty-block" wx:if="{{!cartLoading && !cartBelongsHere}}">选题属于其他班级<text>切回那个班可继续组卷，或去当前班重新选题</text></view>
+  <view class="empty-block" wx:if="{{!cartLoading && cartBelongsHere && !pickCount}}">还没有选题<text>到题目页勾选学生错题或班级题库，再点「带到组卷」</text></view>
+
+  <block wx:if="{{cartBelongsHere && !cartLoading}}">
+    <view class="white-card cart-card" wx:for="{{cart}}" wx:key="id">
+      <view class="cart-index">{{item.index}}</view>
+      <view class="cart-body">
+        <view class="paper-title">{{item.content}}</view>
+        <view class="q-meta">
+          <text class="badge">{{item.sourceLabel}}</text>
+          <text class="badge">{{item.category}}</text>
+        </view>
+      </view>
+      <text class="cart-remove" catchtap="removeItem" data-id="{{item.id}}">移除</text>
+    </view>
+  </block>
+
+  <view class="checkout-actions" wx:if="{{cartBelongsHere && pickCount}}">
+    <button class="ghost-btn" bindtap="savePaper">存为题单</button>
+    <button class="primary-btn" bindtap="goSend">发给班级</button>
+  </view>
+  <view class="link-row">
+    <text bindtap="goPick">{{pickCount && cartBelongsHere ? '继续选题' : '去选题'}}</text>
+    <text class="link-dot">·</text>
+    <text bindtap="goCapture">去拍照录入题库</text>
+  </view>
+
+  <view id="section-papers" class="section-head"><text class="section-title">题单草稿</text></view>
   <view class="white-card tap-card" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" data-type="paper" bindtap="openSet">
     <view class="paper-title">{{item.title}}</view>
-    <view class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}} · 点开查看</view>
+    <view class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}} · 学生看不到 · 可再组卷</view>
   </view>
-  <view class="empty-block" wx:if="{{!papers.length}}">还没有班级试卷<text>从全班错题勾选后保存，点开可回看题目</text></view>
+  <view class="empty-block" wx:if="{{!papers.length}}">还没有题单草稿<text>本次组卷点「存为题单」，之后可打开再发给班级</text></view>
 
-  <view id="section-notebooks" class="section-head"><text class="section-title">已推送错题本</text></view>
+  <view id="section-notebooks" class="section-head"><text class="section-title">已发练习</text></view>
   <view class="white-card tap-card" wx:for="{{notebooks}}" wx:key="id" data-id="{{item.id}}" data-type="notebook" bindtap="openSet">
     <view class="paper-title">{{item.title}}</view>
-    <view class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}} · 学生可在「我的班级」看到</view>
+    <view class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}} · 学生在「我的班级」可见</view>
   </view>
-  <view class="empty-block" wx:if="{{!notebooks.length}}">还没有推送给班级的错题本<text>选题后点「推送错题本」，再点卡片可回看</text></view>
+  <view class="empty-block" wx:if="{{!notebooks.length}}">还没有发给班级的练习<text>本次组卷点「发给班级」，选练习即可</text></view>
 
-  <view id="section-assignments" class="section-head"><text class="section-title">已布置作业</text><text class="section-note" bindtap="openAssignments">全部批改 ›</text></view>
+  <view id="section-assignments" class="section-head"><text class="section-title">作业</text><text class="section-note" bindtap="openAssignments">全部批改 ›</text></view>
   <view class="white-card tap-card" wx:for="{{assignments}}" wx:key="_id" data-id="{{item._id}}" bindtap="openAssignment">
     <view class="paper-title">{{item.title}}</view>
     <view class="paper-meta">{{item.questionCount}} 道题 · 点开查看提交并批改</view>
   </view>
-  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>请到作业页布置，和组卷分开</text></view>
+  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>发给班级时选「作业」，学生作答后可在这里打分</text></view>
 
   <teacher-tabbar active="paper"></teacher-tabbar>
 </view>

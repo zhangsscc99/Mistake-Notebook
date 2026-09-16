@@ -2,7 +2,7 @@
 const app = getApp();
 const { normalizePaperQuestion } = require('../../utils/paper.js');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share.js');
-const { dismissLoginOverlay } = require('../../utils/auth.js');
+const { dismissLoginOverlay, bounceTeacherOffStudentShell } = require('../../utils/auth.js');
 
 Page({
   data: {
@@ -11,6 +11,7 @@ Page({
   },
 
   onShow: function () {
+    if (bounceTeacherOffStudentShell()) return;
     dismissLoginOverlay();
     enableShareMenu();
     app.globalData.selectedPaperQuestions = [];

@@ -1,19 +1,25 @@
 <view class="teacher-shell {{picking ? 'picking' : ''}}">
   <view class="teacher-hero">
-    <view class="hero-kicker">MISTAKES</view>
-    <view class="hero-title">全班错题</view>
-    <view class="hero-sub">用分类、学生和搜索缩小范围，再勾选带到组卷页</view>
+    <view class="hero-kicker">QUESTIONS</view>
+    <view class="hero-title">全班题目</view>
+    <view class="hero-sub">学生错题和班级题库都在这里。拍照录入进题库，不进学生错题</view>
     <view class="hero-stats">
-      <view class="hero-stat"><text>{{stats.total || 0}}</text><label>错题</label></view>
+      <view class="hero-stat" bindtap="showMistakes"><text>{{stats.total || 0}}</text><label>错题</label></view>
       <view class="hero-divider"></view>
       <view class="hero-stat"><text>{{stats.studentCount || 0}}</text><label>学生</label></view>
       <view class="hero-divider"></view>
-      <view class="hero-stat" bindtap="toggleHot"><text>{{hotCount}}</text><label>高频</label></view>
+      <view class="hero-stat" bindtap="showBank"><text>{{bankCount}}</text><label>题库</label></view>
     </view>
+    <button class="ghost-btn hero-btn" bindtap="goCapture">拍照录入</button>
   </view>
 
   <view class="chip-row">
     <view class="chip {{selectedClass.id === item.id ? 'on' : ''}}" wx:for="{{classes}}" wx:key="id" data-id="{{item.id}}" bindtap="selectClass">{{item.name}}</view>
+  </view>
+
+  <view class="chip-row">
+    <view class="chip {{sourceFilter === 'mistakes' ? 'on' : ''}}" bindtap="showMistakes">学生错题</view>
+    <view class="chip {{sourceFilter === 'bank' ? 'on' : ''}}" bindtap="showBank">班级题库</view>
   </view>
 
   <view class="search-box">
@@ -25,13 +31,17 @@
     <view class="chip {{category === item.value ? 'on' : ''}}" wx:for="{{categoryChips}}" wx:key="name" data-value="{{item.value}}" bindtap="selectCategory">{{item.name}} {{item.count}}</view>
   </scroll-view>
 
-  <scroll-view class="chip-scroll" scroll-x wx:if="{{students.length}}">
+  <scroll-view class="chip-scroll" scroll-x wx:if="{{sourceFilter === 'mistakes' && students.length && !compactStudentFilter}}">
     <view class="chip {{!studentId ? 'on' : ''}}" data-id="all" bindtap="selectStudent">全班</view>
     <view class="chip {{studentId === item.id ? 'on' : ''}}" wx:for="{{students}}" wx:key="id" data-id="{{item.id}}" bindtap="selectStudent">{{item.name}} {{item.questionCount}}</view>
   </scroll-view>
+  <view class="picker-row" wx:if="{{sourceFilter === 'mistakes' && compactStudentFilter}}" bindtap="openStudentPicker">
+    <text class="picker-kicker">学生</text>
+    <text class="picker-value">{{studentLabel}} ›</text>
+  </view>
 
   <view class="filter-row">
-    <view class="chip {{onlyHot ? 'on' : ''}}" bindtap="toggleHot">只看高频</view>
+    <view class="chip {{onlyHot ? 'on' : ''}}" wx:if="{{sourceFilter === 'mistakes'}}" bindtap="toggleHot">只看高频</view>
     <view class="chip" wx:if="{{!picking}}" bindtap="startPick">选题</view>
     <view class="chip" wx:if="{{picking && !visibleAllSelected}}" bindtap="selectAllVisible">全选当前</view>
     <view class="chip" wx:if="{{picking && visibleAllSelected}}" bindtap="clearVisible">取消当前</view>
@@ -52,13 +62,15 @@
           <text class="badge">{{item.category || '未分类'}}</text>
           <text class="badge">{{item.nickName || '学生'}}</text>
           <text class="badge" wx:if="{{item.isHot}}">高频</text>
+          <text class="badge" wx:if="{{sourceFilter === 'bank'}}">题库</text>
         </view>
       </view>
     </view>
   </view>
-  <view class="empty-block" wx:if="{{!loading && !visibleCount}}">没有符合条件的错题<text>换个分类、学生或搜索词试试</text></view>
+  <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter === 'bank'}}">还没有老师录入的题<text>点上方「拍照录入」，识别后会进这个班的题库</text></view>
+  <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter !== 'bank'}}">没有符合条件的学生错题<text>换个分类、学生或搜索词试试</text></view>
 
-  <view class="loading-line" wx:if="{{loading}}">加载班级错题…</view>
+  <view class="loading-line" wx:if="{{loading}}">加载题目…</view>
 
   <view class="pick-dock" wx:if="{{picking}}">
     <view class="pick-dock-title">已选 {{selectedCount}} 道 · 当前显示 {{visibleCount}} 道</view>
@@ -68,4 +80,21 @@
     </view>
   </view>
   <teacher-tabbar active="questions"></teacher-tabbar>
+
+  <view class="sheet-mask" wx:if="{{studentPickerOpen}}" catchtap="closeStudentPicker">
+    <view class="sheet" catchtap="noop">
+      <view class="sheet-title">选择学生</view>
+      <view class="search-box sheet-search">
+        <input class="search-input" value="{{studentQuery}}" placeholder="搜索昵称" confirm-type="search" bindinput="onPickerSearch" />
+      </view>
+      <scroll-view class="sheet-list" scroll-y>
+        <view class="sheet-row {{!studentId ? 'on' : ''}}" data-id="all" bindtap="selectStudent">全班</view>
+        <view class="sheet-row {{studentId === item.id ? 'on' : ''}}" wx:for="{{pickerStudents}}" wx:key="id" data-id="{{item.id}}" bindtap="selectStudent">
+          <text>{{item.name}}</text>
+          <text class="sheet-count">{{item.questionCount}} 道</text>
+        </view>
+        <view class="sheet-empty" wx:if="{{studentQuery && !pickerStudents.length}}">没有叫这个名字的学生</view>
+      </scroll-view>
+    </view>
+  </view>
 </view>

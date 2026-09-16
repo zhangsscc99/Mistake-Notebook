@@ -1,9 +1,28 @@
-const { callTeacher, formatDay } = require('../../utils/teacher');
+const { callTeacher, formatDay, shortText } = require('../../utils/teacher');
+
+function readPick() {
+  return getApp().globalData.teacherPick || {};
+}
 
 function pickIds() {
-  const app = getApp();
-  const pick = app.globalData.teacherPick || {};
-  return Array.isArray(pick.questionIds) ? pick.questionIds : [];
+  const ids = readPick().questionIds;
+  return Array.isArray(ids) ? ids : [];
+}
+
+function writePick(next) {
+  getApp().globalData.teacherPick = next && next.questionIds && next.questionIds.length
+    ? next
+    : null;
+}
+
+function decorateCart(questions) {
+  return (questions || []).map((q, i) => ({
+    id: q.id,
+    index: i + 1,
+    content: shortText(q.content, 52),
+    category: q.category || '未分类',
+    sourceLabel: q.source === 'teacher_bank' ? '题库' : '错题'
+  }));
 }
 
 Page({
@@ -13,27 +32,60 @@ Page({
     papers: [],
     notebooks: [],
     assignments: [],
-    pickCount: 0
+    pickCount: 0,
+    cart: [],
+    cartLoading: false,
+    cartBelongsHere: true
   },
 
-  onLoad(options) {
-    if (options && options.fromPick === '1') {
-      this.setData({ pickCount: pickIds().length });
-    }
+  onLoad() {
     this.boot();
   },
   onShow() {
-    this.setData({ pickCount: pickIds().length });
+    if (this._ready) {
+      this.loadCart();
+      this.reload();
+    }
   },
   onPullDownRefresh() { this.reload().finally(() => wx.stopPullDownRefresh()); },
 
   async boot() {
     const dash = await callTeacher('dashboard');
     const classes = (dash.success && dash.data && dash.data.classes) || [];
-    const pick = getApp().globalData.teacherPick || {};
+    const pick = readPick();
     const selectedClass = classes.find((c) => c.id === pick.classId) || classes[0] || {};
     this.setData({ classes, selectedClass });
-    await this.reload();
+    await Promise.all([this.loadCart(), this.reload()]);
+    this._ready = true;
+  },
+
+  async loadCart() {
+    const pick = readPick();
+    const ids = Array.isArray(pick.questionIds) ? pick.questionIds : [];
+    const classId = this.data.selectedClass.id || '';
+    const cartBelongsHere = !pick.classId || !classId || pick.classId === classId;
+    if (!ids.length || !cartBelongsHere) {
+      this.setData({ cart: [], pickCount: cartBelongsHere ? 0 : ids.length, cartBelongsHere, cartLoading: false });
+      return;
+    }
+    this.setData({ cartLoading: true, cartBelongsHere: true });
+    const r = await callTeacher('listPickedQuestions', { questionIds: ids });
+    if (!r.success) {
+      this.setData({ cartLoading: false, pickCount: ids.length, cartBelongsHere: true });
+      wx.showToast({ title: r.error || '题目加载失败', icon: 'none' });
+      return;
+    }
+    const found = decorateCart(r.data || []);
+    const foundIds = found.map((q) => q.id);
+    if (foundIds.length !== ids.length) {
+      writePick({ classId: pick.classId || classId, questionIds: foundIds, paperId: foundIds.length ? pick.paperId : '' });
+    }
+    this.setData({
+      cart: found,
+      pickCount: found.length,
+      cartLoading: false,
+      cartBelongsHere: true
+    });
   },
 
   async reload() {
@@ -58,11 +110,41 @@ Page({
     const item = this.data.classes.find((c) => c.id === e.currentTarget.dataset.id);
     if (!item) return;
     this.setData({ selectedClass: item });
+    this.loadCart();
     this.reload();
   },
 
   goPick() {
-    wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions?pick=1' });
+    const classId = this.data.selectedClass.id || '';
+    wx.reLaunch({
+      url: '/pages/teacherQuestions/teacherQuestions?pick=1' + (classId ? '&classId=' + classId : '')
+    });
+  },
+
+  goCapture() {
+    const classId = this.data.selectedClass.id || '';
+    if (!classId) {
+      wx.showToast({ title: '请先选择班级', icon: 'none' });
+      return;
+    }
+    wx.navigateTo({ url: '/pages/teacherCapture/teacherCapture?classId=' + classId });
+  },
+
+  removeItem(e) {
+    const id = e.currentTarget.dataset.id;
+    const pick = readPick();
+    const questionIds = (pick.questionIds || []).filter((x) => x !== id);
+    writePick({
+      classId: pick.classId || this.data.selectedClass.id,
+      questionIds,
+      paperId: ''
+    });
+    this.loadCart();
+  },
+
+  clearCart() {
+    writePick(null);
+    this.setData({ cart: [], pickCount: 0, cartBelongsHere: true });
   },
 
   jumpStat(e) {
@@ -98,7 +180,7 @@ Page({
     return await new Promise((resolve) => wx.showModal({
       title: label,
       editable: true,
-      placeholderText: '例如：周测错题卷',
+      placeholderText: '例如：周五错题题单',
       confirmText: '确定',
       success: (r) => resolve(r.confirm ? (r.content || '').trim() : '')
     }));
@@ -108,6 +190,10 @@ Page({
     const ids = pickIds();
     if (!this.data.selectedClass.id) {
       wx.showToast({ title: '请先选择班级', icon: 'none' });
+      return null;
+    }
+    if (!this.data.cartBelongsHere) {
+      wx.showToast({ title: '选题属于其他班级', icon: 'none' });
       return null;
     }
     if (!ids.length) {
@@ -120,28 +206,19 @@ Page({
   async savePaper() {
     const ids = this.requirePick();
     if (!ids) return;
-    const title = await this.askTitle('试卷名称');
+    const title = await this.askTitle('题单名称');
     if (!title) return;
     const r = await callTeacher('savePaper', { classId: this.data.selectedClass.id, title, questionIds: ids });
-    wx.showToast({ title: r.success ? '试卷已保存' : (r.error || '保存失败'), icon: r.success ? 'success' : 'none' });
+    wx.showToast({ title: r.success ? '题单已保存' : (r.error || '保存失败'), icon: r.success ? 'success' : 'none' });
     if (r.success) this.reload();
   },
 
-  async publishNotebook() {
+  goSend() {
     const ids = this.requirePick();
     if (!ids) return;
-    const title = await this.askTitle('错题本名称');
-    if (!title) return;
-    const r = await callTeacher('publishNotebook', { classId: this.data.selectedClass.id, title, questionIds: ids });
-    wx.showToast({ title: r.success ? '已推送给班级' : (r.error || '发布失败'), icon: r.success ? 'success' : 'none' });
-    if (r.success) this.reload();
-  },
-
-  createHomework() {
-    const classId = this.data.selectedClass.id || '';
-    const source = pickIds().length ? 'pick' : 'hot';
+    const classId = this.data.selectedClass.id;
     wx.navigateTo({
-      url: `/pages/teacherAssignmentCreate/teacherAssignmentCreate?source=${source}&classId=${classId}`
+      url: `/pages/teacherAssignmentCreate/teacherAssignmentCreate?mode=practice&classId=${classId}`
     });
   }
 });

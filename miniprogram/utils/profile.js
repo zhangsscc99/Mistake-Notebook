@@ -12,7 +12,7 @@ const EMPTY_PROFILE = {
   nickName: '',
   avatarFileID: '',
   stage: '',
-  role: 'student',
+  role: '',
   hasProfile: false
 };
 

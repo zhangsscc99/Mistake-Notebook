@@ -1,14 +1,14 @@
 // app.js
-const { isLoggedIn, restoreSessionFromCloud, getSessionRole } = require('./utils/auth');
+const {
+  isLoggedIn,
+  restoreSessionFromCloud,
+  getSessionRole,
+  goLogin,
+  bounceTeacherOffStudentShell,
+  STUDENT_TAB_ROUTES
+} = require('./utils/auth');
 
 const TEACHER_PREFIX = 'pages/teacher';
-const STUDENT_TABS = {
-  'pages/index/index': true,
-  'pages/categories/categories': true,
-  'pages/aiChat/aiChat': true,
-  'pages/paperBuilder/paperBuilder': true,
-  'pages/profile/profile': true
-};
 
 App({
   // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
@@ -43,6 +43,7 @@ App({
     });
 
     // 本地标记丢了也从云端认回；认回后再 ensure 分类。
+    // 还没选定身份、或已主动退出时，整栈去登录页，避免空身份进学生 Tab。
     this.ensureAccountIfKnown();
 
     // 只确保集合存在。默认分类改在登录时按账号创建，不再写入全局题库。
@@ -63,12 +64,22 @@ App({
   },
 
   ensureAccountIfKnown: function () {
-    restoreSessionFromCloud().catch((err) => console.warn('[app] 恢复登录失败:', err));
+    restoreSessionFromCloud()
+      .then((result) => this.routeAfterRestore(result))
+      .catch((err) => console.warn('[app] 恢复登录失败:', err));
+  },
+
+  routeAfterRestore: function (result) {
+    if (!result || result.uncertain) return;
+    if (result.optedOut || result.needsRole || (!result.loggedIn && !isLoggedIn())) {
+      goLogin({ force: true });
+      return;
+    }
+    bounceTeacherOffStudentShell();
   },
 
   onShow: function () {
-    // 切 Tab / 从后台回来时只静默认回会话，绝不 reLaunch 到登录页。
-    // 从对话等 tabBar 页 reLaunch 到非 tab 的登录页，微信会叠一层点不了的登录界面。
+    // 已登录则按身份留在对应壳；未登录且尚未选身份、或已退出，才整栈去登录页。
     const pages = getCurrentPages();
     const cur = pages[pages.length - 1];
     const route = (cur && cur.route) || '';
@@ -76,18 +87,25 @@ App({
 
     if (isLoggedIn()) {
       const role = getSessionRole();
-      if (role === 'teacher' && STUDENT_TABS[route]) {
+      if (!role) {
+        goLogin({ force: true });
+        return;
+      }
+      if (role === 'teacher' && (!route || STUDENT_TAB_ROUTES[route])) {
         wx.reLaunch({ url: '/pages/teacher/teacher' });
         return;
       }
+      if (bounceTeacherOffStudentShell()) return;
       if (role !== 'teacher' && route.indexOf(TEACHER_PREFIX) === 0) {
         wx.switchTab({ url: '/pages/index/index' });
       }
       return;
     }
 
-    restoreSessionFromCloud().catch((err) => {
-      console.warn('[app] 恢复登录失败:', err);
-    });
+    restoreSessionFromCloud()
+      .then((result) => this.routeAfterRestore(result))
+      .catch((err) => {
+        console.warn('[app] 恢复登录失败:', err);
+      });
   }
 });

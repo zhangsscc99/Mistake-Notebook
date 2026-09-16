@@ -13,6 +13,16 @@ const TAB_URLS = {
   'pages/profile/profile': '/pages/profile/profile'
 };
 
+// 必须作为声明存在：按需注入打包时若引用了这个名字却没有定义，App() 会直接崩，
+// 首页 Page 也不会注册，随后出现 wx://not-found。
+const STUDENT_TAB_ROUTES = {
+  'pages/index/index': true,
+  'pages/categories/categories': true,
+  'pages/aiChat/aiChat': true,
+  'pages/paperBuilder/paperBuilder': true,
+  'pages/profile/profile': true
+};
+
 let memoryLoggedIn = false;
 let restoring = null;
 
@@ -37,7 +47,12 @@ function isLoggedIn() {
   return !!readSession();
 }
 
+function hasLockedRole(role) {
+  return role === 'teacher' || role === 'student';
+}
+
 function setLoggedIn(openId, role) {
+  if (!hasLockedRole(role)) return;
   memoryLoggedIn = true;
   try {
     const app = getApp();
@@ -49,7 +64,7 @@ function setLoggedIn(openId, role) {
     wx.setStorageSync(SESSION_KEY, {
       loggedIn: true,
       openId: openId || '',
-      role: role === 'teacher' ? 'teacher' : 'student',
+      role,
       at: Date.now()
     });
     wx.removeStorageSync(LOGOUT_KEY);
@@ -60,7 +75,7 @@ function setLoggedIn(openId, role) {
 
 function getSessionRole() {
   const s = readSession();
-  return (s && s.role) || 'student';
+  return hasLockedRole(s && s.role) ? s.role : '';
 }
 
 function isTeacherSession() {
@@ -75,7 +90,20 @@ function enterByRole(role) {
   wx.switchTab({ url: '/pages/index/index' });
 }
 
-function clearSession() {
+// 冷启动时 App.onShow 里 getCurrentPages() 经常还是空的，老师会被留在学生首页。
+// 学生 Tab、空路由、以及其它非教师页都要送回教师壳。
+function bounceTeacherOffStudentShell() {
+  if (getSessionRole() !== 'teacher') return false;
+  const pages = getCurrentPages();
+  const route = (pages.length && pages[pages.length - 1] && pages[pages.length - 1].route) || '';
+  if (route.indexOf('pages/teacher') === 0) return false;
+  if (route === 'pages/login/login') return false;
+  if (route && !STUDENT_TAB_ROUTES[route] && route.indexOf('pages/') !== 0) return false;
+  wx.reLaunch({ url: '/pages/teacher/teacher' });
+  return true;
+}
+
+function dropLocalSession() {
   memoryLoggedIn = false;
   try {
     const app = getApp();
@@ -83,10 +111,18 @@ function clearSession() {
   } catch (e) {
     // ignore
   }
+  try {
+    wx.removeStorageSync(SESSION_KEY);
+  } catch (e) {
+    // ignore
+  }
+}
+
+function clearSession() {
+  dropLocalSession();
   // 只清登录态，不动 profileCache：昵称头像在云端 users 档里，
   // 缓存留给登录页展示「欢迎回来 + 昵称」。注销账号时由 profile 页单独 clearProfileCache()。
   try {
-    wx.removeStorageSync(SESSION_KEY);
     wx.setStorageSync(LOGOUT_KEY, true);
   } catch (e) {
     // ignore
@@ -153,17 +189,15 @@ function leaveLoginToTab() {
 }
 
 // 用 ensure 恢复登录：有档就读回来，没档就建档。不要用 get（exists=false 会被当成未登录）。
+// 云端还没有 student/teacher 时不算已登录，必须去登录页选定；本地旧会话不能冒充身份。
 function restoreSessionFromCloud() {
-  if (isLoggedIn()) {
-    return Promise.resolve({ loggedIn: true, restored: false });
-  }
   if (isOptedOut()) {
     return Promise.resolve({ loggedIn: false, restored: false, optedOut: true });
   }
   if (restoring) return restoring;
 
   const cached = getCachedProfile();
-  if (cached && (cached.hasProfile || cached.openId)) {
+  if (cached && hasLockedRole(cached.role)) {
     setLoggedIn(cached.openId, cached.role);
   }
 
@@ -179,6 +213,10 @@ function restoreSessionFromCloud() {
     .then((res) => {
       if (!res.success) throw new Error(res.error || '登录恢复失败');
       const p = setCachedProfile(res.data);
+      if (!hasLockedRole(p.role)) {
+        dropLocalSession();
+        return { loggedIn: false, restored: true, needsRole: true, profile: p };
+      }
       setLoggedIn(p.openId, p.role);
       return { loggedIn: true, restored: true, profile: p };
     })
@@ -202,11 +240,14 @@ function requireLogin() {
 
 module.exports = {
   SESSION_KEY,
+  STUDENT_TAB_ROUTES,
   isLoggedIn,
   setLoggedIn,
   getSessionRole,
+  hasLockedRole,
   isTeacherSession,
   enterByRole,
+  bounceTeacherOffStudentShell,
   clearSession,
   goLogin,
   restoreSessionFromCloud,

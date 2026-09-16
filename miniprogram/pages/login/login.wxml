@@ -13,12 +13,17 @@
 
   <view class="card" wx:else>
     <view class="card-title">{{returning ? '欢迎回来' : '创建账号'}}</view>
-    <view class="card-desc" wx:if="{{returning}}">已识别到你的微信，选学生或老师后进入对应工作台</view>
-    <view class="card-desc" wx:else>第一次使用会自动注册。学生和老师都在这里自己选身份</view>
+    <view class="card-desc" wx:if="{{roleLocked}}">本微信已绑定{{intentRole === 'teacher' ? '老师' : '学生'}}身份，退出登录不会改变</view>
+    <view class="card-desc" wx:elif="{{returning}}">已识别到你的微信。请选择身份，选定后不能更改</view>
+    <view class="card-desc" wx:else>第一次使用会自动注册。请选择学生或老师，一个微信只能绑定一种身份</view>
 
-    <view class="role-row">
+    <view class="role-row" wx:if="{{!roleLocked}}">
       <view class="role-chip {{intentRole === 'student' ? 'on' : ''}}" data-role="student" bindtap="selectRole">学生</view>
       <view class="role-chip {{intentRole === 'teacher' ? 'on' : ''}}" data-role="teacher" bindtap="selectRole">老师</view>
+    </view>
+    <view class="role-locked" wx:else>
+      <view class="role-locked-badge">{{intentRole === 'teacher' ? '老师' : '学生'}}</view>
+      <view class="role-locked-hint">更换身份需要先注销账号</view>
     </view>
 
     <button class="avatar-btn" bindtap="onPickAvatar">
@@ -54,6 +59,6 @@
 
   <view class="hints" wx:if="{{!checking}}">
     <view class="hint">学生整理自己的错题；老师建班后查看加入班级的学生错题</view>
-    <view class="hint">身份在登录时选择并保存，退出后可再选一次</view>
+    <view class="hint">一个微信号只能绑定一种身份。退出登录不会改变身份，更换需先注销账号</view>
   </view>
 </view>
