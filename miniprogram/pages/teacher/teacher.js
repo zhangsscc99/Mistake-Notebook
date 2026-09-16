@@ -1,5 +1,23 @@
 const { callTeacher } = require('../../utils/teacher');
 
+const PREVIEW = 6;
+
+function withMark(list) {
+  return (list || []).map((s) => ({
+    ...s,
+    mark: (s.nickName || '学').slice(0, 1)
+  }));
+}
+
+function packStudents(list) {
+  const students = withMark(list);
+  return {
+    students,
+    previewStudents: students.slice(0, PREVIEW),
+    studentMore: Math.max(0, students.length - PREVIEW)
+  };
+}
+
 Page({
   data: {
     loading: true,
@@ -7,14 +25,20 @@ Page({
     classes: [],
     selectedClass: {},
     students: [],
+    previewStudents: [],
+    studentMore: 0,
+    pendingStudents: [],
     studentCount: 0,
     assignmentCount: 0
   },
 
   onLoad(options) {
     this._focus = (options && options.focus) || '';
+  },
+  onShow() {
     this.loadDashboard().then(() => {
       if (this._focus === 'students') {
+        this._focus = '';
         setTimeout(() => wx.pageScrollTo({ selector: '#section-students', duration: 280 }), 250);
       }
     });
@@ -22,24 +46,21 @@ Page({
   onPullDownRefresh() { this.loadDashboard().finally(() => wx.stopPullDownRefresh()); },
 
   async loadDashboard() {
-    this.setData({ loading: true });
+    if (!this.data.classes.length) this.setData({ loading: true });
     try {
       const result = await callTeacher('dashboard');
       if (!result.success) throw new Error(result.error || '加载失败');
       const data = result.data || {};
       const classes = data.classes || [];
       const selectedClass = classes.find((c) => c.id === this.data.selectedClass.id) || classes[0] || {};
-      this.setData({
+      this.setData(Object.assign({
         isTeacher: true,
         classes,
         selectedClass,
-        students: (data.students || []).map((s) => ({
-          ...s,
-          mark: (s.nickName || '学').slice(0, 1)
-        })),
+        pendingStudents: withMark(data.pendingStudents),
         studentCount: data.studentCount || 0,
         assignmentCount: data.assignmentCount || 0
-      });
+      }, packStudents(data.students)));
       if (selectedClass.id && selectedClass.id !== (classes[0] && classes[0].id)) {
         this.loadStudents(selectedClass.id);
       }
@@ -52,11 +73,13 @@ Page({
   },
 
   async loadStudents(classId) {
-    const result = await callTeacher('students', { classId });
-    this.setData({ students: result.success ? (result.data || []).map((s) => ({
-      ...s,
-      mark: (s.nickName || '学').slice(0, 1)
-    })) : [] });
+    const [result, pending] = await Promise.all([
+      callTeacher('students', { classId }),
+      callTeacher('joinRequests', { classId })
+    ]);
+    this.setData(Object.assign({
+      pendingStudents: pending.success ? withMark(pending.data) : []
+    }, packStudents(result.success ? result.data : [])));
   },
 
   async createClass() {
@@ -82,6 +105,15 @@ Page({
     await this.loadStudents(id);
   },
 
+  goRoster() {
+    const classId = this.data.selectedClass.id;
+    if (!classId) return;
+    const name = encodeURIComponent(this.data.selectedClass.name || '');
+    wx.navigateTo({
+      url: `/pages/teacherRoster/teacherRoster?classId=${classId}&name=${name}`
+    });
+  },
+
   showStudent(e) {
     const studentId = e.currentTarget.dataset.id;
     const classId = this.data.selectedClass.id;
@@ -89,6 +121,36 @@ Page({
     wx.navigateTo({
       url: `/pages/teacherStudent/teacherStudent?classId=${classId}&studentId=${studentId}`
     });
+  },
+
+  async approveJoin(e) {
+    const studentId = e.currentTarget.dataset.id;
+    const classId = this.data.selectedClass.id;
+    if (!studentId || !classId) return;
+    const result = await callTeacher('approveJoin', { classId, studentId });
+    if (!result.success) return wx.showToast({ title: result.error || '通过失败', icon: 'none' });
+    wx.showToast({ title: '已通过', icon: 'success' });
+    await this.loadStudents(classId);
+    this.loadDashboard();
+  },
+
+  async rejectJoin(e) {
+    const studentId = e.currentTarget.dataset.id;
+    const classId = this.data.selectedClass.id;
+    if (!studentId || !classId) return;
+    const ok = await new Promise((resolve) => wx.showModal({
+      title: '拒绝申请',
+      content: '拒绝后该学生不会进入班级，可再次提交申请。',
+      confirmText: '拒绝',
+      confirmColor: '#e11d48',
+      success: (r) => resolve(!!r.confirm)
+    }));
+    if (!ok) return;
+    const result = await callTeacher('rejectJoin', { classId, studentId });
+    if (!result.success) return wx.showToast({ title: result.error || '操作失败', icon: 'none' });
+    wx.showToast({ title: '已拒绝', icon: 'none' });
+    await this.loadStudents(classId);
+    this.loadDashboard();
   },
 
   copyJoinCode(e) {

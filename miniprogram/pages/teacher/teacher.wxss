@@ -107,3 +107,48 @@
 .on-class {
   box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.35);
 }
+
+.pending-card {
+  overflow: visible;
+}
+
+.pending-top {
+  display: flex;
+  align-items: center;
+}
+
+.pending-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+}
+
+.act-btn {
+  flex: 1;
+  height: 72rpx;
+  line-height: 72rpx;
+  text-align: center;
+  border-radius: 999px;
+  font-size: 26rpx;
+  font-weight: 700;
+}
+
+.act-btn.ghost {
+  color: #2459ff;
+  background: #fff;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30);
+}
+
+.act-btn.primary {
+  color: #fff;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+  box-shadow: 0 10px 24px rgba(31, 91, 255, 0.30);
+}
+
+.section-note {
+  white-space: nowrap;
+}
+
+.more-row .student-name {
+  color: #2459ff;
+}

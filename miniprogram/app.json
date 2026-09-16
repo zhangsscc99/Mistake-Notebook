@@ -13,6 +13,7 @@
     "pages/profile/profile",
     "pages/teacher/teacher",
     "pages/teacherStudent/teacherStudent",
+    "pages/teacherRoster/teacherRoster",
     "pages/teacherQuestions/teacherQuestions",
     "pages/teacherChat/teacherChat",
     "pages/teacherPaper/teacherPaper",

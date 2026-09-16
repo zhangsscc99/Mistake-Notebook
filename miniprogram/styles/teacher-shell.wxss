@@ -213,3 +213,29 @@
   color: rgba(11, 22, 51, 0.45);
   font-size: 24rpx;
 }
+
+.search-box {
+  display: flex;
+  align-items: center;
+  margin: 8rpx 24rpx 12rpx;
+  padding: 0 20rpx;
+  height: 72rpx;
+  background: #fff;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+}
+
+.search-input {
+  flex: 1;
+  height: 72rpx;
+  font-size: 26rpx;
+}
+
+.search-clear {
+  flex-shrink: 0;
+  margin-left: 12rpx;
+  color: #2459ff;
+  font-size: 22rpx;
+  font-weight: 700;
+  white-space: nowrap;
+}

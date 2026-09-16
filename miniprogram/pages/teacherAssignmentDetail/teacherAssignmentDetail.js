@@ -1,5 +1,11 @@
 const { callTeacher, formatDay } = require('../../utils/teacher');
 
+function filterRoster(roster, keyword) {
+  const kw = String(keyword || '').trim().toLowerCase();
+  if (!kw) return roster || [];
+  return (roster || []).filter((s) => String(s.nickName || '').toLowerCase().indexOf(kw) >= 0);
+}
+
 Page({
   data: {
     loading: true,
@@ -12,7 +18,10 @@ Page({
     missing: 0,
     graded: 0,
     questions: [],
-    roster: []
+    roster: [],
+    visibleRoster: [],
+    keyword: '',
+    showRosterSearch: false
   },
 
   onLoad(options) {
@@ -33,6 +42,7 @@ Page({
       if (!r.success) throw new Error(r.error || '加载失败');
       const d = r.data || {};
       const questions = (d.questions || []).map((q, i) => ({ ...q, index: i + 1 }));
+      const roster = d.roster || [];
       this.setData({
         title: d.title || '作业',
         className: d.className || '',
@@ -42,7 +52,9 @@ Page({
         missing: d.missing || 0,
         graded: d.graded || 0,
         questions,
-        roster: d.roster || []
+        roster,
+        visibleRoster: filterRoster(roster, this.data.keyword),
+        showRosterSearch: roster.length > 8
       });
       wx.setNavigationBarTitle({ title: d.title || '作业详情' });
     } catch (e) {
@@ -56,6 +68,21 @@ Page({
     const q = this.data.questions[e.currentTarget.dataset.index];
     if (!q) return;
     wx.showModal({ title: `第 ${q.index} 题`, content: q.content || '', showCancel: false });
+  },
+
+  onSearch(e) {
+    const keyword = e.detail.value || '';
+    this.setData({
+      keyword,
+      visibleRoster: filterRoster(this.data.roster, keyword)
+    });
+  },
+
+  clearSearch() {
+    this.setData({
+      keyword: '',
+      visibleRoster: this.data.roster
+    });
   },
 
   openStudent(e) {

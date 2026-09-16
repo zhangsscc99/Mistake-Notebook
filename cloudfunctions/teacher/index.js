@@ -64,9 +64,56 @@ async function assertOwnedClass(teacherId, classId) {
   return cls;
 }
 
-async function classStudentIds(classId) {
+function memberStatus(m) {
+  if (!m || m.isDeleted) return '';
+  if (m.status === 'pending' || m.status === 'rejected' || m.status === 'approved') return m.status;
+  return 'approved';
+}
+
+async function listClassMembers(classId) {
   const r = await db.collection('class_members').where({ classId, isDeleted: false }).get();
-  return Array.from(new Set((r.data || []).map((m) => m.studentId).filter(Boolean)));
+  return r.data || [];
+}
+
+async function approvedMembers(classId) {
+  return (await listClassMembers(classId)).filter((m) => memberStatus(m) === 'approved');
+}
+
+async function pendingMembers(classId) {
+  return (await listClassMembers(classId)).filter((m) => memberStatus(m) === 'pending');
+}
+
+async function classStudentIds(classId) {
+  return Array.from(new Set((await approvedMembers(classId)).map((m) => m.studentId).filter(Boolean)));
+}
+
+async function approvedClassIds(studentId) {
+  const r = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
+  return (r.data || []).filter((m) => memberStatus(m) === 'approved').map((m) => m.classId);
+}
+
+async function findMembership(classId, studentId) {
+  const r = await db.collection('class_members').where({ classId, studentId }).limit(5).get();
+  const rows = r.data || [];
+  return rows.find((m) => !m.isDeleted) || rows[0] || null;
+}
+
+async function mapMemberUsers(members) {
+  const ids = Array.from(new Set(members.map((m) => m.studentId).filter(Boolean)));
+  if (!ids.length) return [];
+  const users = await db.collection('users').where({ _id: _.in(ids) }).get();
+  const userMap = {};
+  (users.data || []).forEach((u) => { userMap[u._id] = u; });
+  return members.map((m) => {
+    const u = userMap[m.studentId] || {};
+    return {
+      id: m.studentId,
+      nickName: u.nickName || '',
+      avatarFileID: u.avatarFileID || '',
+      requestedAt: m.requestedAt || m.createdAt || '',
+      lastActiveAt: u.updatedAt || ''
+    };
+  });
 }
 
 async function questionsByOpenIds(ids, limit) {
@@ -171,7 +218,10 @@ exports.main = async (event) => {
       parentReport,
       listParentReports,
       parentReportDetail,
-      chat
+      chat,
+      joinRequests,
+      approveJoin,
+      rejectJoin
     };
     const fn = teacherActions[event.action];
     if (!fn) return fail(`Unknown action: ${event.action}`);
@@ -185,12 +235,17 @@ exports.main = async (event) => {
 
 async function dashboard(teacherId) {
   const raw = await ownedClasses(teacherId);
-  const classes = await Promise.all(raw.map(async (c) => ({
-    ...normalizeClass(c),
-    studentCount: (await db.collection('class_members').where({ classId: c._id, isDeleted: false }).count()).total
-  })));
+  const classes = await Promise.all(raw.map(async (c) => {
+    const members = await listClassMembers(c._id);
+    return {
+      ...normalizeClass(c),
+      studentCount: members.filter((m) => memberStatus(m) === 'approved').length,
+      pendingCount: members.filter((m) => memberStatus(m) === 'pending').length
+    };
+  }));
   const selected = classes[0];
   const list = selected ? await students(teacherId, { classId: selected.id }) : { data: [] };
+  const pending = selected ? await joinRequests(teacherId, { classId: selected.id }) : { data: [] };
   let notebookCount = 0;
   try {
     notebookCount = (await db.collection('class_notebooks').where({ teacherId, isDeleted: false }).count()).total;
@@ -203,7 +258,9 @@ async function dashboard(teacherId) {
     data: {
       classes,
       students: list.data || [],
+      pendingStudents: pending.data || [],
       studentCount: classes.reduce((n, c) => n + (c.studentCount || 0), 0),
+      pendingCount: classes.reduce((n, c) => n + (c.pendingCount || 0), 0),
       assignmentCount,
       notebookCount
     }
@@ -223,8 +280,8 @@ async function createClass(teacherId, event) {
 
 async function students(teacherId, event) {
   const classId = event.classId;
-  const cls = await assertOwnedClass(teacherId, classId);
-  const members = (await db.collection('class_members').where({ classId, isDeleted: false }).get()).data || [];
+  await assertOwnedClass(teacherId, classId);
+  const members = await approvedMembers(classId);
   if (!members.length) return { success: true, data: [] };
   const ids = members.map((m) => m.studentId);
   const users = await db.collection('users').where({ _id: _.in(ids) }).get();
@@ -252,8 +309,10 @@ async function studentQuestions(teacherId, event) {
   const studentId = String(event.studentId || '');
   const classId = String(event.classId || '');
   await assertOwnedClass(teacherId, classId);
-  const member = (await db.collection('class_members').where({ classId, studentId, isDeleted: false }).count()).total;
-  if (!member) return fail('学生不在该班级');
+  const member = await findMembership(classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '学生不在该班级');
+  }
   const r = await db.collection('questions').where({ openid: studentId, isDeleted: false }).orderBy('createdAt', 'desc').limit(50).get();
   return { success: true, data: (r.data || []).map(mapQuestion) };
 }
@@ -263,9 +322,10 @@ async function studentOverview(teacherId, event) {
   const studentId = String(event.studentId || '');
   if (!studentId) return fail('缺少学生');
   const cls = await assertOwnedClass(teacherId, classId);
-  const members = (await db.collection('class_members').where({ classId, studentId, isDeleted: false }).limit(1).get()).data || [];
-  const member = members[0];
-  if (!member) return fail('学生不在该班级');
+  const member = await findMembership(classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '学生不在该班级');
+  }
   const users = (await db.collection('users').where({ _id: studentId }).limit(1).get()).data || [];
   const user = users[0] || {};
   const qrows = (await db.collection('questions').where({ openid: studentId, isDeleted: false }).orderBy('createdAt', 'desc').limit(100).get()).data || [];
@@ -566,7 +626,7 @@ async function assignmentDetail(teacherId, event) {
   const a = (await db.collection('assignments').doc(id).get()).data;
   if (!a || a.teacherId !== teacherId || a.isDeleted) return fail('无权访问该作业');
   const cls = await assertOwnedClass(teacherId, a.classId);
-  const members = (await db.collection('class_members').where({ classId: a.classId, isDeleted: false }).get()).data || [];
+  const members = await approvedMembers(a.classId);
   const studentIds = members.map((m) => m.studentId);
   const users = studentIds.length ? ((await db.collection('users').where({ _id: _.in(studentIds) }).get()).data || []) : [];
   const names = {};
@@ -631,7 +691,7 @@ async function teacherAssignments(teacherId) {
   classes.forEach((c) => { classNames[c._id] = c.name; });
   const classSize = {};
   await Promise.all(classIds.map(async (id) => {
-    classSize[id] = (await db.collection('class_members').where({ classId: id, isDeleted: false }).count()).total;
+    classSize[id] = (await approvedMembers(id)).length;
   }));
   const aIds = list.map((a) => a._id);
   const subs = [];
@@ -689,7 +749,7 @@ async function gradeAssignment(teacherId, event) {
 async function parentReport(teacherId, event) {
   const classId = String(event.classId || '');
   const cls = await assertOwnedClass(teacherId, classId);
-  const members = (await db.collection('class_members').where({ classId, isDeleted: false }).get()).data || [];
+  const members = await approvedMembers(classId);
   const ids = members.map((m) => m.studentId);
   const users = ids.length ? ((await db.collection('users').where({ _id: _.in(ids) }).get()).data || []) : [];
   const assignments = (await db.collection('assignments').where({ classId, isDeleted: false }).get()).data || [];
@@ -827,6 +887,46 @@ async function chat(teacherId, event) {
   return { success: true, data: { reply: String(reply).trim(), classId: target } };
 }
 
+async function joinRequests(teacherId, event) {
+  const classId = String(event.classId || '');
+  await assertOwnedClass(teacherId, classId);
+  const pending = await pendingMembers(classId);
+  if (!pending.length) return { success: true, data: [] };
+  return { success: true, data: await mapMemberUsers(pending) };
+}
+
+async function approveJoin(teacherId, event) {
+  const classId = String(event.classId || '');
+  const studentId = String(event.studentId || '');
+  if (!studentId) return fail('缺少学生');
+  await assertOwnedClass(teacherId, classId);
+  const member = await findMembership(classId, studentId);
+  if (!member || member.isDeleted) return fail('没有这条申请');
+  const now = new Date().toISOString();
+  if (memberStatus(member) === 'approved') {
+    return { success: true, data: { classId, studentId, alreadyJoined: true } };
+  }
+  await db.collection('class_members').doc(member._id).update({
+    data: { status: 'approved', isDeleted: false, approvedAt: now, updatedAt: now }
+  });
+  return { success: true, data: { classId, studentId } };
+}
+
+async function rejectJoin(teacherId, event) {
+  const classId = String(event.classId || '');
+  const studentId = String(event.studentId || '');
+  if (!studentId) return fail('缺少学生');
+  await assertOwnedClass(teacherId, classId);
+  const member = await findMembership(classId, studentId);
+  if (!member || member.isDeleted) return fail('没有这条申请');
+  if (memberStatus(member) === 'approved') return fail('该学生已在班级中');
+  const now = new Date().toISOString();
+  await db.collection('class_members').doc(member._id).update({
+    data: { status: 'rejected', rejectedAt: now, updatedAt: now }
+  });
+  return { success: true, data: { classId, studentId } };
+}
+
 async function joinClass(event) {
   const studentId = openId();
   const joinCode = String(event.joinCode || '').trim().toUpperCase();
@@ -834,13 +934,29 @@ async function joinClass(event) {
   const r = await db.collection('classes').where({ joinCode, isDeleted: false }).limit(1).get();
   const cls = (r.data || [])[0];
   if (!cls) return fail('加入码无效');
-  const existing = await db.collection('class_members').where({ classId: cls._id, studentId, isDeleted: false }).count();
-  if (existing.total > 0) return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: true } };
+  const existing = await findMembership(cls._id, studentId);
+  const status = memberStatus(existing);
+  if (status === 'approved') {
+    return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: true, pending: false } };
+  }
+  if (status === 'pending') {
+    return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: false, pending: true } };
+  }
   const now = new Date().toISOString();
-  await db.collection('class_members').add({
-    data: { classId: cls._id, studentId, isDeleted: false, createdAt: now, updatedAt: now }
-  });
-  return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: false } };
+  const data = {
+    classId: cls._id,
+    studentId,
+    status: 'pending',
+    isDeleted: false,
+    requestedAt: now,
+    updatedAt: now
+  };
+  if (existing) {
+    await db.collection('class_members').doc(existing._id).update({ data });
+  } else {
+    await db.collection('class_members').add({ data: { ...data, createdAt: now } });
+  }
+  return { success: true, data: { classId: cls._id, name: cls.name, alreadyJoined: false, pending: true } };
 }
 
 async function myClasses() {
@@ -848,11 +964,20 @@ async function myClasses() {
   if (!studentId) return fail('未获取到用户身份');
   const memberships = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
   const classes = await Promise.all((memberships.data || []).map(async (m) => {
+    const status = memberStatus(m);
+    if (status === 'rejected' || !status) return null;
     const r = await db.collection('classes').doc(m.classId).get();
     const c = r.data;
     if (!c || c.isDeleted) return null;
     const t = await teacherDoc(c.teacherId);
-    return { id: c._id, name: c.name, grade: c.grade || '', teacherName: (t && t.nickName) || '教师', joinedAt: m.createdAt || '' };
+    return {
+      id: c._id,
+      name: c.name,
+      grade: c.grade || '',
+      teacherName: (t && t.nickName) || '教师',
+      joinedAt: m.createdAt || '',
+      status
+    };
   }));
   return { success: true, data: classes.filter(Boolean) };
 }
@@ -860,8 +985,7 @@ async function myClasses() {
 async function myNotebooks() {
   const studentId = openId();
   if (!studentId) return fail('未获取到用户身份');
-  const memberships = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
-  const ids = (memberships.data || []).map((m) => m.classId);
+  const ids = await approvedClassIds(studentId);
   if (!ids.length) return { success: true, data: [] };
   const r = await db.collection('class_notebooks').where({ classId: _.in(ids), isDeleted: false }).orderBy('createdAt', 'desc').limit(30).get();
   const notebooks = await Promise.all((r.data || []).map(async (n) => {
@@ -881,8 +1005,7 @@ async function myNotebooks() {
 async function myAssignments() {
   const studentId = openId();
   if (!studentId) return fail('未获取到用户身份');
-  const ms = await db.collection('class_members').where({ studentId, isDeleted: false }).get();
-  const ids = (ms.data || []).map((m) => m.classId);
+  const ids = await approvedClassIds(studentId);
   if (!ids.length) return { success: true, data: [] };
   const r = await db.collection('assignments').where({ classId: _.in(ids), isDeleted: false }).orderBy('createdAt', 'desc').limit(30).get();
   const rows = await Promise.all((r.data || []).map(async (a) => {
@@ -902,8 +1025,10 @@ async function myAssignmentDetail(event) {
   const id = String(event.assignmentId || '');
   const a = (await db.collection('assignments').doc(id).get()).data;
   if (!a || a.isDeleted) return fail('作业不存在');
-  const member = await db.collection('class_members').where({ classId: a.classId, studentId, isDeleted: false }).count();
-  if (!member.total) return fail('不在该班级');
+  const member = await findMembership(a.classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
+  }
   const q = await db.collection('questions').where({ _id: _.in(a.questionIds || []), isDeleted: false }).get();
   return { success: true, data: { ...a, questions: q.data || [] } };
 }
@@ -914,8 +1039,10 @@ async function submitAssignment(event) {
   if (!studentId || !id) return fail('参数不完整');
   const a = (await db.collection('assignments').doc(id).get()).data;
   if (!a || a.isDeleted) return fail('作业不存在');
-  const member = (await db.collection('class_members').where({ classId: a.classId, studentId, isDeleted: false }).count()).total;
-  if (!member) return fail('不在该班级');
+  const member = await findMembership(a.classId, studentId);
+  if (memberStatus(member) !== 'approved') {
+    return fail(memberStatus(member) === 'pending' ? '加入申请待老师审核' : '不在该班级');
+  }
   const now = new Date().toISOString();
   const old = await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get();
   const data = { assignmentId: id, studentId, answers: event.answers || [], status: 'submitted', score: null, submittedAt: now, updatedAt: now };

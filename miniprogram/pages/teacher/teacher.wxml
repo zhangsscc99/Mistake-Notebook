@@ -9,11 +9,11 @@
     <view class="teacher-hero">
       <view class="hero-kicker">TEACHER</view>
       <view class="hero-title">班级工作台</view>
-      <view class="hero-sub">只看加入班级的学生。点加入码可复制发给学生</view>
+      <view class="hero-sub">学生凭加入码申请，通过后才会进入班级。点加入码可复制</view>
       <view class="hero-stats">
         <view class="hero-stat"><text>{{classes.length}}</text><label>班级</label></view>
         <view class="hero-divider"></view>
-        <view class="hero-stat"><text>{{studentCount}}</text><label>学生</label></view>
+        <view class="hero-stat" bindtap="goRoster"><text>{{studentCount}}</text><label>学生</label></view>
         <view class="hero-divider"></view>
         <view class="hero-stat"><text>{{assignmentCount}}</text><label>作业</label></view>
       </view>
@@ -27,17 +27,36 @@
       <view class="class-dot"></view>
       <view class="class-main">
         <view class="class-name">{{item.name}}</view>
-        <view class="class-meta">{{item.grade || '未设置学段'}} · {{item.studentCount || 0}} 名学生</view>
+        <view class="class-meta">{{item.grade || '未设置学段'}} · {{item.studentCount || 0}} 名学生<text wx:if="{{item.pendingCount}}"> · {{item.pendingCount}} 人待审核</text></view>
       </view>
       <view class="class-code" catchtap="copyJoinCode" data-code="{{item.joinCode}}">{{item.joinCode}}</view>
     </view>
     <view class="empty-block" wx:if="{{classes.length === 0}}">还没有班级<text>创建后把加入码发给学生</text></view>
 
+    <view class="section-head" wx:if="{{selectedClass.id && pendingStudents.length}}">
+      <text class="section-title">待审核</text>
+      <text class="section-note">{{pendingStudents.length}} 人</text>
+    </view>
+    <view class="white-card pending-card" wx:for="{{pendingStudents}}" wx:key="id">
+      <view class="pending-top">
+        <view class="student-avatar">{{item.mark}}</view>
+        <view class="student-info">
+          <view class="student-name">{{item.nickName || '未设置昵称'}}</view>
+          <view class="student-meta">申请加入班级，通过后可查看错题</view>
+        </view>
+      </view>
+      <view class="pending-actions">
+        <view class="act-btn ghost" catchtap="rejectJoin" data-id="{{item.id}}">拒绝</view>
+        <view class="act-btn primary" catchtap="approveJoin" data-id="{{item.id}}">通过</view>
+      </view>
+    </view>
+
     <view class="section-head" id="section-students">
       <text class="section-title">{{selectedClass.name || '班级学生'}}</text>
-      <text class="section-note">{{students.length}} 人</text>
+      <text class="section-note" wx:if="{{studentMore > 0}}" bindtap="goRoster">查看全部 ›</text>
+      <text class="section-note" wx:else>{{students.length}} 人</text>
     </view>
-    <view class="white-card row-card" wx:for="{{students}}" wx:key="id" bindtap="showStudent" data-id="{{item.id}}">
+    <view class="white-card row-card" wx:for="{{previewStudents}}" wx:key="id" bindtap="showStudent" data-id="{{item.id}}">
       <view class="student-avatar">{{item.mark}}</view>
       <view class="student-info">
         <view class="student-name">{{item.nickName || '未设置昵称'}}</view>
@@ -45,7 +64,14 @@
       </view>
       <text class="student-arrow">›</text>
     </view>
-    <view class="empty-block" wx:if="{{selectedClass.id && students.length === 0}}">班级还没有学生<text>加入码：{{selectedClass.joinCode}}</text></view>
+    <view class="white-card row-card more-row" wx:if="{{studentMore > 0}}" bindtap="goRoster">
+      <view class="student-info">
+        <view class="student-name">查看全部 {{students.length}} 人</view>
+        <view class="student-meta">还可按昵称搜索</view>
+      </view>
+      <text class="student-arrow">›</text>
+    </view>
+    <view class="empty-block" wx:if="{{selectedClass.id && students.length === 0 && pendingStudents.length === 0}}">班级还没有学生<text>把加入码发给学生，通过申请后才会出现在这里</text></view>
 
     <view class="section-head"><text class="section-title">教学工具</text></view>
     <view class="tool-grid">

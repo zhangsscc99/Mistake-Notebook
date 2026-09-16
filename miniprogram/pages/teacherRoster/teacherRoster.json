@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "班级学生",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "enablePullDownRefresh": true
+}

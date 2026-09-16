@@ -1,0 +1,43 @@
+@import "../../styles/teacher-shell.wxss";
+
+.roster-page {
+  padding-bottom: 48rpx;
+}
+
+.student-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  margin-right: 18rpx;
+  border-radius: 50%;
+  color: #2459ff;
+  background: #eaf1ff;
+  font-size: 30rpx;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.student-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.student-name {
+  font-size: 29rpx;
+  font-weight: 700;
+  color: #0b1633;
+}
+
+.student-meta {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.52);
+}
+
+.student-arrow {
+  color: rgba(11, 22, 51, 0.3);
+  font-size: 32rpx;
+  flex-shrink: 0;
+}

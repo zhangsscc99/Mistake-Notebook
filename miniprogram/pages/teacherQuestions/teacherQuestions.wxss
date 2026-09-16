@@ -119,3 +119,94 @@
   line-height: 68rpx;
   font-size: 24rpx;
 }
+
+.picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 24rpx 12rpx;
+  padding: 0 28rpx;
+  height: 72rpx;
+  background: #fff;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+}
+
+.picker-kicker {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.picker-value {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #2459ff;
+  white-space: nowrap;
+}
+
+.sheet-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 80;
+  background: rgba(11, 22, 51, 0.36);
+}
+
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 78vh;
+  padding: 28rpx 0 calc(24rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-radius: 28rpx 28rpx 0 0;
+}
+
+.sheet-title {
+  padding: 0 32rpx 8rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.sheet-search {
+  margin-top: 8rpx;
+}
+
+.sheet-list {
+  height: 52vh;
+  padding: 8rpx 0;
+}
+
+.sheet-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22rpx 32rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0b1633;
+}
+
+.sheet-row.on {
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.08);
+}
+
+.sheet-count {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: rgba(11, 22, 51, 0.45);
+  white-space: nowrap;
+}
+
+.sheet-empty {
+  padding: 48rpx 32rpx;
+  text-align: center;
+  color: rgba(11, 22, 51, 0.45);
+  font-size: 24rpx;
+}

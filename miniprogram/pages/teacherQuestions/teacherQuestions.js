@@ -18,6 +18,20 @@ function decorateQuestions(questions, hot) {
   });
 }
 
+function filterStudents(students, query) {
+  const q = String(query || '').trim().toLowerCase();
+  if (!q) return students || [];
+  return (students || []).filter((s) => String(s.name || '').toLowerCase().indexOf(q) >= 0);
+}
+
+function studentLabelOf(students, studentId) {
+  if (!studentId) return '全班';
+  const s = (students || []).find((x) => x.id === studentId);
+  return (s && s.name) || '已选学生';
+}
+
+const STUDENT_CHIP_LIMIT = 8;
+
 function filterQuestions(questions, opts) {
   const category = opts.category || '';
   const studentId = opts.studentId || '';
@@ -45,6 +59,11 @@ Page({
     categoryChips: [{ name: '全部', value: '', count: 0 }],
     category: '',
     studentId: '',
+    studentLabel: '全班',
+    compactStudentFilter: false,
+    studentPickerOpen: false,
+    studentQuery: '',
+    pickerStudents: [],
     keyword: '',
     onlyHot: false,
     stats: { total: 0, hot: [], studentCount: 0, byCategory: [] },
@@ -86,7 +105,9 @@ Page({
     this.setData(Object.assign({}, patch, {
       visibleQuestions,
       visibleCount: visibleQuestions.length,
-      visibleAllSelected
+      visibleAllSelected,
+      studentLabel: studentLabelOf(next.students, next.studentId),
+      compactStudentFilter: (next.students || []).length > STUDENT_CHIP_LIMIT
     }));
   },
 
@@ -98,6 +119,8 @@ Page({
         this.syncView({
           questions: [],
           students: [],
+          compactStudentFilter: false,
+          studentLabel: '全班',
           stats: { total: 0, hot: [], studentCount: 0, byCategory: [] },
           hotCount: 0,
           categoryChips: [{ name: '全部', value: '', count: 0 }]
@@ -154,9 +177,35 @@ Page({
 
   selectStudent(e) {
     const id = e.currentTarget.dataset.id === 'all' ? '' : (e.currentTarget.dataset.id || '');
-    if (id === this.data.studentId) return;
-    this.syncView({ studentId: id });
+    if (id === this.data.studentId && !this.data.studentPickerOpen) return;
+    this.syncView({
+      studentId: id,
+      studentPickerOpen: false,
+      studentQuery: ''
+    });
   },
+
+  openStudentPicker() {
+    this.setData({
+      studentPickerOpen: true,
+      studentQuery: '',
+      pickerStudents: this.data.students
+    });
+  },
+
+  closeStudentPicker() {
+    this.setData({ studentPickerOpen: false, studentQuery: '' });
+  },
+
+  onPickerSearch(e) {
+    const studentQuery = e.detail.value || '';
+    this.setData({
+      studentQuery,
+      pickerStudents: filterStudents(this.data.students, studentQuery)
+    });
+  },
+
+  noop() {},
 
   onSearch(e) {
     this.syncView({ keyword: e.detail.value || '' });

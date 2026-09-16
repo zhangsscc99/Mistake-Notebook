@@ -22,8 +22,12 @@
     </view>
     <view class="empty-block" wx:if="{{!questions.length}}">题目可能已被删除</view>
 
-    <view class="section-head"><text class="section-title">学生</text></view>
-    <view class="white-card tap-card" wx:for="{{roster}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="openStudent">
+    <view class="section-head"><text class="section-title">学生</text><text class="section-note">{{roster.length}} 人</text></view>
+    <view class="search-box" wx:if="{{showRosterSearch}}">
+      <input class="search-input" value="{{keyword}}" placeholder="搜索学生昵称" confirm-type="search" bindinput="onSearch" />
+      <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">清除</text>
+    </view>
+    <view class="white-card tap-card" wx:for="{{visibleRoster}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="openStudent">
       <view class="row-card">
         <view class="mark">{{item.mark}}</view>
         <view style="flex:1; min-width:0;">
@@ -34,5 +38,6 @@
       </view>
     </view>
     <view class="empty-block" wx:if="{{!roster.length}}">班里还没有学生</view>
+    <view class="empty-block" wx:elif="{{!visibleRoster.length}}">没有叫这个名字的学生</view>
   </block>
 </view>
