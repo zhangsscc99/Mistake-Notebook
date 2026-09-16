@@ -49,9 +49,12 @@ public class VisionReasoningService {
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .proxy(Proxy.NO_PROXY)
-            .connectTimeout(120, TimeUnit.SECONDS)
+            .dns(com.mistake.notebook.config.Ipv4Dns.INSTANCE)
+            .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(300, TimeUnit.SECONDS)
             .writeTimeout(120, TimeUnit.SECONDS)
+            .connectionPool(new okhttp3.ConnectionPool(8, 5, TimeUnit.MINUTES))
+            .retryOnConnectionFailure(true)
             .build();
 
     /**
@@ -134,6 +137,39 @@ public class VisionReasoningService {
 
         } catch (Exception e) {
             log.error("视觉推理题目分割失败", e);
+            return new VisionQuestionResult(false, null, "", 0.0, "分割过程中发生错误：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 多图一次进模型：跨页题目合并。
+     * 同一次调用里把所有页一起给模型，模型可以把跨页的题拼成一道。
+     */
+    public VisionQuestionResult recognizeAndSegmentQuestions(List<MultipartFile> files) {
+        if (files == null || files.isEmpty()) {
+            return new VisionQuestionResult(false, null, "", 0.0, "文件为空");
+        }
+        if (files.size() == 1) {
+            return recognizeAndSegmentQuestions(files.get(0));
+        }
+        try {
+            for (MultipartFile f : files) {
+                if (f.isEmpty()) return new VisionQuestionResult(false, null, "", 0.0, "文件为空");
+                if (f.getSize() > 10 * 1024 * 1024) return new VisionQuestionResult(false, null, "", 0.0, "文件大小超过限制");
+                String ct = f.getContentType();
+                if (ct == null || !isImageFile(ct)) return new VisionQuestionResult(false, null, "", 0.0, "不支持的文件类型");
+            }
+            log.info("开始多页题目分割，页数：{}", files.size());
+            VisionResult result = callVisionAPI(files, buildMultiPagePrompt(files.size()), false);
+            if (!result.isSuccess()) {
+                return new VisionQuestionResult(false, null, result.getReasoningContent(),
+                        result.getConfidence(), result.getError());
+            }
+            List<VisionQuestion> questions = parseQuestionSegmentationResponse(result.getContent());
+            log.info("多页题目分割完成，识别到{}道题目", questions.size());
+            return new VisionQuestionResult(true, questions, result.getReasoningContent(), result.getConfidence(), null);
+        } catch (Exception e) {
+            log.error("多页题目分割失败", e);
             return new VisionQuestionResult(false, null, "", 0.0, "分割过程中发生错误：" + e.getMessage());
         }
     }
@@ -242,6 +278,72 @@ public class VisionReasoningService {
     }
 
     /**
+     * 多图版本：一条 user message 里塞多张图 + 一段提示词
+     */
+    private VisionResult callVisionAPI(List<MultipartFile> files, String prompt, boolean useThinking) {
+        try {
+            if (apiKey == null || apiKey.equals("not-configured")) {
+                return new VisionResult(false, "", "", 0.0, "API未配置，请设置DASHSCOPE_API_KEY环境变量");
+            }
+
+            JsonObject requestBody = new JsonObject();
+            requestBody.addProperty("model", visionModel);
+
+            JsonArray messages = new JsonArray();
+            JsonObject message = new JsonObject();
+            message.addProperty("role", "user");
+
+            JsonArray content = new JsonArray();
+            for (MultipartFile f : files) {
+                String base64Image = Base64.getEncoder().encodeToString(f.getBytes());
+                JsonObject imageContent = new JsonObject();
+                imageContent.addProperty("type", "image_url");
+                JsonObject urlObj = new JsonObject();
+                urlObj.addProperty("url", "data:" + f.getContentType() + ";base64," + base64Image);
+                imageContent.add("image_url", urlObj);
+                content.add(imageContent);
+            }
+            JsonObject textContent = new JsonObject();
+            textContent.addProperty("type", "text");
+            textContent.addProperty("text", prompt);
+            content.add(textContent);
+
+            message.add("content", content);
+            messages.add(message);
+            requestBody.add("messages", messages);
+            requestBody.addProperty("temperature", temperature);
+            requestBody.addProperty("max_tokens", Math.max(maxTokens, 4000));
+            requestBody.addProperty("stream", false);
+            if (useThinking && enableThinking) {
+                requestBody.addProperty("enable_thinking", true);
+                requestBody.addProperty("thinking_budget", thinkingBudget);
+            }
+
+            RequestBody body = RequestBody.create(
+                    requestBody.toString(), MediaType.get("application/json; charset=utf-8"));
+            String apiUrl = baseUrl.endsWith("/") ? baseUrl + "chat/completions" : baseUrl + "/chat/completions";
+            Request request = new Request.Builder()
+                    .url(apiUrl)
+                    .post(body)
+                    .addHeader("Authorization", "Bearer " + apiKey)
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+
+            long startTime = System.currentTimeMillis();
+            try (Response response = httpClient.newCall(request).execute()) {
+                log.info("多页视觉推理响应，耗时: {} 毫秒", System.currentTimeMillis() - startTime);
+                if (!response.isSuccessful()) {
+                    return new VisionResult(false, "", "", 0.0, "API调用失败，状态码：" + response.code());
+                }
+                return parseVisionResponse(response.body().string());
+            }
+        } catch (Exception e) {
+            log.error("多页视觉推理异常", e);
+            return new VisionResult(false, "", "", 0.0, "处理异常：" + e.getMessage());
+        }
+    }
+
+    /**
      * 解析视觉推理API响应
      */
     private VisionResult parseVisionResponse(String responseBody) {
@@ -329,9 +431,55 @@ public class VisionReasoningService {
                    - 如果无法确定位置，请根据题目相对顺序估算百分比，但不可省略bounds字段
                    - 保持数学公式、符号的准确性
                    - 选择题要包含所有选项
+                   - 图中可能是手写作答：请区分「印刷的题干」与「手写的解答/涂改」，
+                     content 只保留题干与选项，不要把手写答案混进题目内容
+                   - 手写字迹潦草时按上下文和公式合理推断，不要编造整段内容
                    - 如果图片模糊或无法识别，请在confidence中体现
                    - 每道题目的confidence应该在0.1-1.0之间
                 """;
+    }
+
+    /**
+     * 多页提示词：允许跨页合并同一道题
+     */
+    private String buildMultiPagePrompt(int pageCount) {
+        return """
+                这里是同一份材料的连续 %d 页图片，按给出的顺序就是第 1 页到第 %d 页。
+                请识别其中的所有题目，并注意跨页题目的合并。
+
+                1. 如果一道题的题干在上一页末尾、选项或后续小问在下一页开头，
+                   必须合并成同一道题，只输出一条记录，content 为拼接后的完整内容。
+                2. 判断依据：题号是否连续、句子是否被截断、选项 A/B/C/D 是否分布在两页。
+                3. 图中可能是手写作答：content 只保留印刷的题干与选项，
+                   不要把手写的解答、涂改、批注写进 content。
+                4. 每道题给出它出现的页码区间与位置。
+
+                严格按以下 JSON 输出，不要任何额外说明：
+                {
+                  "questions": [
+                    {
+                      "id": 1,
+                      "content": "题目完整内容（跨页已拼接）",
+                      "type": "题目类型",
+                      "subject": "学科分类",
+                      "confidence": 0.95,
+                      "pageIndex": 0,
+                      "crossPage": false,
+                      "pageSpans": [
+                        { "pageIndex": 0, "bounds": { "top": 0.8, "left": 0.05, "width": 0.9, "height": 0.18 } }
+                      ],
+                      "bounds": { "top": 0.8, "left": 0.05, "width": 0.9, "height": 0.18 }
+                    }
+                  ]
+                }
+
+                说明：
+                - pageIndex 从 0 开始，表示题目首次出现的页
+                - 跨页的题 crossPage 为 true，pageSpans 要包含它占用的每一页
+                - bounds 的 top/left/width/height 用 0-1 的小数表示相对位置，不可省略
+                - 题目按阅读顺序输出（先第 1 页，再第 2 页……）
+                - 保持数学公式与符号准确
+                """.formatted(pageCount, pageCount);
     }
 
     /**
@@ -361,6 +509,17 @@ public class VisionReasoningService {
                     String type = questionObj.has("type") ? questionObj.get("type").getAsString() : "未知";
                     String subject = questionObj.has("subject") ? questionObj.get("subject").getAsString() : "未分类";
                     double confidence = questionObj.has("confidence") ? questionObj.get("confidence").getAsDouble() : 0.8;
+                    int pageIndex = questionObj.has("pageIndex") ? questionObj.get("pageIndex").getAsInt() : 0;
+                    boolean crossPage = questionObj.has("crossPage") && questionObj.get("crossPage").getAsBoolean();
+                    List<Integer> pages = new ArrayList<>();
+                    if (questionObj.has("pageSpans") && questionObj.get("pageSpans").isJsonArray()) {
+                        for (var span : questionObj.getAsJsonArray("pageSpans")) {
+                            if (span.isJsonObject() && span.getAsJsonObject().has("pageIndex")) {
+                                pages.add(span.getAsJsonObject().get("pageIndex").getAsInt());
+                            }
+                        }
+                    }
+                    if (pages.isEmpty()) pages.add(pageIndex);
                     
                     VisionQuestionBounds bounds = null;
                     if (questionObj.has("bounds") && questionObj.get("bounds").isJsonObject()) {
@@ -373,7 +532,11 @@ public class VisionReasoningService {
                     }
                     
                     if (!content.trim().isEmpty()) {
-                        questions.add(new VisionQuestion(id, content.trim(), type, subject, confidence, bounds));
+                        VisionQuestion vq = new VisionQuestion(id, content.trim(), type, subject, confidence, bounds);
+                        vq.setPageIndex(pageIndex);
+                        vq.setCrossPage(crossPage || pages.size() > 1);
+                        vq.setPages(pages);
+                        questions.add(vq);
                     }
                 }
             }
@@ -478,6 +641,9 @@ public class VisionReasoningService {
         private final String subject;
         private final double confidence;
         private final VisionQuestionBounds bounds;
+        private int pageIndex = 0;
+        private boolean crossPage = false;
+        private List<Integer> pages = new ArrayList<>();
 
         public VisionQuestion(int id, String content, String type, String subject, double confidence, VisionQuestionBounds bounds) {
             this.id = id;
@@ -494,6 +660,12 @@ public class VisionReasoningService {
         public String getSubject() { return subject; }
         public double getConfidence() { return confidence; }
         public VisionQuestionBounds getBounds() { return bounds; }
+        public int getPageIndex() { return pageIndex; }
+        public void setPageIndex(int pageIndex) { this.pageIndex = pageIndex; }
+        public boolean isCrossPage() { return crossPage; }
+        public void setCrossPage(boolean crossPage) { this.crossPage = crossPage; }
+        public List<Integer> getPages() { return pages; }
+        public void setPages(List<Integer> pages) { this.pages = pages; }
     }
 
     /**

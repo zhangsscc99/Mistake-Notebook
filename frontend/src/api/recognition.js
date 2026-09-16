@@ -18,13 +18,39 @@ export const imageRecognitionAPI = {
    * @returns {Promise} 识别结果
    */
   async recognizeImages(images) {
-    const formData = new FormData()
-    
-    // 题目分割识别只支持单个文件，使用第一个图片
-    if (images && images.length > 0) {
-      formData.append('file', images[0].file)
+    const list = images || []
+
+    // 多张图：一次进多模态模型，跨页题目会被合并成一道
+    if (list.length > 1) {
+      const formData = new FormData()
+      list.forEach((img) => formData.append('files', img.file))
+      try {
+        const result = unwrap(await apiClient.post('/upload/question-segment-multi', formData))
+        return {
+          success: true,
+          data: result.data,
+          message: result.message || '识别成功'
+        }
+      } catch (error) {
+        console.error('多页识别失败，回退到逐页识别', error)
+        // 回退：逐页识别后合并
+        const merged = { questions: [], imageUrls: [], pageCount: list.length }
+        for (let i = 0; i < list.length; i++) {
+          const single = await this.recognizeImages([list[i]])
+          const payload = single.data || {}
+          if (payload.imageUrl) merged.imageUrls.push(payload.imageUrl)
+          if (!merged.imageUrl) merged.imageUrl = payload.imageUrl
+          ;(payload.questions || []).forEach((q) => merged.questions.push({ ...q, pageIndex: i, imageUrl: payload.imageUrl }))
+        }
+        return { success: true, data: merged, message: '识别成功' }
+      }
     }
-    
+
+    const formData = new FormData()
+    if (list.length > 0) {
+      formData.append('file', list[0].file)
+    }
+
     try {
       // 发送题目分割识别请求
       const result = unwrap(await apiClient.post('/upload/question-segment', formData))

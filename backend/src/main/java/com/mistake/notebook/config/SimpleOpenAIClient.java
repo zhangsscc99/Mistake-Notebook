@@ -24,9 +24,14 @@ public class SimpleOpenAIClient {
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .proxy(Proxy.NO_PROXY)
-            .connectTimeout(60, TimeUnit.SECONDS)
+            .dns(Ipv4Dns.INSTANCE)
+            // 连不上就快速失败换下一个地址，别把时间耗在握手上
+            .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(180, TimeUnit.SECONDS)
             .writeTimeout(60, TimeUnit.SECONDS)
+            // 复用连接，省掉每次请求的 TLS 握手
+            .connectionPool(new ConnectionPool(8, 5, TimeUnit.MINUTES))
+            .retryOnConnectionFailure(true)
             .build();
 
     /**

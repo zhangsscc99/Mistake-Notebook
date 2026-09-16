@@ -21,7 +21,8 @@ public class AuthController {
         Map<String, Object> data = userAccountService.register(
                 body.getOrDefault("username", ""),
                 body.getOrDefault("password", ""),
-                body.getOrDefault("nickName", "匿名用户")
+                body.getOrDefault("nickName", "匿名用户"),
+                body.getOrDefault("role", "STUDENT")
         );
         return ResponseEntity.ok(ApiResponse.success("账号已创建", data));
     }

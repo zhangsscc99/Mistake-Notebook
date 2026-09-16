@@ -24,6 +24,19 @@
         <span>昵称</span>
         <input v-model="nickName" maxlength="20" placeholder="匿名用户" />
       </label>
+      <div v-if="mode === 'register'" class="field">
+        <span>身份</span>
+        <div class="role-row">
+          <button class="role" :class="{ on: role === 'STUDENT' }" @click="role = 'STUDENT'">
+            学生
+            <i>整理错题、练习、看报告</i>
+          </button>
+          <button class="role" :class="{ on: role === 'TEACHER' }" @click="role = 'TEACHER'">
+            教师
+            <i>管理学生、布置批改作业</i>
+          </button>
+        </div>
+      </div>
 
       <button class="login-btn" :disabled="submitting" @click="submit">
         {{ submitting ? '正在进入…' : (mode === 'login' ? '进入错题本' : '创建并登录') }}
@@ -51,6 +64,7 @@ export default {
     const username = ref('')
     const password = ref('')
     const nickName = ref('匿名用户')
+    const role = ref('STUDENT')
     const submitting = ref(false)
 
     const submit = async () => {
@@ -61,12 +75,13 @@ export default {
         const res = await fn({
           username: username.value,
           password: password.value,
-          nickName: nickName.value
+          nickName: nickName.value,
+          role: role.value
         })
         if (!res.success) throw new Error(res.message || '失败')
         setSession(res.data.token, res.data)
         showToast({ type: 'success', message: res.message || '欢迎回来' })
-        router.replace('/homepage')
+        router.replace(res.data.role === 'TEACHER' ? '/teacher' : '/homepage')
       } catch (e) {
         showToast({ type: 'fail', message: e.response?.data?.message || e.message || '登录失败' })
       } finally {
@@ -74,7 +89,7 @@ export default {
       }
     }
 
-    return { mode, username, password, nickName, submitting, submit }
+    return { mode, username, password, nickName, role, submitting, submit }
   }
 }
 </script>
@@ -110,6 +125,17 @@ export default {
   width: 100%; height: 44px; border: none; border-radius: 12px;
   background: #f4f7fb; padding: 0 12px; font-size: 15px; color: #0b1633;
 }
+.role-row { display: flex; gap: 8px; }
+.role {
+  flex: 1; border: 1px solid rgba(11,22,51,0.08); background: #f4f7fb;
+  border-radius: 12px; padding: 10px 8px; font-size: 14px; font-weight: 700;
+  color: rgba(11,22,51,0.7); display: flex; flex-direction: column; gap: 4px;
+}
+.role i { font-style: normal; font-size: 11px; font-weight: 400; color: rgba(11,22,51,0.45); }
+.role.on {
+  background: linear-gradient(135deg, #2459ff, #52b7ff); color: #fff; border-color: transparent;
+}
+.role.on i { color: rgba(255,255,255,0.85); }
 .login-btn {
   margin-top: 8px; width: 100%; height: 46px; border: none; border-radius: 999px;
   color: #fff; font-weight: 700; font-size: 16px;

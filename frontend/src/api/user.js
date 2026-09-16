@@ -13,11 +13,23 @@ const userAPI = {
   updateProfile(payload) {
     return apiClient.post('/user/profile', payload).then((r) => r.data)
   },
+  changePassword(oldPassword, newPassword) {
+    return apiClient.post('/user/password', { oldPassword, newPassword }).then((r) => r.data)
+  },
   wallet() {
     return apiClient.get('/user/wallet').then((r) => r.data)
   },
   checkin() {
     return apiClient.post('/user/checkin').then((r) => r.data)
+  },
+  shareCheckin(content) {
+    return apiClient.post('/user/checkin/share', { content: content || '' }).then((r) => r.data)
+  },
+  checkinFeed() {
+    return apiClient.get('/user/checkin/feed').then((r) => r.data)
+  },
+  likeCheckin(postId) {
+    return apiClient.post('/user/checkin/like', { postId }).then((r) => r.data)
   },
   redeemVip() {
     return apiClient.post('/user/vip').then((r) => r.data)

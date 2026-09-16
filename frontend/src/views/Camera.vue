@@ -102,7 +102,7 @@
             @click="processImages"
             class="process-btn"
           >
-            {{ processing ? '正在识别中...' : `开始识别 (${selectedImages.length}张)` }}
+            {{ processing ? '正在识别中...' : (selectedImages.length > 1 ? `开始识别 (${selectedImages.length}张 · 自动合并跨页题)` : '开始识别') }}
           </van-button>
         </div>
       </div>
@@ -273,29 +273,36 @@ export default {
             file: await compressImage(img.file)
           }))
         )
-        const pages = []
-        for (const img of compressed) {
-          const results = await imageRecognitionAPI.recognizeImages([img])
-          const payload = results.data || {}
-          pages.push({
-            tempFilePath: img.url,
-            imageUrl: payload.imageUrl || img.url,
-            segments: payload.questions || []
-          })
-        }
-        const first = pages.find((p) => p.segments?.length) || pages[0]
-        if (!first?.segments?.length) {
+        // 多张图一次进多模态模型，跨页题目由服务端合并
+        const results = await imageRecognitionAPI.recognizeImages(compressed)
+        const payload = results.data || {}
+        const segments = payload.questions || []
+        if (!segments.length) {
           showToast('未识别到题目')
           return
         }
 
-        sessionStorage.setItem('recognitionDraft', JSON.stringify({
-          tempFilePath: first.tempFilePath,
-          imageUrl: first.imageUrl,
-          segments: first.segments,
-          pages,
-          pageIndex: pages.findIndex((p) => p === first)
+        const serverUrls = payload.imageUrls || (payload.imageUrl ? [payload.imageUrl] : [])
+        const pages = compressed.map((img, i) => ({
+          tempFilePath: img.url,
+          imageUrl: serverUrls[i] || payload.imageUrl || img.url,
+          segments: segments.filter((s) => (s.pageIndex || 0) === i)
         }))
+        const firstIndex = Math.max(0, pages.findIndex((p) => p.segments.length))
+
+        sessionStorage.setItem('recognitionDraft', JSON.stringify({
+          tempFilePath: pages[firstIndex].tempFilePath,
+          imageUrl: pages[firstIndex].imageUrl,
+          segments: pages[firstIndex].segments,
+          pages,
+          pageIndex: firstIndex,
+          crossPageCount: payload.crossPageCount || 0,
+          elapsedMs: payload.elapsedMs || 0
+        }))
+
+        if (payload.crossPageCount > 0) {
+          showToast(`已合并 ${payload.crossPageCount} 道跨页题目`)
+        }
 
         selectedImages.splice(0)
         await router.push('/question-selector')

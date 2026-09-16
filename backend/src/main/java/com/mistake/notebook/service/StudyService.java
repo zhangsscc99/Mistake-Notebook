@@ -7,6 +7,8 @@ import com.mistake.notebook.entity.MistakeReport;
 import com.mistake.notebook.entity.Question;
 import com.mistake.notebook.entity.QuestionMark;
 import com.mistake.notebook.entity.QuestionNote;
+import com.mistake.notebook.entity.QuestionExplanation;
+import com.mistake.notebook.repository.QuestionExplanationRepository;
 import com.mistake.notebook.repository.LearningReportRepository;
 import com.mistake.notebook.repository.MistakeReportRepository;
 import com.mistake.notebook.repository.QuestionMarkRepository;
@@ -33,6 +35,7 @@ public class StudyService {
     private final MistakeReportRepository mistakeReportRepository;
     private final QuestionMarkRepository questionMarkRepository;
     private final QuestionNoteRepository questionNoteRepository;
+    private final QuestionExplanationRepository questionExplanationRepository;
     private final AIAnswerService aiAnswerService;
     private final ObjectMapper objectMapper;
 
@@ -48,7 +51,7 @@ public class StudyService {
                     .append(trim(q.getContent(), 80)).append("\n");
         }
         String content = aiAnswerService.complete(
-                "你是学习规划老师。根据学生错题清单写一份个性化学习报告，用中文，分：总评、薄弱知识点、复习建议、下周计划。不要用 markdown 代码块。",
+                "你是学习规划老师。根据学生错题清单写一份个性化学习报告。严格按以下分节输出，每节以【标题】开头独占一行：【总评】【薄弱知识点】【复习建议】【下周计划】。用中文，不要 markdown 代码块，不要用 # 或 * 符号。",
                 "共 " + questions.size() + " 道错题：\n" + digest,
                 1800
         );
@@ -82,21 +85,115 @@ public class StudyService {
 
     @Transactional
     public MistakeReport generateMistakeReport(long userId, long questionId) {
-        Question q = questionRepository.findByIdAndUserIdAndIsDeletedFalse(questionId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("题目不存在"));
-        String content = aiAnswerService.complete(
-                "你是错因分析老师。针对这道错题写出：可能错因、关键知识点、订正步骤、同类提醒。用中文，不要代码块。",
-                "题目：" + q.getContent() + "\n答案：" + nullToEmpty(q.getAiAnswer()) + "\n解析：" + nullToEmpty(q.getAiAnalysis()),
-                1200
-        );
-        if (content == null || content.isBlank()) content = "建议对照解析逐步复查计算与概念，并再做一道同类题巩固。";
+        return generateMistakeReport(userId, List.of(questionId));
+    }
+
+    /**
+     * 错因深度分析：支持多道错题合成一份报告。
+     * 输出用「【标题】正文」分节，前端按节渲染。
+     */
+    @Transactional
+    public MistakeReport generateMistakeReport(long userId, List<Long> questionIds) {
+        if (questionIds == null || questionIds.size() < 2) {
+            throw new IllegalArgumentException("错因深度分析至少需要选择 2 道错题");
+        }
+        List<Question> questions = new ArrayList<>();
+        for (Long id : questionIds) {
+            questionRepository.findByIdAndUserIdAndIsDeletedFalse(id, userId).ifPresent(questions::add);
+        }
+        if (questions.size() < 2) {
+            throw new IllegalArgumentException("错因深度分析至少需要 2 道有效错题");
+        }
+        StringBuilder src = new StringBuilder();
+        for (int i = 0; i < questions.size(); i++) {
+            Question q = questions.get(i);
+            src.append("第").append(i + 1).append("题（").append(nullToEmpty(q.getCategory())).append("）：")
+                    .append(trim(q.getContent(), 400)).append("\n答案：").append(trim(nullToEmpty(q.getAiAnswer()), 200))
+                    .append("\n解析：").append(trim(nullToEmpty(q.getAiAnalysis()), 400)).append("\n\n");
+        }
+        String system = "你是错因分析老师。学生给你多道错题，请综合分析，找出共性错因与薄弱知识点。" +
+                "严格按以下分节输出，每节以【标题】开头独占一行：【共性错因】【薄弱知识点】【逐题点评】【订正步骤】【同类提醒】【下一步建议】。" +
+                "用中文，不要 markdown 代码块，不要用 # 或 * 符号。";
+        String content = aiAnswerService.complete(system, "共 " + questions.size() + " 道错题：\n" + src, 2200);
+        if (content == null || content.isBlank()) {
+            content = "【订正步骤】建议对照解析逐步复查计算与概念，并再做一道同类题巩固。";
+        }
         MistakeReport report = new MistakeReport();
         report.setUserId(userId);
-        report.setQuestionId(questionId);
-        report.setTitle(trim(q.getContent(), 24));
+        report.setQuestionId(questions.get(0).getId());
+        report.setQuestionIds(questions.stream().map(q -> String.valueOf(q.getId())).reduce((a, b) -> a + "," + b).orElse(""));
+        report.setQuestionCount(questions.size());
+        report.setTitle(questions.size() + " 道错题深度分析 · " + trim(questions.get(0).getContent(), 14));
         report.setContent(content);
         report.setCreatedAt(LocalDateTime.now());
         return mistakeReportRepository.save(report);
+    }
+
+    /**
+     * 错题讲解：针对单道题，像老师一样一步步讲。与通用对话助手区分，结果缓存。
+     */
+    @Transactional
+    public QuestionExplanation explainQuestion(long userId, long questionId, boolean refresh) {
+        Question q = questionRepository.findByIdAndUserIdAndIsDeletedFalse(questionId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("题目不存在"));
+        QuestionExplanation existing = questionExplanationRepository.findByUserIdAndQuestionId(userId, questionId).orElse(null);
+        if (existing != null && !refresh && existing.getContent() != null && !existing.getContent().isBlank()) {
+            return existing;
+        }
+        String content = aiAnswerService.complete(
+                "你是一位耐心的学科老师，给学生逐步讲解一道错题。严格按以下分节输出，每节以【标题】开头独占一行：" +
+                "【题目考点】【解题思路】【分步讲解】【易错点】【一句话总结】。" +
+                "分步讲解要写清每一步为什么这么做。用中文，不要 markdown 代码块，不要用 # 或 * 符号。",
+                "题目：" + q.getContent() + "\n参考答案：" + nullToEmpty(q.getAiAnswer()) + "\n参考解析：" + nullToEmpty(q.getAiAnalysis()),
+                1600
+        );
+        boolean aiFailed = content == null || content.isBlank();
+        if (aiFailed) {
+            // 模型没返回就不要把占位内容写进缓存，否则用户永远看到这一段
+            QuestionExplanation fallback = new QuestionExplanation();
+            fallback.setUserId(userId);
+            fallback.setQuestionId(questionId);
+            fallback.setContent("【解题思路】" + nullToEmpty(q.getAiAnalysis())
+                    + "\n【提示】讲解服务暂时没响应，点右上角「重新讲」再试一次。");
+            fallback.setCreatedAt(LocalDateTime.now());
+            return fallback;
+        }
+        QuestionExplanation exp = existing != null ? existing : new QuestionExplanation();
+        exp.setUserId(userId);
+        exp.setQuestionId(questionId);
+        exp.setContent(content);
+        if (exp.getCreatedAt() == null) exp.setCreatedAt(LocalDateTime.now());
+        return questionExplanationRepository.save(exp);
+    }
+
+    /**
+     * 练习模式：取某分类（或全部）的题目，附带掌握标记
+     */
+    public List<Map<String, Object>> practiceQuestions(long userId, Long categoryId, boolean onlyUnmastered) {
+        List<Question> list = categoryId == null
+                ? questionRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                : questionRepository.findByUserIdAndCategoryIdAndIsDeletedFalseOrderByCreatedAtDesc(userId, categoryId);
+        List<Long> ids = list.stream().map(Question::getId).toList();
+        Map<Long, QuestionMark> marks = new HashMap<>();
+        for (QuestionMark m : listMarks(userId, ids)) marks.put(m.getQuestionId(), m);
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Question q : list) {
+            QuestionMark m = marks.get(q.getId());
+            boolean mastered = m != null && Boolean.TRUE.equals(m.getMastered());
+            if (onlyUnmastered && mastered) continue;
+            Map<String, Object> row = new HashMap<>();
+            row.put("id", q.getId());
+            row.put("content", q.getContent());
+            row.put("answer", nullToEmpty(q.getAiAnswer()));
+            row.put("analysis", nullToEmpty(q.getAiAnalysis()));
+            row.put("category", q.getCategory());
+            row.put("difficulty", q.getDifficulty() == null ? "medium" : q.getDifficulty().name().toLowerCase());
+            row.put("imageUrl", q.getImageUrl());
+            row.put("mastered", mastered);
+            row.put("favorite", m != null && Boolean.TRUE.equals(m.getFavorite()));
+            out.add(row);
+        }
+        return out;
     }
 
     public List<MistakeReport> listMistakeReports(long userId) {
@@ -114,8 +211,8 @@ public class StudyService {
     }
 
     public List<Map<String, Object>> generateVariants(long userId, List<Long> questionIds) {
-        if (questionIds == null || questionIds.isEmpty()) {
-            throw new IllegalArgumentException("请先选择题目");
+        if (questionIds == null || questionIds.size() < 2) {
+            throw new IllegalArgumentException("变式题生成至少需要选择 2 道错题");
         }
         StringBuilder src = new StringBuilder();
         String category = "数学";
@@ -127,8 +224,8 @@ public class StudyService {
             category = q.getCategory() == null ? category : q.getCategory();
             src.append(q.getContent()).append("\n\n");
         }
-        if (found == 0) {
-            throw new IllegalArgumentException("题目不存在");
+        if (found < 2) {
+            throw new IllegalArgumentException("变式题生成至少需要 2 道有效错题");
         }
         String raw = aiAnswerService.complete(
                 "根据原题出 3 道同类变式题。只输出 JSON，不要 Markdown。格式：{\"variants\":[{\"content\":\"\",\"answer\":\"\",\"analysis\":\"\",\"difficulty\":\"MEDIUM\",\"knowledgePoint\":\"\"}]}",

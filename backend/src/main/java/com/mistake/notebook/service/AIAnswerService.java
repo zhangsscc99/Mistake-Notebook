@@ -156,29 +156,33 @@ public class AIAnswerService {
     }
 
     public String complete(String systemPrompt, String userPrompt, int maxTokens) {
-        try {
-            Map<String, Object> requestData = new HashMap<>();
-            requestData.put("model", aiConfig.getModel());
-            requestData.put("temperature", 0.4);
-            requestData.put("max_tokens", maxTokens);
-            requestData.put("stream", false);
-            requestData.put("messages", List.of(
-                    Map.of("role", "system", "content", systemPrompt),
-                    Map.of("role", "user", "content", userPrompt)
-            ));
+        Map<String, Object> requestData = new HashMap<>();
+        requestData.put("model", aiConfig.getModel());
+        requestData.put("temperature", 0.4);
+        requestData.put("max_tokens", maxTokens);
+        requestData.put("stream", false);
+        requestData.put("messages", List.of(
+                Map.of("role", "system", "content", systemPrompt),
+                Map.of("role", "user", "content", userPrompt)
+        ));
+
+        // 线路偶发连不上，重试一次比直接失败划算（一次报告生成本来就要十几秒）
+        for (int attempt = 1; attempt <= 2; attempt++) {
             try (Response response = openAIClient.createChatCompletion(requestData)) {
                 String responseBody = response.body() != null ? response.body().string() : "";
                 if (!response.isSuccessful()) {
-                    log.error("AI complete 失败 {}", response.code());
-                    return "";
+                    log.error("AI complete 失败，状态码 {}（第 {} 次）", response.code(), attempt);
+                    continue;
                 }
                 JsonNode root = objectMapper.readTree(responseBody);
-                return root.path("choices").path(0).path("message").path("content").asText("");
+                String content = root.path("choices").path(0).path("message").path("content").asText("");
+                if (!content.isBlank()) return content;
+                log.warn("AI complete 返回空内容（第 {} 次）", attempt);
+            } catch (Exception e) {
+                log.error("AI complete 异常（第 {} 次）：{}", attempt, e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("AI complete 异常", e);
-            return "";
         }
+        return "";
     }
 
     @Data

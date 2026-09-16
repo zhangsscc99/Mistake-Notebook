@@ -20,6 +20,18 @@ export async function fetchPendingQuestions() {
   return []
 }
 
+/**
+ * 解析中和解析失败是两种状态，不能混在一个「解析中」里给用户看。
+ * 失败的题不会自己好转，得让用户去重试或删除。
+ */
+export function splitPending(list) {
+  const all = list || []
+  return {
+    analyzing: all.filter((q) => q.isAnalyzing),
+    failed: all.filter((q) => q.isFailed)
+  }
+}
+
 export function startPendingPoll(onUpdate, intervalMs = 5000) {
   let timer = null
   let stopped = false

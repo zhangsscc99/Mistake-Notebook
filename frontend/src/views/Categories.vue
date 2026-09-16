@@ -45,11 +45,11 @@
     </div>
 
     <!-- 解析中提示卡片（对齐小程序） -->
-    <div v-if="pendingCount > 0" class="pending-card" @click="goToAnalyzing">
+    <div v-if="analyzingCount > 0" class="pending-card" @click="goToAnalyzing">
       <div class="pending-card-header">
         <div class="pending-card-left">
           <span class="pending-card-title">解析中</span>
-          <span class="pending-card-count">· {{ pendingCount }} 道题</span>
+          <span class="pending-card-count">· {{ analyzingCount }} 道题</span>
         </div>
         <span class="pending-card-arrow">›</span>
       </div>
@@ -57,6 +57,18 @@
         <div class="pending-indeterminate-fill"></div>
       </div>
       <span class="pending-card-hint">点击查看 AI 解析进度</span>
+    </div>
+
+    <!-- 解析失败：不会自己恢复，要用户去重试或删除 -->
+    <div v-if="failedCount > 0" class="failed-card" @click="goToAnalyzing">
+      <div class="pending-card-header">
+        <div class="pending-card-left">
+          <span class="failed-card-title">解析失败</span>
+          <span class="pending-card-count">· {{ failedCount }} 道题</span>
+        </div>
+        <span class="pending-card-arrow">›</span>
+      </div>
+      <span class="pending-card-hint">点击查看并重试或删除</span>
     </div>
 
     <!-- 分类列表 -->
@@ -133,7 +145,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import categoryAPI from '../api/category'
-import { startPendingPoll, fetchPendingQuestions } from '../utils/pendingQuestions'
+import { startPendingPoll, fetchPendingQuestions, splitPending } from '../utils/pendingQuestions'
 import { categoryMark } from '../utils/categoryMark'
 import AppTabBar from '../components/AppTabBar.vue'
 
@@ -161,7 +173,8 @@ export default {
       totalCategories: 0,
       todayAdded: 0
     })
-    const pendingCount = ref(0)
+    const analyzingCount = ref(0)
+    const failedCount = ref(0)
     let stopPendingPoll = null
 
     // 计算属性
@@ -306,10 +319,12 @@ export default {
 
     const loadPending = async () => {
       try {
-        const list = await fetchPendingQuestions()
-        pendingCount.value = list.length
+        const { analyzing, failed } = splitPending(await fetchPendingQuestions())
+        analyzingCount.value = analyzing.length
+        failedCount.value = failed.length
       } catch {
-        pendingCount.value = 0
+        analyzingCount.value = 0
+        failedCount.value = 0
       }
     }
 
@@ -319,10 +334,12 @@ export default {
       loadStats()
       loadPending()
       stopPendingPoll = startPendingPoll((list) => {
-        const prev = pendingCount.value
-        pendingCount.value = list.length
-        // 解析任务完成（待处理数归零）时，自动刷新分类与统计
-        if (prev > 0 && list.length === 0) {
+        const prev = analyzingCount.value
+        const { analyzing, failed } = splitPending(list)
+        analyzingCount.value = analyzing.length
+        failedCount.value = failed.length
+        // 解析跑完（解析中归零）时，自动刷新分类与统计
+        if (prev > 0 && analyzing.length === 0) {
           loadCategories()
           loadStats()
         }
@@ -342,7 +359,8 @@ export default {
       totalQuestions,
       totalCategories,
       todayAdded,
-      pendingCount,
+      analyzingCount,
+      failedCount,
       isPaperBuilderMode,
       exitPaperBuilderMode,
       onSearch,
@@ -720,6 +738,22 @@ export default {
   border-radius: 16px;
   box-shadow: 0 12px 32px rgba(36, 89, 255, 0.12);
   cursor: pointer;
+}
+
+.failed-card {
+  margin: 0 16px 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 241, 242, 0.9));
+  border: 1px solid rgba(225, 29, 72, 0.22);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(225, 29, 72, 0.10);
+  cursor: pointer;
+}
+
+.failed-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #e11d48;
 }
 
 .pending-card-header {

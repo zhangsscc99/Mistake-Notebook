@@ -42,6 +42,51 @@ public class SchemaFixer implements CommandLineRunner {
         }
         ensureColumn("users", "chat_day_key", "`chat_day_key` VARCHAR(16) DEFAULT ''");
         ensureColumn("users", "chat_used_count", "`chat_used_count` INT NOT NULL DEFAULT 0");
+        ensureColumn("users", "role", "`role` VARCHAR(16) DEFAULT 'STUDENT'");
+        ensureColumn("users", "invite_code", "`invite_code` VARCHAR(16) DEFAULT ''");
+        ensureColumn("users", "school", "`school` VARCHAR(60) DEFAULT ''");
+        ensureColumn("users", "class_name", "`class_name` VARCHAR(60) DEFAULT ''");
+        ensureColumn("mistake_reports", "question_ids", "`question_ids` TEXT");
+        ensureColumn("mistake_reports", "question_count", "`question_count` INT DEFAULT 1");
+        ensureTable("checkin_posts", """
+                CREATE TABLE IF NOT EXISTS `checkin_posts` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `user_id` BIGINT NOT NULL,
+                  `day_key` VARCHAR(16) NOT NULL,
+                  `content` VARCHAR(160) DEFAULT '',
+                  `streak` INT NOT NULL DEFAULT 0,
+                  `total_days` INT NOT NULL DEFAULT 0,
+                  `question_count` INT NOT NULL DEFAULT 0,
+                  `like_count` INT NOT NULL DEFAULT 0,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_checkin_posts_created` (`created_at`),
+                  UNIQUE KEY `uk_checkin_posts_user_day` (`user_id`, `day_key`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("checkin_post_likes", """
+                CREATE TABLE IF NOT EXISTS `checkin_post_likes` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `post_id` BIGINT NOT NULL,
+                  `user_id` BIGINT NOT NULL,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_checkin_like_post_user` (`post_id`, `user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+    }
+
+    private void ensureTable(String table, String ddl) {
+        try {
+            Integer n = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
+                    Integer.class, table);
+            if (n != null && n == 0) {
+                jdbcTemplate.execute(ddl);
+                log.info("已补齐表 {}", table);
+            }
+        } catch (Exception e) {
+            log.warn("检查表 {} 失败（库未就绪时可忽略）：{}", table, e.getMessage());
+        }
     }
 
     private void ensureColumn(String table, String column, String definition) {

@@ -65,7 +65,10 @@
             }"
             @click="toggleQuestion(index)"
           >
-            <div class="question-number">{{ index + 1 }}</div>
+            <div class="question-number">
+              {{ index + 1 }}
+              <span v-if="question.crossPage" class="cross-flag">跨页</span>
+            </div>
             <div class="select-indicator">
               <van-icon 
                 :name="question.selected ? 'checked' : 'plus'" 
@@ -252,6 +255,7 @@ export default {
           text: segment.text || segment.content || '',
           type: segment.type || '',
           confidence: conf,
+          crossPage: !!segment.crossPage,
           difficulty: getDifficultyByConfidence(conf)
         }
       }).filter(q => q.text)
@@ -566,6 +570,15 @@ export default {
   gap: 8px;
   padding: 0 16px 8px;
   overflow-x: auto;
+}
+.cross-flag {
+  margin-left: 4px;
+  font-size: 10px;
+  background: #fff;
+  color: #2459ff;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 700;
 }
 .page-tabs button {
   border: none;

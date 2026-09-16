@@ -5,6 +5,7 @@ import com.mistake.notebook.entity.LearningReport;
 import com.mistake.notebook.entity.MistakeReport;
 import com.mistake.notebook.entity.QuestionMark;
 import com.mistake.notebook.entity.QuestionNote;
+import com.mistake.notebook.entity.QuestionExplanation;
 import com.mistake.notebook.security.AuthContext;
 import com.mistake.notebook.service.StudyService;
 import com.mistake.notebook.service.UserAccountService;
@@ -53,9 +54,29 @@ public class StudyController {
 
     @PostMapping("/mistake-reports")
     public ResponseEntity<ApiResponse<MistakeReport>> generateMistake(@RequestBody Map<String, Object> body) {
-        long questionId = Long.parseLong(String.valueOf(body.get("questionId")));
+        List<Long> ids = new java.util.ArrayList<>();
+        if (body.get("questionIds") instanceof List<?> raw) {
+            for (Object v : raw) ids.add(Long.parseLong(String.valueOf(v)));
+        }
+        if (ids.isEmpty() && body.get("questionId") != null) {
+            ids.add(Long.parseLong(String.valueOf(body.get("questionId"))));
+        }
         return ResponseEntity.ok(ApiResponse.success("错因报告已生成",
-                studyService.generateMistakeReport(AuthContext.requireUserId(), questionId)));
+                studyService.generateMistakeReport(AuthContext.requireUserId(), ids)));
+    }
+
+    @PostMapping("/explain")
+    public ResponseEntity<ApiResponse<QuestionExplanation>> explain(@RequestBody Map<String, Object> body) {
+        long questionId = Long.parseLong(String.valueOf(body.get("questionId")));
+        boolean refresh = Boolean.TRUE.equals(body.get("refresh"));
+        return ResponseEntity.ok(ApiResponse.success(studyService.explainQuestion(AuthContext.requireUserId(), questionId, refresh)));
+    }
+
+    @GetMapping("/practice")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> practice(
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(defaultValue = "false") boolean onlyUnmastered) {
+        return ResponseEntity.ok(ApiResponse.success(studyService.practiceQuestions(AuthContext.requireUserId(), categoryId, onlyUnmastered)));
     }
 
     @GetMapping("/mistake-reports")

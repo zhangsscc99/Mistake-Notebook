@@ -255,6 +255,74 @@ public class UploadController {
     }
 
     /**
+     * 多页题目分割：多张图一次进多模态模型，支持跨页题目合并
+     */
+    @PostMapping("/question-segment-multi")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> performMultiPageSegmentation(
+            @RequestParam("files") List<MultipartFile> files) {
+        try {
+            if (files == null || files.isEmpty()) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("请上传图片"));
+            }
+            if (files.size() > 10) {
+                return ResponseEntity.badRequest().body(ApiResponse.error("一次最多 10 张"));
+            }
+            log.info("接收到多页题目分割请求，页数：{}", files.size());
+
+            List<String> imageUrls = new ArrayList<>();
+            for (MultipartFile f : files) {
+                String url = saveFile(f);
+                if (url == null) {
+                    return ResponseEntity.badRequest().body(ApiResponse.error("文件保存失败"));
+                }
+                imageUrls.add(url);
+            }
+
+            long started = System.currentTimeMillis();
+            VisionReasoningService.VisionQuestionResult segmentResult =
+                    visionReasoningService.recognizeAndSegmentQuestions(files);
+            if (!segmentResult.isSuccess()) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("题目分割识别失败：" + segmentResult.getError()));
+            }
+
+            List<Map<String, Object>> converted = convertVisionQuestions(segmentResult.getQuestions());
+            // 给每道题标上页码与所属页图片
+            List<VisionReasoningService.VisionQuestion> raw = segmentResult.getQuestions();
+            for (int i = 0; i < converted.size() && i < raw.size(); i++) {
+                VisionReasoningService.VisionQuestion vq = raw.get(i);
+                int page = Math.max(0, Math.min(vq.getPageIndex(), imageUrls.size() - 1));
+                Map<String, Object> seg = converted.get(i);
+                seg.put("pageIndex", page);
+                seg.put("crossPage", vq.isCrossPage());
+                seg.put("pages", vq.getPages());
+                seg.put("imageUrl", imageUrls.get(page));
+            }
+
+            long crossPageCount = converted.stream()
+                    .filter(s -> Boolean.TRUE.equals(s.get("crossPage"))).count();
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("success", true);
+            result.put("imageUrls", imageUrls);
+            result.put("imageUrl", imageUrls.get(0));
+            result.put("pageCount", files.size());
+            result.put("questionsCount", converted.size());
+            result.put("crossPageCount", crossPageCount);
+            result.put("elapsedMs", System.currentTimeMillis() - started);
+            result.put("questions", converted);
+
+            log.info("多页题目分割成功：{} 页 / {} 题 / 跨页 {} 题 / 耗时 {}ms",
+                    files.size(), converted.size(), crossPageCount, System.currentTimeMillis() - started);
+            return ResponseEntity.ok(ApiResponse.success("题目分割识别成功", result));
+        } catch (Exception e) {
+            log.error("多页题目分割失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("识别失败：" + e.getMessage()));
+        }
+    }
+
+    /**
      * 批量保存选中的题目
      */
     @PostMapping("/save-questions")

@@ -16,5 +16,7 @@ public interface SavedPaperRepository extends JpaRepository<SavedPaper, Long> {
 
     long countByUserIdAndIsDeletedFalse(Long userId);
 
+    long countByUserIdAndIsDeletedFalseAndCreatedAtAfter(Long userId, java.time.LocalDateTime after);
+
     void deleteByUserId(Long userId);
 }

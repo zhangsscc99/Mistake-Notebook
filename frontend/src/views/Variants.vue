@@ -2,8 +2,9 @@
   <div class="page">
     <van-nav-bar title="变式题" left-arrow @click-left="$router.back()" />
     <div class="card">
-      <p>根据已选错题生成同类变式，确认后会存进你的题库。</p>
-      <button class="primary" :disabled="loading" @click="generate">{{ loading ? '生成中…' : '生成变式' }}</button>
+      <p>根据已选的 {{ ids.length }} 道错题生成同类变式。至少需要 2 道原题，确认后会存进你的题库。</p>
+      <p v-if="ids.length < 2" class="warn">请返回分类页点「编辑」，勾选至少 2 道错题后再生成。</p>
+      <button class="primary" :disabled="loading || ids.length < 2" @click="generate">{{ loading ? '生成中…' : '生成变式' }}</button>
     </div>
     <div v-for="(v, i) in variants" :key="i" class="item">
       <p>{{ v.content }}</p>
@@ -28,6 +29,10 @@ export default {
     const saving = ref(false)
     const ids = String(route.query.ids || '').split(',').filter(Boolean)
     const generate = async () => {
+      if (ids.length < 2) {
+        showToast('变式题生成至少需要 2 道错题')
+        return
+      }
       loading.value = true
       try {
         const res = await studyAPI.generateVariants(ids)
@@ -61,7 +66,7 @@ export default {
         router.back()
       } finally { saving.value = false }
     }
-    return { variants, loading, saving, generate, save }
+    return { ids, variants, loading, saving, generate, save }
   }
 }
 </script>
@@ -69,5 +74,7 @@ export default {
 .page { min-height: 100vh; background: #eef3fb; padding-bottom: 40px; }
 .card, .item { background: #fff; margin: 12px 16px; padding: 14px; border-radius: 16px; }
 .primary { width: calc(100% - 32px); margin: 0 16px; height: 42px; border: none; border-radius: 999px; color: #fff; font-weight: 700; background: linear-gradient(135deg,#2459ff,#52b7ff); }
+.primary:disabled { opacity: 0.45; }
 .save { margin-top: 8px; }
+.warn { color: #e11d48; font-size: 13px; }
 </style>

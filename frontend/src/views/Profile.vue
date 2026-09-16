@@ -25,9 +25,17 @@
         <div><b>{{ wallet.checkinTotalDays || 0 }}</b><span>累计</span></div>
         <div><b>{{ wallet.coins || 0 }}</b><span>金币</span></div>
       </div>
+      <div class="bonus-row">
+        <span class="bonus">基础 +{{ wallet.todayBonus?.base || 10 }}</span>
+        <span class="bonus" :class="{ on: wallet.todayBonus?.chat }">对话 +{{ wallet.todayBonus?.chat || 0 }}</span>
+        <span class="bonus" :class="{ on: wallet.todayBonus?.paper }">组卷 +{{ wallet.todayBonus?.paper || 0 }}</span>
+        <span class="bonus total">今日可得 {{ wallet.todayBonus?.total || 10 }}</span>
+      </div>
       <button class="primary" :disabled="wallet.todayChecked || checking" @click="doCheckin">
         {{ wallet.todayChecked ? '今日已打卡' : '今日打卡' }}
       </button>
+      <button class="ghost-wide" @click="shareCheckinCard">生成打卡分享图</button>
+      <button class="ghost-wide" @click="$router.push('/plaza')">打卡广场（网页社区）</button>
       <div class="vip-row">
         <div>
           <div class="vip-title">{{ wallet.isVip ? '对话会员' : '对话会员 · 未开通' }}</div>
@@ -58,21 +66,43 @@
           <option>小学</option><option>初中</option><option>高中</option><option>大学</option>
         </select>
       </label>
+      <label class="field">学校<input v-model="form.school" maxlength="60" placeholder="选填" /></label>
+      <label class="field">班级<input v-model="form.className" maxlength="60" placeholder="选填" /></label>
       <label class="check"><input type="checkbox" v-model="form.leaderboardPublic" /> 在排行榜公示我的学习数据</label>
       <button class="primary" @click="saveProfile">保存资料</button>
     </section>
 
+    <section class="card">
+      <h3>修改密码</h3>
+      <label class="field">原密码<input v-model="pwd.oldPassword" type="password" maxlength="40" /></label>
+      <label class="field">新密码<input v-model="pwd.newPassword" type="password" maxlength="40" placeholder="至少 4 位" /></label>
+      <button class="primary" :disabled="changingPwd" @click="changePassword">
+        {{ changingPwd ? '修改中…' : '修改密码' }}
+      </button>
+    </section>
+
     <section class="card list">
-      <button @click="$router.push('/learning-report')">查询你的个性化学习报告</button>
-      <button @click="$router.push('/report-list')">错因分析历史</button>
-      <button @click="$router.push('/variant-list')">已保存变式题</button>
+      <button v-if="isTeacherAccount" @click="$router.push('/teacher')">教师工作台</button>
+      <button v-if="isTeacherAccount" @click="$router.push('/teacher/students')">学员管理</button>
+      <template v-if="!isTeacherAccount">
+        <button @click="$router.push('/classroom')">我的老师 / 班级</button>
+        <button @click="$router.push('/homework')">我的作业</button>
+        <button @click="$router.push('/class-notebooks')">班级错题本</button>
+        <button @click="$router.push('/parent-reports')">家长端报告</button>
+        <button @click="$router.push('/practice')">开始练习</button>
+        <button @click="$router.push('/learning-report')">查询你的个性化学习报告</button>
+        <button @click="$router.push('/report-list')">错因分析历史</button>
+        <button @click="$router.push('/variant-list')">已保存变式题</button>
+      </template>
+      <button @click="$router.push('/plaza')">打卡广场</button>
       <button @click="$router.push('/leaderboard')">学习排行榜</button>
       <button @click="$router.push('/settings')">设置</button>
       <button class="danger" @click="logout">退出登录</button>
       <button class="danger" @click="deleteAccount">注销账号</button>
     </section>
 
-    <AppTabBar />
+    <AppTabBar v-if="!isTeacherAccount" />
+    <TeacherTabBar v-else />
   </div>
 </template>
 
@@ -81,28 +111,45 @@ import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast, showConfirmDialog, showDialog } from 'vant'
 import AppTabBar from '../components/AppTabBar.vue'
+import TeacherTabBar from '../components/TeacherTabBar.vue'
 import userAPI from '../api/user'
 import { uploadClient, API_BASE_URL } from '../api/config'
-import { setSession, clearSession, getProfile } from '../utils/auth'
+import { setSession, clearSession, getProfile, isTeacher } from '../utils/auth'
 import { buildAchievements, EMPTY_ACH } from '../utils/achievements'
+import { shareCheckin } from '../utils/shareCard'
 
 export default {
   name: 'ProfilePage',
-  components: { AppTabBar },
+  components: { AppTabBar, TeacherTabBar },
   setup() {
     const router = useRouter()
+    const isTeacherAccount = isTeacher()
     const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23d9e4f5"/><circle cx="40" cy="30" r="14" fill="%2390a4c4"/><ellipse cx="40" cy="64" rx="22" ry="16" fill="%2390a4c4"/></svg>'
     const profile = reactive(getProfile() || { nickName: '匿名用户' })
-    const form = reactive({ nickName: profile.nickName || '匿名用户', stage: profile.stage || '', leaderboardPublic: !!profile.leaderboardPublic })
+    const form = reactive({
+      nickName: profile.nickName || '匿名用户',
+      stage: profile.stage || '',
+      school: profile.school || '',
+      className: profile.className || '',
+      leaderboardPublic: !!profile.leaderboardPublic
+    })
     const wallet = reactive({})
     const stats = reactive({})
     const ach = ref(EMPTY_ACH)
     const checking = ref(false)
+    const pwd = reactive({ oldPassword: '', newPassword: '' })
+    const changingPwd = ref(false)
 
     const load = async () => {
       const [me, w, s] = await Promise.all([userAPI.me(), userAPI.wallet(), userAPI.stats()])
       Object.assign(profile, me.data || {})
-      Object.assign(form, { nickName: profile.nickName, stage: profile.stage || '', leaderboardPublic: !!profile.leaderboardPublic })
+      Object.assign(form, {
+        nickName: profile.nickName,
+        stage: profile.stage || '',
+        school: profile.school || '',
+        className: profile.className || '',
+        leaderboardPublic: !!profile.leaderboardPublic
+      })
       Object.assign(wallet, w.data || {})
       Object.assign(stats, s.data || {})
       ach.value = buildAchievements({ ...stats, ...wallet })
@@ -115,7 +162,18 @@ export default {
         const res = await userAPI.checkin()
         Object.assign(wallet, res.data || {})
         await load()
-        showToast({ type: 'success', message: '打卡成功' })
+        const gained = res.data?.rewarded
+        showToast({ type: 'success', message: gained ? `打卡成功 +${gained} 金币` : '打卡成功' })
+        if (res.data?.canSharePlaza !== false) {
+          try {
+            await showConfirmDialog({
+              title: '分享到打卡广场？',
+              message: '网页端可以把今日打卡发到广场，同学能看见并点赞。小程序审核不便做的社区功能，这里可以用。',
+              confirmButtonText: '去广场发布'
+            })
+            router.push('/plaza')
+          } catch { /* 取消 */ }
+        }
       } catch (e) {
         showToast({ type: 'fail', message: e.response?.data?.message || '打卡失败' })
       } finally { checking.value = false }
@@ -155,6 +213,41 @@ export default {
       showToast({ type: 'success', message: '头像已更新' })
     }
 
+    const changePassword = async () => {
+      if (!pwd.oldPassword || !pwd.newPassword) {
+        showToast('请填写原密码和新密码')
+        return
+      }
+      changingPwd.value = true
+      try {
+        const res = await userAPI.changePassword(pwd.oldPassword, pwd.newPassword)
+        if (res.data?.token) setSession(res.data.token, profile)
+        pwd.oldPassword = ''
+        pwd.newPassword = ''
+        showToast({ type: 'success', message: '密码已修改' })
+      } catch (e) {
+        showToast({ type: 'fail', message: e.response?.data?.message || '修改失败' })
+      } finally {
+        changingPwd.value = false
+      }
+    }
+
+    const shareCheckinCard = async () => {
+      try {
+        const res = await shareCheckin({
+          nickName: profile.nickName,
+          streak: wallet.checkinStreak,
+          totalDays: wallet.checkinTotalDays,
+          questionCount: stats.totalQuestions,
+          coins: wallet.coins
+        }, window.location.origin + '/login')
+        if (res.mode === 'download') showToast({ type: 'success', message: '打卡图已保存，可发到群里' })
+      } catch (e) {
+        if (e?.name === 'AbortError') return
+        showToast({ type: 'fail', message: '生成分享图失败' })
+      }
+    }
+
     const showMedal = (m) => {
       showDialog({ title: m.name, message: m.unlocked ? m.desc + '\n\n已点亮' : m.desc + '\n\n未点亮：' + m.hint })
     }
@@ -181,7 +274,12 @@ export default {
     }
 
     onMounted(() => { load().catch(() => {}) })
-    return { profile, form, wallet, stats, ach, checking, defaultAvatar, doCheckin, doVip, saveProfile, onAvatar, showMedal, logout, deleteAccount }
+    return {
+      profile, form, wallet, stats, ach, checking, defaultAvatar, pwd, changingPwd,
+      isTeacherAccount,
+      doCheckin, doVip, saveProfile, onAvatar, showMedal, logout, deleteAccount,
+      changePassword, shareCheckinCard
+    }
   }
 }
 </script>
@@ -205,6 +303,11 @@ export default {
 .mini-row span { display: block; font-size: 12px; color: rgba(11,22,51,0.5); }
 .primary { width: 100%; height: 42px; border: none; border-radius: 999px; color: #fff; font-weight: 700; background: linear-gradient(135deg,#2459ff,#52b7ff); }
 .ghost { border: none; background: #eef3fb; color: #2459ff; border-radius: 999px; padding: 8px 12px; font-weight: 700; }
+.ghost-wide { width: 100%; margin-top: 8px; border: none; background: #eef3fb; color: #2459ff; border-radius: 999px; padding: 11px; font-weight: 700; }
+.bonus-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.bonus { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #f4f7fb; color: rgba(11,22,51,0.45); }
+.bonus.on { background: rgba(22,163,74,0.12); color: #16a34a; }
+.bonus.total { margin-left: auto; background: rgba(36,89,255,0.12); color: #2459ff; font-weight: 700; }
 .vip-row { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; gap: 8px; }
 .vip-title { font-weight: 700; }
 .vip-sub { font-size: 12px; color: rgba(11,22,51,0.5); }

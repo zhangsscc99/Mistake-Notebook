@@ -106,20 +106,36 @@ export function isProcessingQuestion(q) {
   return isPendingQuestion(q) && !isFailedQuestion(q)
 }
 
+// 后台解析正常只要几十秒。超过这个时间还挂着，基本是服务重启把任务丢了，
+// 再显示「解析中」就是在骗用户，按卡住处理，让他能重试或删除。
+const STALE_ANALYZING_MS = 10 * 60 * 1000
+
+export function isStaleAnalyzing(q) {
+  if (!q || isFailedQuestion(q)) return false
+  const created = q.createdAt ? new Date(q.createdAt).getTime() : NaN
+  if (Number.isNaN(created)) return false
+  return Date.now() - created > STALE_ANALYZING_MS
+}
+
 export function decoratePendingItem(item, index) {
   const failed = isFailedQuestion(item)
+  const stale = isStaleAnalyzing(item)
   const status = (item.aiStatus || '').toLowerCase()
   const processing = status === 'processing'
   const preview = formatLatex((item.content || '').replace(/\s+/g, ' ').trim())
   let statusText = '等待解析…'
   if (failed) statusText = '解析失败'
+  else if (stale) statusText = '解析卡住了'
   else if (processing) statusText = 'AI 解析中…'
+  // 卡住的题和失败的题一样需要用户处理，归到同一栏
+  const needsAction = failed || stale
   return {
     ...item,
     displayIndex: index + 1,
     preview: preview.length > 60 ? preview.slice(0, 60) + '…' : preview,
-    isAnalyzing: !failed,
-    isFailed: failed,
+    isAnalyzing: !needsAction,
+    isFailed: needsAction,
+    isStale: stale && !failed,
     statusText
   }
 }

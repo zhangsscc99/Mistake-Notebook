@@ -131,6 +131,9 @@
                 />
               </div>
               <div class="meta-right" v-else>
+                <button class="mark-btn text" :class="{ on: question.mastered }" @click.stop="toggleMastered(question)">
+                  {{ question.mastered ? '已掌握' : '掌握' }}
+                </button>
                 <button class="mark-btn" :class="{ on: question.favorite }" @click.stop="toggleFavorite(question)">{{ question.favorite ? '★' : '☆' }}</button>
                 <button class="mark-btn" :class="{ on: question.pinned }" @click.stop="togglePin(question)">📌</button>
               </div>
@@ -141,13 +144,14 @@
               type="primary"
               plain
               class="ai-toggle-btn"
-              @click.stop="openAIChat(question)"
+              @click.stop="openExplain(question)"
             >
-              AI答疑
+              错题讲解
             </van-button>
             <QuestionStudyTools
               :question="question"
               :edit-mode="editMode"
+              @explain="openExplain"
               @mistake="openMistake"
               @variants="openVariants"
               @note="openNote"
@@ -228,6 +232,9 @@
                 />
               </div>
               <div class="meta-right" v-else>
+                <button class="mark-btn text" :class="{ on: question.mastered }" @click.stop="toggleMastered(question)">
+                  {{ question.mastered ? '已掌握' : '掌握' }}
+                </button>
                 <button class="mark-btn" :class="{ on: question.favorite }" @click.stop="toggleFavorite(question)">{{ question.favorite ? '★' : '☆' }}</button>
                 <button class="mark-btn" :class="{ on: question.pinned }" @click.stop="togglePin(question)">📌</button>
               </div>
@@ -238,13 +245,14 @@
               type="primary"
               plain
               class="ai-toggle-btn"
-              @click.stop="openAIChat(question)"
+              @click.stop="openExplain(question)"
             >
-              AI答疑
+              错题讲解
             </van-button>
             <QuestionStudyTools
               :question="question"
               :edit-mode="editMode"
+              @explain="openExplain"
               @mistake="openMistake"
               @variants="openVariants"
               @note="openNote"
@@ -279,7 +287,7 @@
       </div>
       <div class="batch-buttons">
         <van-button size="small" type="primary" @click="savePaper">保存为试卷</van-button>
-        <van-button v-if="!isPaperSelectMode" size="small" @click="batchMistake">错因分析</van-button>
+        <van-button v-if="!isPaperSelectMode" size="small" @click="batchMistake">深度分析</van-button>
         <van-button v-if="!isPaperSelectMode" size="small" @click="batchVariants">变式题</van-button>
         <van-button size="small" type="danger" @click="batchDelete">删除</van-button>
       </div>
@@ -344,9 +352,10 @@
           </div>
         </div>
         <div class="detail-modal-footer">
-          <van-button type="primary" block @click="openAIChat(detailQuestion)">AI 答疑</van-button>
-          <van-button block class="ghost-btn" @click="openMistake(detailQuestion)">错因分析</van-button>
-          <van-button block class="ghost-btn" @click="openVariants(detailQuestion)">变式题</van-button>
+          <van-button type="primary" block @click="openExplain(detailQuestion)">错题讲解</van-button>
+          <van-button block class="ghost-btn" @click="openAIChat(detailQuestion)">问对话助手</van-button>
+          <van-button block class="ghost-btn" @click="needMultiHint('错因深度分析')">错因深度分析</van-button>
+          <van-button block class="ghost-btn" @click="needMultiHint('变式题')">变式题</van-button>
         </div>
       </div>
     </van-popup>
@@ -433,6 +442,8 @@ export default {
     const filterOptions = [
       { text: '全部', value: 'all' },
       { text: '收藏', value: 'favorite' },
+      { text: '未掌握', value: 'unmastered' },
+      { text: '已掌握', value: 'mastered' },
       { text: '简单', value: 'easy' },
       { text: '中等', value: 'medium' },
       { text: '困难', value: 'hard' }
@@ -461,6 +472,10 @@ export default {
       // 筛选
       if (filterBy.value === 'favorite') {
         filtered = filtered.filter(q => q.favorite)
+      } else if (filterBy.value === 'mastered') {
+        filtered = filtered.filter(q => q.mastered)
+      } else if (filterBy.value === 'unmastered') {
+        filtered = filtered.filter(q => !q.mastered)
       } else if (filterBy.value !== 'all') {
         filtered = filtered.filter(q => q.difficulty === filterBy.value)
       }
@@ -683,19 +698,18 @@ export default {
       })
     }
 
-    const openMistake = async (question) => {
-      try {
-        const res = await studyAPI.generateMistakeReport(question.id)
-        showDetailModal.value = false
-        router.push('/mistake-report/' + res.data.id)
-      } catch (e) {
-        showToast({ type: 'fail', message: e.response?.data?.message || '生成失败' })
-      }
+    const openMistake = async () => {
+      needMultiHint('错因深度分析')
     }
 
-    const openVariants = (question) => {
+    const openVariants = () => {
+      needMultiHint('变式题')
+    }
+
+    const needMultiHint = (name) => {
       showDetailModal.value = false
-      router.push({ path: '/variants', query: { ids: String(question.id) } })
+      if (!editMode.value) toggleEditMode()
+      showToast(`${name}至少选 2 道错题，勾选后点底部按钮`)
     }
 
     const toggleShowAI = (question) => {
@@ -780,7 +794,7 @@ export default {
         showToast('该分类暂无题目')
         return
       }
-      showToast('开始练习功能待实现')
+      router.push({ path: '/practice', query: { categoryId } })
     }
 
     // 加入组卷
@@ -968,8 +982,25 @@ export default {
     }
 
     // 分享分类
-    const shareCategory = () => {
-      showToast('分享功能待实现')
+    const shareCategory = async () => {
+      const url = window.location.href
+      const text = `我在智卷错题通整理了「${categoryInfo.name}」${questions.length} 道错题`
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: categoryInfo.name, text, url })
+          return
+        }
+        await navigator.clipboard.writeText(text + '\n' + url)
+        showToast({ type: 'success', message: '链接已复制，可以发给同学' })
+      } catch (e) {
+        if (e?.name === 'AbortError') return
+        try {
+          await navigator.clipboard.writeText(url)
+          showToast({ type: 'success', message: '链接已复制' })
+        } catch {
+          showToast({ type: 'fail', message: '分享失败' })
+        }
+      }
     }
 
     // 加载分类信息
@@ -1027,6 +1058,7 @@ export default {
               showAI: false,
               favorite: false,
               pinned: false,
+              mastered: false,
               hasNote: false,
               noteContent: ''
             }
@@ -1065,6 +1097,7 @@ export default {
           const m = markMap[q.id]
           q.favorite = !!m?.favorite
           q.pinned = !!m?.pinned
+          q.mastered = !!m?.mastered
           q.noteContent = noteMap[q.id] || ''
           q.hasNote = !!q.noteContent.trim()
         })
@@ -1113,31 +1146,33 @@ export default {
       }
     }
 
+    // 错因深度分析：多道题合成一份报告
     const batchMistake = async () => {
       const selected = selectedQuestions.value
-      if (!selected.length) {
-        showToast('请至少选择 1 道题')
+      if (selected.length < 2) {
+        showToast('错因深度分析至少选择 2 道题')
         return
       }
       try {
-        if (selected.length === 1) {
-          await openMistake(selected[0])
-          return
-        }
-        showToast('正在生成错因分析…')
-        for (const q of selected) {
-          await studyAPI.generateMistakeReport(q.id)
-        }
-        router.push('/report-list')
+        showToast('正在做深度分析…')
+        const res = await studyAPI.generateDeepMistakeReport(selected.map(q => q.id))
+        router.push('/mistake-report/' + res.data.id)
       } catch (e) {
         showToast({ type: 'fail', message: e.response?.data?.message || '生成失败' })
       }
     }
 
+    const toggleMastered = (question) => applyMark(question, 'mastered', !question.mastered)
+
+    const openExplain = (question) => {
+      showDetailModal.value = false
+      router.push('/explain/' + question.id)
+    }
+
     const batchVariants = () => {
       const ids = selectedQuestions.value.map(q => q.id)
-      if (!ids.length) {
-        showToast('请先选择题目')
+      if (ids.length < 2) {
+        showToast('变式题生成至少选择 2 道题')
         return
       }
       router.push({ path: '/variants', query: { ids: ids.join(',') } })
@@ -1196,9 +1231,13 @@ export default {
       openAIChat,
       openMistake,
       openVariants,
+      needMultiHint,
+      needMultiHint,
       toggleShowAI,
       toggleFavorite,
       togglePin,
+      toggleMastered,
+      openExplain,
       openNote,
       saveNote,
       showNoteModal,
@@ -1519,6 +1558,15 @@ export default {
   opacity: 0.45;
 }
 .mark-btn.on { opacity: 1; }
+.mark-btn.text {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(11, 22, 51, 0.5);
+  background: #f4f7fb;
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+.mark-btn.text.on { background: rgba(22, 163, 74, 0.14); color: #16a34a; }
 .note-flag { margin-left: 6px; }
 .note-modal { padding: 16px; }
 .note-input {

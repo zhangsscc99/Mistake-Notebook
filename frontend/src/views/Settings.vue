@@ -410,18 +410,40 @@ export default {
     const handleImportFile = async (event) => {
       const file = event.target.files[0]
       if (!file) return
-      
       try {
         showLoadingToast({ message: '正在导入数据...', forbidClick: true })
-        await new Promise(resolve => setTimeout(resolve, 1200))
+        const text = await file.text()
+        const parsed = JSON.parse(text)
+        const list = Array.isArray(parsed) ? parsed : (parsed.questions || parsed.data || [])
+        if (!Array.isArray(list) || !list.length) {
+          closeToast()
+          showFailToast('文件里没有题目')
+          return
+        }
+        const slice = list.slice(0, 200)
+        let ok = 0
+        for (const q of slice) {
+          const content = (q.content || q.recognizedText || '').trim()
+          if (!content) continue
+          await apiClient.post('/questions', {
+            content,
+            category: q.category || '数学',
+            difficulty: String(q.difficulty || 'medium').toLowerCase(),
+            tags: Array.isArray(q.tags) ? q.tags : [],
+            imageUrl: q.imageUrl || '',
+            aiAnswer: q.aiAnswer || q.answer || '',
+            aiAnalysis: q.aiAnalysis || q.analysis || '',
+            aiStatus: q.aiStatus || (q.aiAnswer ? 'completed' : undefined),
+            isVariant: !!q.isVariant
+          })
+          ok += 1
+        }
         closeToast()
-        showToast('导入功能即将上线')
+        showSuccessToast('已导入 ' + ok + ' 道题')
       } catch (error) {
         closeToast()
-        showFailToast('导入失败')
+        showFailToast(error?.message?.includes('JSON') ? '文件不是有效 JSON' : '导入失败')
       }
-      
-      // 清空文件输入
       event.target.value = ''
     }
 

@@ -1,8 +1,9 @@
 <template>
   <div v-if="!editMode" class="study-tools" @click.stop>
     <div class="tool-row">
+      <button class="tool-btn fill" @click="$emit('explain', question)">错题讲解</button>
       <button class="tool-btn" @click="$emit('mistake', question)">错因分析</button>
-      <button class="tool-btn fill" @click="$emit('variants', question)">生成变式题</button>
+      <button class="tool-btn" @click="$emit('variants', question)">变式题</button>
     </div>
     <button class="note-btn" :class="{ on: question.hasNote }" @click="$emit('note', question)">
       {{ question.hasNote ? '查看批注与笔记' : '错题批注与笔记' }}
@@ -17,7 +18,7 @@ export default {
     question: { type: Object, required: true },
     editMode: { type: Boolean, default: false }
   },
-  emits: ['mistake', 'variants', 'note']
+  emits: ['explain', 'mistake', 'variants', 'note']
 }
 </script>
 

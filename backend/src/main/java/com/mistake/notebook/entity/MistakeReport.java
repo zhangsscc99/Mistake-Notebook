@@ -23,6 +23,13 @@ public class MistakeReport {
     @Column(name = "question_id", nullable = false)
     private Long questionId;
 
+    /** 多题深度分析时的全部题目 id，逗号分隔 */
+    @Column(name = "question_ids", columnDefinition = "TEXT")
+    private String questionIds = "";
+
+    @Column(name = "question_count")
+    private Integer questionCount = 1;
+
     @Column(nullable = false, length = 80)
     private String title;
 

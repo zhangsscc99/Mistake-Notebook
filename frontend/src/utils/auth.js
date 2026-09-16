@@ -22,3 +22,11 @@ export function clearSession() {
 export function isLoggedIn() {
   return !!getToken()
 }
+
+export function getRole() {
+  return getProfile()?.role === 'TEACHER' ? 'TEACHER' : 'STUDENT'
+}
+
+export function isTeacher() {
+  return getRole() === 'TEACHER'
+}

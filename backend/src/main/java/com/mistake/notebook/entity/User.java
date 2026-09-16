@@ -60,6 +60,20 @@ public class User {
     @Column(name = "chat_used_count", nullable = false)
     private Integer chatUsedCount = 0;
 
+    /** STUDENT / TEACHER */
+    @Column(length = 16)
+    private String role = "STUDENT";
+
+    /** 教师邀请码，学生凭此绑定 */
+    @Column(name = "invite_code", length = 16)
+    private String inviteCode = "";
+
+    @Column(name = "school", length = 60)
+    private String school = "";
+
+    @Column(name = "class_name", length = 60)
+    private String className = "";
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
