@@ -116,6 +116,7 @@ function emptyUserFields(openId) {
     avatarFileID: '',
     stage: '',
     role: '',
+    roleSetAt: '',
     coins: 0,
     vipExpireAt: '',
     checkinStreak: 0,
@@ -238,7 +239,9 @@ function normalize(record, openId) {
     avatarFileID: r.avatarFileID || '',
     stage: r.stage || '',
     // 教师身份只认库里的 role。客户端不能通过 updateProfile 改这个字段。
-    role: r.role === 'teacher' ? 'teacher' : (r.role === 'student' ? 'student' : ''),
+    // 空字符串表示还没选定；选定后 setRole 拒绝再改，只有注销删档才能重选。
+    role: lockedRoleOf(r),
+    roleSetAt: r.roleSetAt || '',
     // 钱包字段。老用户档里没有这些键，一律退化成 0/'' —— 不要在这里补写库，
     // getProfile 是纯读（见下方注释），建档只发生在 updateProfile / checkin
     coins: r.coins || 0,
@@ -264,26 +267,54 @@ async function getProfile(openId) {
   return { success: true, data: normalize(record, openId) };
 }
 
-// 登录页选择学生/老师时写入自己的身份。只改调用者自己的档，不接受别人的 openid。
-// 没有教师审核后台，所以第一次（以及之后退出重进）都可以自己选；不能靠管理员改库。
+function lockedRoleOf(record) {
+  const role = record && record.role;
+  if (role === 'teacher' || role === 'student') return role;
+  return '';
+}
+
+function roleLabel(role) {
+  return role === 'teacher' ? '老师' : '学生';
+}
+
+// 登录页第一次选定学生/老师时写入。只改调用者自己的档。
+// 已有 student/teacher 后拒绝改成另一个身份；相同身份幂等成功。
+// 退出登录不能换身份。更换只能走 deleteAccount 把 users 档删掉后再选。
 async function setRole(openId, event) {
-  const role = event.role === 'teacher' ? 'teacher' : 'student';
+  const requested = event.role === 'teacher' ? 'teacher' : (event.role === 'student' ? 'student' : '');
+  if (!requested) {
+    return { success: false, error: '请选择学生或老师身份' };
+  }
+
   const now = new Date().toISOString();
   const current = await readUserDoc(openId);
+  const locked = lockedRoleOf(current);
+
+  if (locked) {
+    if (locked === requested) {
+      return { success: true, data: normalize(current, openId) };
+    }
+    return {
+      success: false,
+      error: 'ROLE_LOCKED',
+      message: `该微信已绑定${roleLabel(locked)}身份，不能更改。如需更换请先注销账号。`,
+      data: normalize(current, openId)
+    };
+  }
+
+  const patch = { role: requested, roleSetAt: now, updatedAt: now };
   if (!current) {
     const data = {
       ...emptyUserFields(openId),
-      role,
-      createdAt: now,
-      updatedAt: now
+      ...patch,
+      createdAt: now
     };
     await db.collection(COLLECTION).doc(openId).set({ data });
     return { success: true, data: normalize(data, openId) };
   }
-  await db.collection(COLLECTION).doc(openId).update({
-    data: { role, updatedAt: now }
-  });
-  return { success: true, data: normalize({ ...current, role, updatedAt: now }, openId) };
+
+  await db.collection(COLLECTION).doc(openId).update({ data: patch });
+  return { success: true, data: normalize({ ...current, ...patch }, openId) };
 }
 
 async function updateProfile(openId, event) {
@@ -800,63 +831,76 @@ async function countOf(collection, where) {
   return (res && res.total) || 0;
 }
 
-// 删一批，并**用删前删后的记录数自证删干净了**。
-//
-// 不靠 remove() 的返回结构做判断：这个 SDK 确实给 stats.removed
-// （wx-server-sdk/index.js 里 resolve({ stats: { removed } })），但与其依赖它，
-// 不如数一遍 —— 数出来的差值不会骗人，也能顺带发现「字段名写错导致一条没删」
-// 这个本功能最危险的失败模式（用户以为删干净了，其实原封不动）。
-//
-// where().remove() 不支持 skip/limit，没法分页，所以循环删到剩 0 为止；
-// 上限 10 轮纯粹防呆，正常第一轮就清空。
-// 归属字段探针。先确认 where 里用的字段名在集合里真的存在，再动手删。
-//
-// 为什么需要它：字段名写错时 where 一条都匹配不上，before / after 都是 0，
-// 差值也是 0 —— 「一条都没删」和「本来就没有数据」在计数上长得一模一样。
-// 光靠数数抓不到这个最危险的失败模式（用户以为删干净了，其实原封不动）。
-//
-// 而这里的探针是可靠的：papers 只有 paper/index.js:102 一个写入点，
-// chat_memories 只有 answer/index.js:138 的 upsertMemory 一个写入点，
-// 每个写入路径都必带归属字段。所以「集合非空、却没有任何一条含该键」
-// 只可能是拼写错误，不会误伤。
-async function ownerFieldExists(collection, field) {
+async function listOwnedIds(collection, where) {
+  const ids = [];
   try {
-    const res = await db.collection(collection).limit(5).get();
-    const docs = res.data || [];
-    if (!docs.length) return true; // 空集合，无从判断，放行
-    return docs.some((d) => Object.prototype.hasOwnProperty.call(d, field));
+    let skip = 0;
+    for (let i = 0; i < 20; i++) {
+      const res = await db.collection(collection).where(where).skip(skip).limit(100).get();
+      const docs = res.data || [];
+      docs.forEach((d) => { if (d && d._id) ids.push(d._id); });
+      if (docs.length < 100) break;
+      skip += docs.length;
+    }
   } catch (e) {
-    return true; // 探针自己失败不该阻断删除，后续 purge 的 try/catch 会如实报错
+    // 集合不存在时后面的 purge 会记 failed
+  }
+  return ids;
+}
+
+async function purgeInBatches(failed, removed, label, collection, field, ids) {
+  removed[label] = 0;
+  if (!ids.length) return;
+  for (let i = 0; i < ids.length; i += 10) {
+    const batch = ids.slice(i, i + 10);
+    const partFailed = [];
+    const partRemoved = {};
+    await purge(partFailed, partRemoved, label, collection, { [field]: _.in(batch) });
+    removed[label] += partRemoved[label] || 0;
+    partFailed.forEach((item) => failed.push(item));
   }
 }
 
-async function purge(failed, removed, label, collection, where) {
-  const field = Object.keys(where)[0];
-  removed[label] = 0; // 先占位，保证返回结构在提前退出时也是一致的
+async function purgeClassWorkspace(openId, failed, removed) {
+  const classIds = await listOwnedIds('classes', { teacherId: openId });
+  const assignmentIds = await listOwnedIds('assignments', { teacherId: openId });
 
-  if (!(await ownerFieldExists(collection, field))) {
-    failed.push({
-      target: label,
-      error: `归属字段 ${field} 在 ${collection} 中不存在，疑似拼写错误，已跳过删除`
-    });
-    return;
-  }
+  await purgeInBatches(failed, removed, 'assignmentSubmissionsByAssignment', 'assignment_submissions', 'assignmentId', assignmentIds);
+  await purge(failed, removed, 'assignmentSubmissions', 'assignment_submissions', { studentId: openId });
+  await purgeInBatches(failed, removed, 'classMembersByClass', 'class_members', 'classId', classIds);
+  await purge(failed, removed, 'classMembers', 'class_members', { studentId: openId });
+  await purge(failed, removed, 'classPapers', 'class_papers', { teacherId: openId });
+  await purge(failed, removed, 'classNotebooks', 'class_notebooks', { teacherId: openId });
+  await purge(failed, removed, 'parentReports', 'parent_reports', { teacherId: openId });
+  await purge(failed, removed, 'assignments', 'assignments', { teacherId: openId });
+  await purge(failed, removed, 'classes', 'classes', { teacherId: openId });
+}
+
+async function purge(failed, removed, label, collection, where) {
+  if (removed[label] == null) removed[label] = 0;
 
   try {
     const before = await countOf(collection, where);
+    if (before === 0) return;
     let after = before;
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       await db.collection(collection).where(where).remove();
       after = await countOf(collection, where);
       if (after === 0) break;
     }
-    removed[label] = before - after;
+    removed[label] += before - after;
     if (after > 0) {
       failed.push({ target: label, error: `仍有 ${after} 条未删除` });
     }
   } catch (e) {
     failed.push({ target: label, error: e.message });
   }
+}
+
+async function purgeByOpenId(failed, removed, label, collection, openId) {
+  await purge(failed, removed, label, collection, { openid: openId });
+  // 云数据库还会自动写 _openid。旧数据或客户端直写的行可能只有这一列。
+  await purge(failed, removed, label, collection, { _openid: openId });
 }
 
 // 注销：只删真正属于调用者的数据，含其名下错题与分类。
@@ -884,22 +928,25 @@ async function deleteAccount(openId) {
   // 字段名不一致，抄错不会报错、只会静默少删：
   // chat_memories 用小写 openid（answer/index.js:142），papers 用驼峰 openId（paper/index.js:82）。
   // papers 不加 isDeleted 过滤 —— 软删过的行里一样存着用户的题目内容。
-  await purge(failed, removed, 'chatMemories', 'chat_memories', { openid: openId });
+  await purgeByOpenId(failed, removed, 'chatMemories', 'chat_memories', openId);
   await purge(failed, removed, 'papers', 'papers', { openId: openId });
-  await purge(failed, removed, 'questionNotes', 'question_notes', { openid: openId });
-  await purge(failed, removed, 'mistakeReports', 'mistake_reports', { openid: openId });
-  await purge(failed, removed, 'learningReports', 'learning_reports', { openid: openId });
+  await purgeByOpenId(failed, removed, 'questionNotes', 'question_notes', openId);
+  await purgeByOpenId(failed, removed, 'mistakeReports', 'mistake_reports', openId);
+  await purgeByOpenId(failed, removed, 'learningReports', 'learning_reports', openId);
 
   // 打卡与金币相关。这四个集合统一用小写 openid（本文件新建，不需要迁就历史命名）。
   // 注销是「清除我的数据」，留着打卡和金币流水就名不副实。
   // users 档里的 coins / vipExpireAt 随下面的 users 一起删掉
-  await purge(failed, removed, 'checkins', CHECKIN_COLLECTION, { openid: openId });
-  await purge(failed, removed, 'coinLogs', COIN_LOG_COLLECTION, { openid: openId });
-  await purge(failed, removed, 'chatUsage', CHAT_USAGE_COLLECTION, { openid: openId });
-  // 收藏/置顶/掌握标记
-  await purge(failed, removed, 'questionMarks', MARKS_COLLECTION, { openid: openId });
-  await purge(failed, removed, 'questions', 'questions', { openid: openId });
-  await purge(failed, removed, 'categories', 'categories', { openid: openId });
+  await purgeByOpenId(failed, removed, 'checkins', CHECKIN_COLLECTION, openId);
+  await purgeByOpenId(failed, removed, 'coinLogs', COIN_LOG_COLLECTION, openId);
+  await purgeByOpenId(failed, removed, 'chatUsage', CHAT_USAGE_COLLECTION, openId);
+  await purgeByOpenId(failed, removed, 'questionMarks', MARKS_COLLECTION, openId);
+  await purgeByOpenId(failed, removed, 'questions', 'questions', openId);
+  await purgeByOpenId(failed, removed, 'categories', 'categories', openId);
+
+  // 班级关系：学生退出班级；老师删掉自己建的班和班里的作业/报告。
+  // 不删学生自己的错题以外的他人数据。
+  await purgeClassWorkspace(openId, failed, removed);
 
   if (avatarFileID) {
     try {

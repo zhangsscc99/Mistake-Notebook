@@ -37,7 +37,12 @@ function isLoggedIn() {
   return !!readSession();
 }
 
+function hasLockedRole(role) {
+  return role === 'teacher' || role === 'student';
+}
+
 function setLoggedIn(openId, role) {
+  if (!hasLockedRole(role)) return;
   memoryLoggedIn = true;
   try {
     const app = getApp();
@@ -49,7 +54,7 @@ function setLoggedIn(openId, role) {
     wx.setStorageSync(SESSION_KEY, {
       loggedIn: true,
       openId: openId || '',
-      role: role === 'teacher' ? 'teacher' : 'student',
+      role,
       at: Date.now()
     });
     wx.removeStorageSync(LOGOUT_KEY);
@@ -60,7 +65,7 @@ function setLoggedIn(openId, role) {
 
 function getSessionRole() {
   const s = readSession();
-  return (s && s.role) || 'student';
+  return hasLockedRole(s && s.role) ? s.role : '';
 }
 
 function isTeacherSession() {
@@ -75,7 +80,7 @@ function enterByRole(role) {
   wx.switchTab({ url: '/pages/index/index' });
 }
 
-function clearSession() {
+function dropLocalSession() {
   memoryLoggedIn = false;
   try {
     const app = getApp();
@@ -83,10 +88,18 @@ function clearSession() {
   } catch (e) {
     // ignore
   }
+  try {
+    wx.removeStorageSync(SESSION_KEY);
+  } catch (e) {
+    // ignore
+  }
+}
+
+function clearSession() {
+  dropLocalSession();
   // 只清登录态，不动 profileCache：昵称头像在云端 users 档里，
   // 缓存留给登录页展示「欢迎回来 + 昵称」。注销账号时由 profile 页单独 clearProfileCache()。
   try {
-    wx.removeStorageSync(SESSION_KEY);
     wx.setStorageSync(LOGOUT_KEY, true);
   } catch (e) {
     // ignore
@@ -153,17 +166,15 @@ function leaveLoginToTab() {
 }
 
 // 用 ensure 恢复登录：有档就读回来，没档就建档。不要用 get（exists=false 会被当成未登录）。
+// 云端还没有 student/teacher 时不算已登录，必须去登录页选定；本地旧会话不能冒充身份。
 function restoreSessionFromCloud() {
-  if (isLoggedIn()) {
-    return Promise.resolve({ loggedIn: true, restored: false });
-  }
   if (isOptedOut()) {
     return Promise.resolve({ loggedIn: false, restored: false, optedOut: true });
   }
   if (restoring) return restoring;
 
   const cached = getCachedProfile();
-  if (cached && (cached.hasProfile || cached.openId)) {
+  if (cached && hasLockedRole(cached.role)) {
     setLoggedIn(cached.openId, cached.role);
   }
 
@@ -179,6 +190,10 @@ function restoreSessionFromCloud() {
     .then((res) => {
       if (!res.success) throw new Error(res.error || '登录恢复失败');
       const p = setCachedProfile(res.data);
+      if (!hasLockedRole(p.role)) {
+        dropLocalSession();
+        return { loggedIn: false, restored: true, needsRole: true, profile: p };
+      }
       setLoggedIn(p.openId, p.role);
       return { loggedIn: true, restored: true, profile: p };
     })
@@ -205,6 +220,7 @@ module.exports = {
   isLoggedIn,
   setLoggedIn,
   getSessionRole,
+  hasLockedRole,
   isTeacherSession,
   enterByRole,
   clearSession,

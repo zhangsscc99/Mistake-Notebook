@@ -238,7 +238,7 @@
         <text class="cell-arrow">›</text>
       </view>
     </view>
-    <view class="section-hint">退出登录只离开本机会话。注销会删除你名下的错题、分类、资料与学习记录。</view>
+    <view class="section-hint">退出登录只离开本机会话，身份不会改变。注销会删除你名下的资料与学习记录，之后可重新选择学生或老师。</view>
   </view>
 
   <!-- 关于 -->

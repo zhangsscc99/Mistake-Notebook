@@ -38,7 +38,11 @@
       <text class="cell-label">退出登录</text>
       <text class="cell-arrow">›</text>
     </view>
+    <view class="cell" bindtap="onDeleteAccount">
+      <text class="cell-label danger">注销账号</text>
+      <text class="cell-arrow">›</text>
+    </view>
   </view>
-  <view class="empty-block"><text>学生请从登录页选择学生入口。这里不会出现金币、签到或个人错题本。</text></view>
+  <view class="empty-block"><text>本账号已绑定老师身份。退出登录不会改变身份；更换身份需要先注销账号。</text></view>
   <teacher-tabbar active="mine"></teacher-tabbar>
 </view>
