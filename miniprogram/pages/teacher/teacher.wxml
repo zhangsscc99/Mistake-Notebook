@@ -81,7 +81,7 @@
       </view>
       <view class="tool-card" bindtap="openPaper">
         <view class="tool-title">班级组卷</view>
-        <view class="tool-desc">错题或拍照后发给班级</view>
+        <view class="tool-desc">选题后发给班级或存为题单</view>
       </view>
       <view class="tool-card" bindtap="openAssignments">
         <view class="tool-title">作业批改</view>

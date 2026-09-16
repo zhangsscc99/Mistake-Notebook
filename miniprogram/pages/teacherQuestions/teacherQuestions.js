@@ -78,7 +78,10 @@ Page({
   },
 
   onLoad(options) {
-    this.setData({ picking: options && options.pick === '1' });
+    const picking = !!(options && options.pick === '1');
+    const sourceFilter = options && options.bank === '1' ? 'bank' : 'mistakes';
+    this._preferClassId = (options && options.classId) || '';
+    this.setData({ picking, sourceFilter });
     this.boot();
   },
   onShow() {
@@ -94,7 +97,11 @@ Page({
       return wx.showToast({ title: dash.error || '加载失败', icon: 'none' });
     }
     const classes = dash.data.classes || [];
-    const selectedClass = classes[0] || {};
+    const pick = getApp().globalData.teacherPick || {};
+    const selectedClass = classes.find((c) => c.id === this._preferClassId)
+      || classes.find((c) => c.id === pick.classId)
+      || classes[0]
+      || {};
     this.setData({ classes, selectedClass });
     await this.reload();
     this._ready = true;

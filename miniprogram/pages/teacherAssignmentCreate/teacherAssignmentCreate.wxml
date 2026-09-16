@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">SEND</view>
     <view class="hero-title">发给班级</view>
-    <view class="hero-sub">同一套题可以发成练习或作业。练习给学生看题；作业需要作答，可设截止并批改</view>
+    <view class="hero-sub">题目已在组卷页选好。这里只选发给班级的方式：练习看题，作业作答批改</view>
   </view>
 
   <view class="section-head"><text class="section-title">发给班级的方式</text></view>
@@ -34,36 +34,14 @@
     </view>
   </block>
 
-  <view class="section-head"><text class="section-title">题目来源</text></view>
-  <view class="chip-row">
-    <view class="chip {{source === 'hot' ? 'on' : ''}}" data-source="hot" bindtap="setSource">高频错题 {{hotCount}}</view>
-    <view class="chip {{source === 'bank' ? 'on' : ''}}" data-source="bank" bindtap="setSource">班级题库 {{bankCount}}</view>
-    <view class="chip {{source === 'paper' ? 'on' : ''}}" data-source="paper" bindtap="setSource">已存题单</view>
-    <view class="chip {{source === 'pick' ? 'on' : ''}}" data-source="pick" bindtap="setSource">当前选题 {{pickCount}}</view>
+  <view class="section-head"><text class="section-title">本次题目</text><text class="section-note" wx:if="{{pickCount}}">{{pickCount}} 道</text></view>
+  <view class="white-card" wx:for="{{cart}}" wx:key="id">
+    <view class="paper-title">{{item.index}}. {{item.content}}</view>
+    <view class="paper-meta">{{item.sourceLabel}} · {{item.category}}</view>
   </view>
-  <view class="hint" wx:if="{{source === 'hot'}}">将把当前班级最高频的错题发出去（每题一份）</view>
-  <view class="hint" wx:if="{{source === 'bank' && !bankCount}}">这个班还没有题库<text class="link" bindtap="goCapture">去拍照录入</text></view>
-  <view class="hint" wx:if="{{source === 'bank' && bankCount}}">点选要发出去的题，可多选</view>
-  <view class="hint" wx:if="{{source === 'pick' && !pickCount}}">还没有选题<text class="link" bindtap="goPick">去错题页勾选</text></view>
-  <view class="hint" wx:if="{{source === 'pick' && pickCount}}">使用错题页带到组卷的 {{pickCount}} 道题</view>
+  <view class="empty-block" wx:if="{{!pickCount}}">还没有组卷选题<text class="link" bindtap="goPick">去错题页勾选，再带到组卷</text></view>
 
-  <block wx:if="{{source === 'bank'}}">
-    <view class="white-card {{selectedBankMap[item.id] ? 'on-paper' : ''}}" wx:for="{{bankQuestions}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleBank">
-      <view class="paper-title">{{item.content}}</view>
-      <view class="paper-meta">{{item.category || '未分类'}} · 老师录入</view>
-    </view>
-    <view class="empty-block" wx:if="{{!bankQuestions.length}}">这个班还没有题库<text>先去组卷页拍照录入</text></view>
-  </block>
-
-  <block wx:if="{{source === 'paper'}}">
-    <view class="white-card {{selectedPaperId === item.id ? 'on-paper' : ''}}" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" bindtap="selectPaper">
-      <view class="paper-title">{{item.title}}</view>
-      <view class="paper-meta">{{item.questionCount}} 道题 · 草稿</view>
-    </view>
-    <view class="empty-block" wx:if="{{!papers.length}}">这个班还没有题单草稿<text>先去组卷页存一份</text></view>
-  </block>
-
-  <view class="submit-wrap">
+  <view class="submit-wrap" wx:if="{{pickCount}}">
     <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">发给班级</button>
   </view>
 </view>

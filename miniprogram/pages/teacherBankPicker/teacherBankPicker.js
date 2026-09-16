@@ -196,19 +196,24 @@ Page({
         }))
       }, 60000);
       if (!r.success) throw new Error(r.error || '保存失败');
-      const ids = (r.data && r.data.ids) || [];
-      const prev = app.globalData.teacherPick || {};
-      app.globalData.teacherPick = {
-        classId: this.data.classId,
-        questionIds: Array.from(new Set((prev.questionIds || []).concat(ids)))
-      };
       app.globalData.recognitionDraft = null;
       wx.hideLoading();
       this.setData({ saving: false });
-      wx.showToast({ title: '已存入题库', icon: 'success' });
-      setTimeout(() => {
-        wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper?fromPick=1' });
-      }, 500);
+      const classId = this.data.classId;
+      wx.showModal({
+        title: '已存入题库',
+        content: '题目已进入这个班的题库，不会自动带进组卷。需要组卷时再到错题页勾选。',
+        confirmText: '去选题',
+        cancelText: '完成',
+        success: (res) => {
+          const bankUrl = '/pages/teacherQuestions/teacherQuestions?bank=1&classId=' + classId;
+          if (res.confirm) {
+            wx.reLaunch({ url: bankUrl + '&pick=1' });
+          } else {
+            wx.reLaunch({ url: bankUrl });
+          }
+        }
+      });
     } catch (err) {
       wx.hideLoading();
       this.setData({ saving: false });

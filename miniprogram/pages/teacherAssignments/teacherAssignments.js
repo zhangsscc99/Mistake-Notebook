@@ -25,7 +25,16 @@ Page({
   },
 
   goCreate() {
-    wx.navigateTo({ url: '/pages/teacherAssignmentCreate/teacherAssignmentCreate?mode=homework' });
+    const pick = getApp().globalData.teacherPick || {};
+    const ids = Array.isArray(pick.questionIds) ? pick.questionIds : [];
+    if (!ids.length) {
+      wx.showToast({ title: '请先到组卷选题', icon: 'none' });
+      setTimeout(() => wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' }), 400);
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/teacherAssignmentCreate/teacherAssignmentCreate?mode=homework&classId=' + (pick.classId || '')
+    });
   },
 
   openDetail(e) {

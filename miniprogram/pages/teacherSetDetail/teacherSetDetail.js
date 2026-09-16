@@ -3,6 +3,9 @@ const { callTeacher, formatDay } = require('../../utils/teacher');
 Page({
   data: {
     loading: true,
+    type: 'paper',
+    id: '',
+    classId: '',
     title: '',
     kindLabel: '',
     meta: '',
@@ -12,6 +15,7 @@ Page({
   onLoad(options) {
     const type = options && options.type === 'notebook' ? 'notebook' : 'paper';
     const id = (options && options.id) || '';
+    this.setData({ type, id });
     this.load(type, id);
   },
 
@@ -31,6 +35,7 @@ Page({
         index: i + 1
       }));
       this.setData({
+        classId: d.classId || '',
         title: d.title || (type === 'notebook' ? '班级练习' : '题单草稿'),
         kindLabel: type === 'notebook' ? '已发给学生的练习' : '仅老师可见的题单草稿',
         meta: `${questions.length} 道题 · ${formatDay(d.createdAt) || ''}`,
@@ -45,5 +50,16 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
+  },
+
+  useThisSet() {
+    const ids = (this.data.questions || []).map((q) => q.id).filter(Boolean);
+    if (!ids.length) return wx.showToast({ title: '没有可组卷的题', icon: 'none' });
+    getApp().globalData.teacherPick = {
+      classId: this.data.classId,
+      questionIds: ids,
+      paperId: this.data.type === 'paper' ? this.data.id : ''
+    };
+    wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' });
   }
 });

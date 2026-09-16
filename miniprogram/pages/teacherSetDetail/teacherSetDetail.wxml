@@ -16,4 +16,8 @@
     </view>
   </view>
   <view class="empty-block" wx:if="{{!loading && !questions.length}}">这份题单里没有可显示的题目<text>题目可能已被学生删除</text></view>
+
+  <view class="submit-wrap" wx:if="{{!loading && questions.length}}">
+    <button class="primary-btn" bindtap="useThisSet">用这套题组卷</button>
+  </view>
 </view>

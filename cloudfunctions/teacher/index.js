@@ -227,7 +227,8 @@ exports.main = async (event) => {
       rejectJoin,
       saveBankQuestions,
       listBank,
-      deleteBankQuestion
+      deleteBankQuestion,
+      listPickedQuestions
     };
     const fn = teacherActions[event.action];
     if (!fn) return fail(`Unknown action: ${event.action}`);
@@ -536,6 +537,11 @@ async function listBank(teacherId, event) {
       nickName: '老师录入'
     }))
   };
+}
+
+async function listPickedQuestions(teacherId, event) {
+  const ids = Array.isArray(event.questionIds) ? event.questionIds.filter(Boolean).slice(0, 80) : [];
+  return { success: true, data: await questionsByIds(ids) };
 }
 
 async function deleteBankQuestion(teacherId, event) {

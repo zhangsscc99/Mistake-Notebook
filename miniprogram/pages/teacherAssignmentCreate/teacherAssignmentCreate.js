@@ -1,37 +1,31 @@
 const { callTeacher, shortText } = require('../../utils/teacher');
 
+function readPick() {
+  return getApp().globalData.teacherPick || {};
+}
+
 function pickIds() {
-  const pick = getApp().globalData.teacherPick || {};
-  return Array.isArray(pick.questionIds) ? pick.questionIds : [];
+  const ids = readPick().questionIds;
+  return Array.isArray(ids) ? ids : [];
 }
 
 Page({
   data: {
     classes: [],
     selectedClass: {},
-    papers: [],
-    selectedPaperId: '',
     title: '',
     dueDate: '',
     kind: 'practice',
-    source: 'hot',
     pickCount: 0,
-    hotCount: 0,
-    bankCount: 0,
-    bankQuestions: [],
-    selectedBankMap: {},
+    cart: [],
     submitting: false
   },
 
   onLoad(options) {
     const kind = (options && options.mode) === 'homework' ? 'homework' : 'practice';
-    const source = (options && options.source) || '';
-    const classId = (options && options.classId) || '';
-    const pickCount = pickIds().length;
-    let nextSource = source || (pickCount ? 'pick' : 'hot');
-    if (nextSource === 'pick' && !pickCount) nextSource = 'hot';
-    this.setData({ kind, source: nextSource, pickCount });
-    this._preferClassId = classId;
+    const pick = readPick();
+    this._preferClassId = (options && options.classId) || pick.classId || '';
+    this.setData({ kind });
     this.boot();
   },
 
@@ -40,40 +34,35 @@ Page({
     const classes = (dash.success && dash.data && dash.data.classes) || [];
     const selectedClass = classes.find((c) => c.id === this._preferClassId) || classes[0] || {};
     this.setData({ classes, selectedClass });
-    await this.reloadSources();
+    await this.loadCart();
   },
 
-  async reloadSources() {
-    const classId = this.data.selectedClass.id;
-    if (!classId) {
-      this.setData({ papers: [], hotCount: 0, bankCount: 0, bankQuestions: [], selectedBankMap: {} });
+  async loadCart() {
+    const ids = pickIds();
+    if (!ids.length) {
+      this.setData({ cart: [], pickCount: 0 });
       return;
     }
-    const [papers, stats, bank] = await Promise.all([
-      callTeacher('listPapers', { classId }),
-      callTeacher('classStats', { classId }),
-      callTeacher('listBank', { classId })
-    ]);
-    const hot = ((stats.success && stats.data && stats.data.hot) || []);
-    const bankQuestions = ((bank.success && bank.data) || []).map((q) => ({
-      ...q,
-      content: shortText(q.content, 42)
+    const r = await callTeacher('listPickedQuestions', { questionIds: ids });
+    if (!r.success) {
+      this.setData({ pickCount: ids.length });
+      wx.showToast({ title: r.error || '题目加载失败', icon: 'none' });
+      return;
+    }
+    const cart = (r.data || []).map((q, i) => ({
+      id: q.id,
+      index: i + 1,
+      content: shortText(q.content, 42),
+      category: q.category || '未分类',
+      sourceLabel: q.source === 'teacher_bank' ? '题库' : '错题'
     }));
-    this.setData({
-      papers: (papers.success && papers.data) || [],
-      hotCount: hot.length,
-      bankCount: bankQuestions.length,
-      bankQuestions,
-      selectedPaperId: '',
-      selectedBankMap: {}
-    });
+    this.setData({ cart, pickCount: cart.length });
   },
 
   selectClass(e) {
     const item = this.data.classes.find((c) => c.id === e.currentTarget.dataset.id);
     if (!item) return;
     this.setData({ selectedClass: item });
-    this.reloadSources();
   },
 
   setKind(e) {
@@ -86,91 +75,22 @@ Page({
   onDue(e) { this.setData({ dueDate: e.detail.value }); },
   clearDue() { this.setData({ dueDate: '' }); },
 
-  setSource(e) {
-    const source = e.currentTarget.dataset.source;
-    if (source === 'pick' && !this.data.pickCount) {
-      return wx.showToast({ title: '请先去错题页选题', icon: 'none' });
-    }
-    this.setData({ source });
-  },
-
-  toggleBank(e) {
-    const id = e.currentTarget.dataset.id;
-    if (!id) return;
-    const selectedBankMap = Object.assign({}, this.data.selectedBankMap);
-    if (selectedBankMap[id]) delete selectedBankMap[id];
-    else selectedBankMap[id] = true;
-    this.setData({ selectedBankMap, source: 'bank' });
-  },
-
   goPick() {
-    wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions?pick=1' });
-  },
-
-  goCapture() {
-    const classId = this.data.selectedClass.id;
-    if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
-    wx.navigateTo({ url: '/pages/teacherCapture/teacherCapture?classId=' + classId });
-  },
-
-  selectPaper(e) {
-    this.setData({ selectedPaperId: e.currentTarget.dataset.id, source: 'paper' });
-  },
-
-  resolveIds() {
-    const { source, papers, selectedPaperId } = this.data;
-    if (source === 'pick') return pickIds();
-    if (source === 'paper') {
-      const p = papers.find((x) => x.id === selectedPaperId);
-      return (p && p.questionIds) || [];
-    }
-    return [];
-  },
-
-  async collectQuestionIds() {
-    const classId = this.data.selectedClass.id;
-    if (this.data.source === 'hot') {
-      const st = await callTeacher('classStats', { classId });
-      const hot = (st.success && st.data && st.data.hot) || [];
-      const questionIds = hot.map((h) => h.questionId).filter(Boolean);
-      if (!questionIds.length) {
-        wx.showToast({ title: '还没有高频错题', icon: 'none' });
-        return null;
-      }
-      return { questionIds, paperId: '' };
-    }
-    if (this.data.source === 'paper') {
-      const paperId = this.data.selectedPaperId;
-      if (!paperId) {
-        wx.showToast({ title: '请选择一份题单', icon: 'none' });
-        return null;
-      }
-      return { questionIds: this.resolveIds(), paperId };
-    }
-    if (this.data.source === 'bank') {
-      const questionIds = Object.keys(this.data.selectedBankMap || {});
-      if (!questionIds.length) {
-        wx.showToast({ title: '请从题库勾选题目', icon: 'none' });
-        return null;
-      }
-      return { questionIds, paperId: '' };
-    }
-    const questionIds = pickIds();
-    if (!questionIds.length) {
-      wx.showToast({ title: '请先去错题页选题', icon: 'none' });
-      return null;
-    }
-    return { questionIds, paperId: '' };
+    const classId = this.data.selectedClass.id || '';
+    wx.reLaunch({
+      url: '/pages/teacherQuestions/teacherQuestions?pick=1' + (classId ? '&classId=' + classId : '')
+    });
   },
 
   async submit() {
     if (this.data.submitting) return;
     const classId = this.data.selectedClass.id;
     if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
+    const pick = readPick();
+    const questionIds = pickIds();
+    if (!questionIds.length) return wx.showToast({ title: '请先去组卷选题', icon: 'none' });
     const isHomework = this.data.kind === 'homework';
     const title = (this.data.title || '').trim() || (isHomework ? '班级作业' : '班级练习');
-    const picked = await this.collectQuestionIds();
-    if (!picked) return;
     this.setData({ submitting: true });
     try {
       if (isHomework) {
@@ -178,10 +98,11 @@ Page({
           classId,
           title,
           dueAt: this.data.dueDate || '',
-          questionIds: picked.questionIds,
-          paperId: picked.paperId
+          questionIds,
+          paperId: pick.paperId || ''
         });
         if (!r.success) throw new Error(r.error || '发送失败');
+        getApp().globalData.teacherPick = null;
         wx.showToast({ title: '作业已发给班级', icon: 'success' });
         setTimeout(() => {
           wx.redirectTo({ url: '/pages/teacherAssignmentDetail/teacherAssignmentDetail?id=' + r.data.id });
@@ -190,9 +111,10 @@ Page({
         const r = await callTeacher('publishNotebook', {
           classId,
           title,
-          questionIds: picked.questionIds
+          questionIds
         });
         if (!r.success) throw new Error(r.error || '发送失败');
+        getApp().globalData.teacherPick = null;
         wx.showToast({ title: '练习已发给班级', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 400);
       }

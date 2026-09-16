@@ -1,6 +1,6 @@
 <view class="picker-page">
   <view class="tips-bar">
-    <text class="tips-text">已自动全选，可点取消不需要的题。保存后进入这个班的题库</text>
+    <text class="tips-text">已自动全选，可点取消不需要的题。保存后只进入这个班的题库，不会自动带到组卷</text>
   </view>
 
   <scroll-view class="page-tabs" scroll-x wx:if="{{pageCount > 1}}">

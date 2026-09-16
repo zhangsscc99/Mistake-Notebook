@@ -1,9 +1,28 @@
-const { callTeacher, formatDay } = require('../../utils/teacher');
+const { callTeacher, formatDay, shortText } = require('../../utils/teacher');
+
+function readPick() {
+  return getApp().globalData.teacherPick || {};
+}
 
 function pickIds() {
-  const app = getApp();
-  const pick = app.globalData.teacherPick || {};
-  return Array.isArray(pick.questionIds) ? pick.questionIds : [];
+  const ids = readPick().questionIds;
+  return Array.isArray(ids) ? ids : [];
+}
+
+function writePick(next) {
+  getApp().globalData.teacherPick = next && next.questionIds && next.questionIds.length
+    ? next
+    : null;
+}
+
+function decorateCart(questions) {
+  return (questions || []).map((q, i) => ({
+    id: q.id,
+    index: i + 1,
+    content: shortText(q.content, 52),
+    category: q.category || '未分类',
+    sourceLabel: q.source === 'teacher_bank' ? '题库' : '错题'
+  }));
 }
 
 Page({
@@ -13,29 +32,60 @@ Page({
     papers: [],
     notebooks: [],
     assignments: [],
-    pickCount: 0
+    pickCount: 0,
+    cart: [],
+    cartLoading: false,
+    cartBelongsHere: true
   },
 
-  onLoad(options) {
-    if (options && options.fromPick === '1') {
-      this.setData({ pickCount: pickIds().length });
-    }
+  onLoad() {
     this.boot();
   },
   onShow() {
-    this.setData({ pickCount: pickIds().length });
-    if (this._ready) this.reload();
+    if (this._ready) {
+      this.loadCart();
+      this.reload();
+    }
   },
   onPullDownRefresh() { this.reload().finally(() => wx.stopPullDownRefresh()); },
 
   async boot() {
     const dash = await callTeacher('dashboard');
     const classes = (dash.success && dash.data && dash.data.classes) || [];
-    const pick = getApp().globalData.teacherPick || {};
+    const pick = readPick();
     const selectedClass = classes.find((c) => c.id === pick.classId) || classes[0] || {};
     this.setData({ classes, selectedClass });
-    await this.reload();
+    await Promise.all([this.loadCart(), this.reload()]);
     this._ready = true;
+  },
+
+  async loadCart() {
+    const pick = readPick();
+    const ids = Array.isArray(pick.questionIds) ? pick.questionIds : [];
+    const classId = this.data.selectedClass.id || '';
+    const cartBelongsHere = !pick.classId || !classId || pick.classId === classId;
+    if (!ids.length || !cartBelongsHere) {
+      this.setData({ cart: [], pickCount: cartBelongsHere ? 0 : ids.length, cartBelongsHere, cartLoading: false });
+      return;
+    }
+    this.setData({ cartLoading: true, cartBelongsHere: true });
+    const r = await callTeacher('listPickedQuestions', { questionIds: ids });
+    if (!r.success) {
+      this.setData({ cartLoading: false, pickCount: ids.length, cartBelongsHere: true });
+      wx.showToast({ title: r.error || '题目加载失败', icon: 'none' });
+      return;
+    }
+    const found = decorateCart(r.data || []);
+    const foundIds = found.map((q) => q.id);
+    if (foundIds.length !== ids.length) {
+      writePick({ classId: pick.classId || classId, questionIds: foundIds, paperId: foundIds.length ? pick.paperId : '' });
+    }
+    this.setData({
+      cart: found,
+      pickCount: found.length,
+      cartLoading: false,
+      cartBelongsHere: true
+    });
   },
 
   async reload() {
@@ -60,11 +110,15 @@ Page({
     const item = this.data.classes.find((c) => c.id === e.currentTarget.dataset.id);
     if (!item) return;
     this.setData({ selectedClass: item });
+    this.loadCart();
     this.reload();
   },
 
   goPick() {
-    wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions?pick=1' });
+    const classId = this.data.selectedClass.id || '';
+    wx.reLaunch({
+      url: '/pages/teacherQuestions/teacherQuestions?pick=1' + (classId ? '&classId=' + classId : '')
+    });
   },
 
   goCapture() {
@@ -74,6 +128,23 @@ Page({
       return;
     }
     wx.navigateTo({ url: '/pages/teacherCapture/teacherCapture?classId=' + classId });
+  },
+
+  removeItem(e) {
+    const id = e.currentTarget.dataset.id;
+    const pick = readPick();
+    const questionIds = (pick.questionIds || []).filter((x) => x !== id);
+    writePick({
+      classId: pick.classId || this.data.selectedClass.id,
+      questionIds,
+      paperId: ''
+    });
+    this.loadCart();
+  },
+
+  clearCart() {
+    writePick(null);
+    this.setData({ cart: [], pickCount: 0, cartBelongsHere: true });
   },
 
   jumpStat(e) {
@@ -121,6 +192,10 @@ Page({
       wx.showToast({ title: '请先选择班级', icon: 'none' });
       return null;
     }
+    if (!this.data.cartBelongsHere) {
+      wx.showToast({ title: '选题属于其他班级', icon: 'none' });
+      return null;
+    }
     if (!ids.length) {
       wx.showToast({ title: '请先选题', icon: 'none' });
       return null;
@@ -139,14 +214,11 @@ Page({
   },
 
   goSend() {
-    const classId = this.data.selectedClass.id || '';
-    if (!classId) {
-      wx.showToast({ title: '请先选择班级', icon: 'none' });
-      return;
-    }
-    const source = pickIds().length ? 'pick' : 'hot';
+    const ids = this.requirePick();
+    if (!ids) return;
+    const classId = this.data.selectedClass.id;
     wx.navigateTo({
-      url: `/pages/teacherAssignmentCreate/teacherAssignmentCreate?mode=practice&source=${source}&classId=${classId}`
+      url: `/pages/teacherAssignmentCreate/teacherAssignmentCreate?mode=practice&classId=${classId}`
     });
   }
 });
