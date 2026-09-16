@@ -1,5 +1,3 @@
-@import "../../styles/teacher-shell.wxss";
-
 page { height: 100%; overflow: hidden; }
 
 .teacher-chat {

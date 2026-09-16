@@ -7,7 +7,7 @@ const {
   getCachedProfile,
   setCachedProfile
 } = require('../../utils/profile');
-const { clearSession, goLogin, dismissLoginOverlay } = require('../../utils/auth');
+const { clearSession, goLogin, dismissLoginOverlay, bounceTeacherOffStudentShell } = require('../../utils/auth');
 const { performDeleteAccount, finishDeleteAccount } = require('../../utils/account');
 const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
 const { renderInvitePoster, savePosterToAlbum, saveFailHint } = require('../../utils/invitePoster');
@@ -86,6 +86,7 @@ Page({
   },
 
   onShow: function () {
+    if (bounceTeacherOffStudentShell()) return;
     dismissLoginOverlay();
     enableShareMenu();
     this._nickDraft = '';

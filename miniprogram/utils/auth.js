@@ -13,6 +13,16 @@ const TAB_URLS = {
   'pages/profile/profile': '/pages/profile/profile'
 };
 
+// 必须作为声明存在：按需注入打包时若引用了这个名字却没有定义，App() 会直接崩，
+// 首页 Page 也不会注册，随后出现 wx://not-found。
+const STUDENT_TAB_ROUTES = {
+  'pages/index/index': true,
+  'pages/categories/categories': true,
+  'pages/aiChat/aiChat': true,
+  'pages/paperBuilder/paperBuilder': true,
+  'pages/profile/profile': true
+};
+
 let memoryLoggedIn = false;
 let restoring = null;
 
@@ -78,6 +88,19 @@ function enterByRole(role) {
     return;
   }
   wx.switchTab({ url: '/pages/index/index' });
+}
+
+// 冷启动时 App.onShow 里 getCurrentPages() 经常还是空的，老师会被留在学生首页。
+// 学生 Tab、空路由、以及其它非教师页都要送回教师壳。
+function bounceTeacherOffStudentShell() {
+  if (getSessionRole() !== 'teacher') return false;
+  const pages = getCurrentPages();
+  const route = (pages.length && pages[pages.length - 1] && pages[pages.length - 1].route) || '';
+  if (route.indexOf('pages/teacher') === 0) return false;
+  if (route === 'pages/login/login') return false;
+  if (route && !STUDENT_TAB_ROUTES[route] && route.indexOf('pages/') !== 0) return false;
+  wx.reLaunch({ url: '/pages/teacher/teacher' });
+  return true;
 }
 
 function dropLocalSession() {
@@ -217,12 +240,14 @@ function requireLogin() {
 
 module.exports = {
   SESSION_KEY,
+  STUDENT_TAB_ROUTES,
   isLoggedIn,
   setLoggedIn,
   getSessionRole,
   hasLockedRole,
   isTeacherSession,
   enterByRole,
+  bounceTeacherOffStudentShell,
   clearSession,
   goLogin,
   restoreSessionFromCloud,

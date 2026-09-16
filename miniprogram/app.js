@@ -1,14 +1,14 @@
 // app.js
-const { isLoggedIn, restoreSessionFromCloud, getSessionRole, goLogin } = require('./utils/auth');
+const {
+  isLoggedIn,
+  restoreSessionFromCloud,
+  getSessionRole,
+  goLogin,
+  bounceTeacherOffStudentShell,
+  STUDENT_TAB_ROUTES
+} = require('./utils/auth');
 
 const TEACHER_PREFIX = 'pages/teacher';
-const STUDENT_TABS = {
-  'pages/index/index': true,
-  'pages/categories/categories': true,
-  'pages/aiChat/aiChat': true,
-  'pages/paperBuilder/paperBuilder': true,
-  'pages/profile/profile': true
-};
 
 App({
   // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
@@ -73,7 +73,9 @@ App({
     if (!result || result.uncertain) return;
     if (result.optedOut || result.needsRole || (!result.loggedIn && !isLoggedIn())) {
       goLogin({ force: true });
+      return;
     }
+    bounceTeacherOffStudentShell();
   },
 
   onShow: function () {
@@ -89,10 +91,11 @@ App({
         goLogin({ force: true });
         return;
       }
-      if (role === 'teacher' && STUDENT_TABS[route]) {
+      if (role === 'teacher' && (!route || STUDENT_TAB_ROUTES[route])) {
         wx.reLaunch({ url: '/pages/teacher/teacher' });
         return;
       }
+      if (bounceTeacherOffStudentShell()) return;
       if (role !== 'teacher' && route.indexOf(TEACHER_PREFIX) === 0) {
         wx.switchTab({ url: '/pages/index/index' });
       }

@@ -85,10 +85,5 @@
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
-  "sitemapLocation": "sitemap.json",
-  "permission": {
-    "scope.writePhotosAlbum": {
-      "desc": "用于把邀请海报保存到相册，方便发给同学"
-    }
-  }
+  "sitemapLocation": "sitemap.json"
 }
