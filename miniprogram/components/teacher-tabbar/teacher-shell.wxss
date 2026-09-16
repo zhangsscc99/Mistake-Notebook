@@ -153,6 +153,26 @@
   box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30);
 }
 
+.danger-btn {
+  display: block;
+  width: 100% !important;
+  height: 80rpx;
+  line-height: 80rpx;
+  margin: 16rpx 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  color: #e11d48;
+  font-size: 28rpx;
+  font-weight: 800;
+  background: #fff;
+  box-shadow: inset 0 0 0 2rpx rgba(225, 29, 72, 0.28);
+}
+
+.danger-btn::after {
+  border: none !important;
+}
+
 .empty-block {
   margin: 0 24rpx;
   padding: 64rpx 24rpx;

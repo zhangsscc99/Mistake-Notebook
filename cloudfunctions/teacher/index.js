@@ -247,7 +247,10 @@ exports.main = async (event) => {
       saveBankQuestions,
       listBank,
       deleteBankQuestion,
-      listPickedQuestions
+      listPickedQuestions,
+      deletePaper,
+      deleteNotebook,
+      deleteAssignment
     };
     const fn = teacherActions[event.action];
     if (!fn) return fail(`Unknown action: ${event.action}`);
@@ -563,6 +566,28 @@ async function listPickedQuestions(teacherId, event) {
   return { success: true, data: await questionsByIds(ids) };
 }
 
+async function softDeleteOwned(teacherId, collection, id, missingMsg) {
+  if (!id) return fail(missingMsg || '缺少记录');
+  const doc = (await db.collection(collection).doc(id).get()).data;
+  if (!doc || doc.teacherId !== teacherId || doc.isDeleted) return fail('无权撤回');
+  await db.collection(collection).doc(id).update({
+    data: { isDeleted: true, updatedAt: new Date().toISOString() }
+  });
+  return { success: true, data: { id } };
+}
+
+async function deletePaper(teacherId, event) {
+  return softDeleteOwned(teacherId, 'class_papers', String(event.id || ''), '缺少题单');
+}
+
+async function deleteNotebook(teacherId, event) {
+  return softDeleteOwned(teacherId, 'class_notebooks', String(event.id || ''), '缺少练习');
+}
+
+async function deleteAssignment(teacherId, event) {
+  return softDeleteOwned(teacherId, 'assignments', String(event.assignmentId || event.id || ''), '缺少作业');
+}
+
 async function deleteBankQuestion(teacherId, event) {
   const id = String(event.id || '');
   if (!id) return fail('缺少题目');
@@ -843,7 +868,7 @@ async function gradeAssignment(teacherId, event) {
   const sub = r.data;
   if (!sub) return fail('提交记录不存在');
   const a = (await db.collection('assignments').doc(sub.assignmentId).get()).data;
-  if (!a || a.teacherId !== teacherId) return fail('无权批改该作业');
+  if (!a || a.teacherId !== teacherId || a.isDeleted) return fail('无权批改该作业');
   const n = (a.questionIds || []).length;
   const marks = normalizeMarks(event.marks, n);
   const marked = marks.filter(Boolean).length;

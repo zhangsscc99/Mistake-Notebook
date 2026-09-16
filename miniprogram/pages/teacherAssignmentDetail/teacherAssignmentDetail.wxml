@@ -39,6 +39,10 @@
     </view>
     <view class="empty-block" wx:if="{{!roster.length}}">班里还没有学生</view>
     <view class="empty-block" wx:elif="{{!visibleRoster.length}}">没有叫这个名字的学生</view>
+
+    <view class="submit-wrap">
+      <button class="danger-btn" loading="{{recalling}}" disabled="{{recalling}}" bindtap="recallAssignment">撤回作业</button>
+    </view>
   </block>
 
   <view class="sheet-mask" wx:if="{{gradeOpen}}" catchtap="closeGrade">

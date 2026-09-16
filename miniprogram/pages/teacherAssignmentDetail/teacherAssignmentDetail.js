@@ -28,7 +28,8 @@ Page({
     gradeScore: '',
     gradeComment: '',
     markHint: '',
-    grading: false
+    grading: false,
+    recalling: false
   },
 
   onLoad(options) {
@@ -182,6 +183,37 @@ Page({
       wx.showToast({ title: e.message || '批改失败', icon: 'none' });
     } finally {
       this.setData({ grading: false });
+    }
+  },
+
+  recallAssignment() {
+    if (this.data.recalling || !this.data.id) return;
+    wx.showModal({
+      title: '撤回作业',
+      content: '学生将立刻看不到这份作业。已交作答会留在库里，但不能再提交。',
+      confirmText: '撤回',
+      confirmColor: '#e11d48',
+      success: (res) => {
+        if (res.confirm) this.doRecall();
+      }
+    });
+  },
+
+  async doRecall() {
+    if (this.data.recalling) return;
+    this.setData({ recalling: true });
+    try {
+      const r = await callTeacher('deleteAssignment', { assignmentId: this.data.id });
+      if (!r.success) throw new Error(r.error || '撤回失败');
+      wx.showToast({ title: '已撤回', icon: 'success' });
+      setTimeout(() => {
+        const pages = getCurrentPages();
+        if (pages.length > 1) wx.navigateBack();
+        else wx.reLaunch({ url: '/pages/teacherAssignments/teacherAssignments' });
+      }, 400);
+    } catch (e) {
+      wx.showToast({ title: e.message || '撤回失败', icon: 'none' });
+      this.setData({ recalling: false });
     }
   }
 });

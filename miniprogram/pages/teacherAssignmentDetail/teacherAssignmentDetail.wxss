@@ -1,5 +1,9 @@
 .detail-page { padding-bottom: 48rpx; }
 
+.submit-wrap {
+  margin: 24rpx;
+}
+
 .q-index {
   font-size: 22rpx;
   font-weight: 800;
