@@ -26,6 +26,7 @@ Page({
     gradeStudent: {},
     gradeItems: [],
     gradeScore: '',
+    markHint: '',
     grading: false
   },
 
@@ -97,16 +98,21 @@ Page({
     if (s.statusKey === 'missing') {
       return wx.showToast({ title: '该生尚未提交', icon: 'none' });
     }
+    const marks = Array.isArray(s.marks) ? s.marks : [];
     const gradeItems = this.data.questions.map((q, i) => ({
       index: q.index,
       content: q.content || '',
-      answer: String((s.answers && s.answers[i]) || '')
+      answer: String((s.answers && s.answers[i]) || ''),
+      result: marks[i] === 'right' || marks[i] === 'wrong' ? marks[i] : ''
     }));
+    this._scoreEdited = s.score != null;
+    const right = gradeItems.filter((x) => x.result === 'right').length;
     this.setData({
       gradeOpen: true,
       gradeStudent: s,
       gradeItems,
-      gradeScore: s.score == null ? '' : String(s.score)
+      gradeScore: s.score == null ? '' : String(s.score),
+      markHint: right || gradeItems.some((x) => x.result) ? ('对 ' + right + ' / ' + gradeItems.length) : '每题点对或错，分数会按正确率预填'
     });
   },
 
@@ -116,19 +122,52 @@ Page({
     this.setData({ gradeOpen: false });
   },
   onScore(e) {
+    this._scoreEdited = true;
     this.setData({ gradeScore: e.detail.value || '' });
+  },
+
+  markQuestion(e) {
+    const index = Number(e.currentTarget.dataset.index);
+    const result = e.currentTarget.dataset.result;
+    const gradeItems = this.data.gradeItems.slice();
+    if (!gradeItems[index] || (result !== 'right' && result !== 'wrong')) return;
+    gradeItems[index] = Object.assign({}, gradeItems[index], {
+      result: gradeItems[index].result === result ? '' : result
+    });
+    const right = gradeItems.filter((x) => x.result === 'right').length;
+    const n = gradeItems.length;
+    const allMarked = n > 0 && gradeItems.every((x) => x.result === 'right' || x.result === 'wrong');
+    const patch = {
+      gradeItems,
+      markHint: '对 ' + right + ' / ' + n
+    };
+    if (allMarked && !this._scoreEdited) {
+      patch.gradeScore = String(Math.round(right / n * 100));
+    }
+    this.setData(patch);
   },
 
   async confirmGrade() {
     const s = this.data.gradeStudent || {};
     if (!s.submissionId || this.data.grading) return;
-    const score = Number(this.data.gradeScore);
+    const marks = (this.data.gradeItems || []).map((x) => x.result || '');
+    const marked = marks.filter(Boolean).length;
+    const n = marks.length;
+    if (marked && marked !== n) {
+      return wx.showToast({ title: '请把每道题标成对或错', icon: 'none' });
+    }
+    let score = Number(this.data.gradeScore);
     if (Number.isNaN(score) || score < 0) {
-      return wx.showToast({ title: '请输入有效分数', icon: 'none' });
+      if (marked === n && n) score = Math.round(marks.filter((m) => m === 'right').length / n * 100);
+      else return wx.showToast({ title: '请判对错或输入分数', icon: 'none' });
     }
     this.setData({ grading: true });
     try {
-      const g = await callTeacher('gradeAssignment', { submissionId: s.submissionId, score });
+      const g = await callTeacher('gradeAssignment', {
+        submissionId: s.submissionId,
+        score,
+        marks
+      });
       if (!g.success) throw new Error(g.error || '批改失败');
       wx.showToast({ title: '已批改', icon: 'success' });
       this.setData({ gradeOpen: false });

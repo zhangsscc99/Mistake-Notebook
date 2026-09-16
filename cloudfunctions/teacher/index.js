@@ -54,6 +54,18 @@ function contentKey(text) {
   return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 80);
 }
 
+function normalizeMarks(raw, n) {
+  const src = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const v = src[i];
+    if (v === true || v === 'right' || v === 'correct') out.push('right');
+    else if (v === false || v === 'wrong' || v === 'incorrect') out.push('wrong');
+    else out.push('');
+  }
+  return out;
+}
+
 async function ownedClasses(teacherId) {
   const r = await db.collection('classes').where({ teacherId, isDeleted: false }).orderBy('createdAt', 'desc').get();
   return r.data || [];
@@ -740,6 +752,7 @@ async function assignmentDetail(teacherId, event) {
       status,
       score: s && typeof s.score === 'number' ? s.score : null,
       answers: (s && s.answers) || [],
+      marks: normalizeMarks(s && s.marks, (a.questionIds || []).length),
       submissionId: s ? s._id : '',
       submittedAt: (s && (s.submittedAt || s.createdAt)) || ''
     };
@@ -817,17 +830,31 @@ async function teacherAssignments(teacherId) {
 
 async function gradeAssignment(teacherId, event) {
   const id = String(event.submissionId || '');
-  const score = Number(event.score);
-  if (!id || Number.isNaN(score) || score < 0) return fail('请输入有效分数');
+  if (!id) return fail('缺少提交记录');
   const r = await db.collection('assignment_submissions').doc(id).get();
   const sub = r.data;
   if (!sub) return fail('提交记录不存在');
   const a = (await db.collection('assignments').doc(sub.assignmentId).get()).data;
   if (!a || a.teacherId !== teacherId) return fail('无权批改该作业');
+  const n = (a.questionIds || []).length;
+  const marks = normalizeMarks(event.marks, n);
+  const marked = marks.filter(Boolean).length;
+  if (marked && marked !== n) return fail('请把每道题标成对或错');
+  let score = Number(event.score);
+  if (Number.isNaN(score) || score < 0) {
+    if (marked === n && n) score = Math.round(marks.filter((m) => m === 'right').length / n * 100);
+    else return fail('请输入有效分数');
+  }
   await db.collection('assignment_submissions').doc(id).update({
-    data: { score, status: 'graded', gradedAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    data: {
+      score,
+      marks,
+      status: 'graded',
+      gradedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
   });
-  return { success: true, data: { id, score, status: 'graded' } };
+  return { success: true, data: { id, score, marks, status: 'graded' } };
 }
 
 async function parentReport(teacherId, event) {
@@ -1145,6 +1172,7 @@ async function myAssignmentDetail(event) {
   const status = (sub && sub.status) || 'pending';
   const saved = Array.isArray(sub && sub.answers) ? sub.answers : [];
   const answers = questions.map((_, i) => String(saved[i] != null ? saved[i] : ''));
+  const marks = normalizeMarks(sub && sub.marks, questions.length);
   return {
     success: true,
     data: {
@@ -1157,6 +1185,7 @@ async function myAssignmentDetail(event) {
       submissionStatus: status,
       submissionScore: sub && typeof sub.score === 'number' ? sub.score : null,
       answers,
+      marks,
       submittedAt: (sub && (sub.submittedAt || sub.createdAt)) || '',
       canSubmit: status !== 'graded',
       readOnly: status === 'graded'
@@ -1183,6 +1212,7 @@ async function submitAssignment(event) {
     answers: Array.isArray(event.answers) ? event.answers : [],
     status: 'submitted',
     score: null,
+    marks: [],
     submittedAt: now,
     updatedAt: now
   };

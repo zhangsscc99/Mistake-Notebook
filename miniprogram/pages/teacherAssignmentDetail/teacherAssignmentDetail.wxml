@@ -50,12 +50,17 @@
           <view class="q-index">第 {{item.index}} 题</view>
           <view class="q-content">{{item.content}}</view>
           <view class="grade-answer">{{item.answer || '（空）'}}</view>
+          <view class="mark-row">
+            <view class="mark-chip {{item.result === 'right' ? 'on-right' : ''}}" data-index="{{index}}" data-result="right" bindtap="markQuestion">对</view>
+            <view class="mark-chip {{item.result === 'wrong' ? 'on-wrong' : ''}}" data-index="{{index}}" data-result="wrong" bindtap="markQuestion">错</view>
+          </view>
         </view>
       </scroll-view>
       <view class="score-row">
         <text class="score-label">分数</text>
-        <input class="score-input" type="digit" value="{{gradeScore}}" placeholder="例如 85" maxlength="4" bindinput="onScore" />
+        <input class="score-input" type="digit" value="{{gradeScore}}" placeholder="按对错预填，可改" maxlength="4" bindinput="onScore" />
       </view>
+      <view class="sheet-sub" wx:if="{{markHint}}">{{markHint}}</view>
       <button class="primary-btn" loading="{{grading}}" disabled="{{grading}}" bindtap="confirmGrade">确认批改</button>
     </view>
   </view>

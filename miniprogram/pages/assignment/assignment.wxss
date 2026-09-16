@@ -64,10 +64,36 @@
   box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
 }
 
+.q-index-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
 .q-index {
   font-size: 22rpx;
   font-weight: 800;
   color: #2459ff;
+}
+
+.result-badge {
+  flex-shrink: 0;
+  padding: 4px 12px 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.result-badge.right {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+}
+
+.result-badge.wrong {
+  color: #e11d48;
+  background: rgba(225, 29, 72, 0.12);
 }
 
 .q-content {

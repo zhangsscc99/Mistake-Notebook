@@ -39,11 +39,17 @@ Page({
       const r = await callTeacher('myAssignmentDetail', { assignmentId: this.id });
       if (!r.success) throw new Error(r.error || '加载失败');
       const d = r.data || {};
-      const questions = (d.questions || []).map((q, i) => ({
-        ...q,
-        index: i + 1,
-        imageUrl: q.imageUrl || ''
-      }));
+      const marks = Array.isArray(d.marks) ? d.marks : [];
+      const questions = (d.questions || []).map((q, i) => {
+        const result = marks[i] === 'right' || marks[i] === 'wrong' ? marks[i] : '';
+        return {
+          ...q,
+          index: i + 1,
+          imageUrl: q.imageUrl || '',
+          result,
+          resultLabel: result === 'right' ? '对' : (result === 'wrong' ? '错' : '')
+        };
+      });
       const answers = questions.map((_, i) => String((d.answers && d.answers[i]) || ''));
       const status = d.submissionStatus || 'pending';
       const score = d.submissionScore;
@@ -93,6 +99,16 @@ Page({
 
   async submit() {
     if (this.data.submitting || this.data.readOnly || !this.data.canSubmit) return;
+    const blank = (this.data.answers || []).every((a) => !String(a || '').trim());
+    if (blank) {
+      const ok = await new Promise((resolve) => wx.showModal({
+        title: '答案还是空的',
+        content: '确定提交空白作业吗？',
+        confirmText: '提交',
+        success: (r) => resolve(!!r.confirm)
+      }));
+      if (!ok) return;
+    }
     this.setData({ submitting: true });
     try {
       const r = await callTeacher('submitAssignment', {
