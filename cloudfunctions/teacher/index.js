@@ -66,6 +66,13 @@ function normalizeMarks(raw, n) {
   return out;
 }
 
+function isPastDue(dueAt) {
+  const raw = String(dueAt || '');
+  const day = raw.indexOf('T') > 0 ? raw.split('T')[0] : raw.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+  return Date.now() > new Date(day + 'T23:59:59.999+08:00').getTime();
+}
+
 async function ownedClasses(teacherId) {
   const r = await db.collection('classes').where({ teacherId, isDeleted: false }).orderBy('createdAt', 'desc').get();
   return r.data || [];
@@ -1151,7 +1158,8 @@ async function myAssignments() {
     return {
       ...a,
       submissionStatus: (sub && sub.status) || 'pending',
-      submissionScore: sub && sub.score == null ? null : sub && sub.score
+      submissionScore: sub && sub.score == null ? null : sub && sub.score,
+      overdue: isPastDue(a.dueAt)
     };
   }));
   return { success: true, data: rows };
@@ -1173,6 +1181,8 @@ async function myAssignmentDetail(event) {
   const saved = Array.isArray(sub && sub.answers) ? sub.answers : [];
   const answers = questions.map((_, i) => String(saved[i] != null ? saved[i] : ''));
   const marks = normalizeMarks(sub && sub.marks, questions.length);
+  const overdue = isPastDue(a.dueAt);
+  const graded = status === 'graded';
   return {
     success: true,
     data: {
@@ -1187,8 +1197,9 @@ async function myAssignmentDetail(event) {
       answers,
       marks,
       submittedAt: (sub && (sub.submittedAt || sub.createdAt)) || '',
-      canSubmit: status !== 'graded',
-      readOnly: status === 'graded'
+      overdue,
+      canSubmit: !graded && !overdue,
+      readOnly: graded || overdue
     }
   };
 }
@@ -1205,6 +1216,7 @@ async function submitAssignment(event) {
   }
   const old = ((await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get()).data || [])[0];
   if (old && old.status === 'graded') return fail('已批改，不能再提交');
+  if (isPastDue(a.dueAt)) return fail('已过截止时间，不能提交');
   const now = new Date().toISOString();
   const data = {
     assignmentId: id,

@@ -1,4 +1,4 @@
-const { formatDay } = require('../../utils/teacher');
+const { formatDay, isPastDue } = require('../../utils/teacher');
 
 function taskTime(iso) {
   return Date.parse(iso || '') || 0;
@@ -7,6 +7,10 @@ function taskTime(iso) {
 function homeworkAction(item) {
   if (item.submissionStatus === 'graded') {
     return item.submissionScore == null ? '已批改' : ('已批改 · ' + item.submissionScore + '分');
+  }
+  const overdue = item.overdue || isPastDue(item.dueAt);
+  if (overdue) {
+    return item.submissionStatus === 'submitted' ? '已截止 · 已交 ›' : '已截止';
   }
   if (item.submissionStatus === 'submitted') return '已提交，可查看 ›';
   return '开始作答 ›';
