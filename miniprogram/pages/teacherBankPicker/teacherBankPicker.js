@@ -202,7 +202,7 @@ Page({
       const classId = this.data.classId;
       wx.showModal({
         title: '已存入题库',
-        content: '题目已进入这个班的题库，不会自动带进组卷。需要组卷时再到错题页勾选。',
+        content: '题目已进入这个班的题库，不会自动带进组卷。需要组卷时再到题目页勾选。',
         confirmText: '去选题',
         cancelText: '完成',
         success: (res) => {

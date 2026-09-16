@@ -1,8 +1,8 @@
 <view class="teacher-shell {{picking ? 'picking' : ''}}">
   <view class="teacher-hero">
-    <view class="hero-kicker">MISTAKES</view>
-    <view class="hero-title">全班错题</view>
-    <view class="hero-sub">学生错题和老师拍照题库都可以勾选，带到组卷页发给班级</view>
+    <view class="hero-kicker">QUESTIONS</view>
+    <view class="hero-title">全班题目</view>
+    <view class="hero-sub">学生错题和班级题库都在这里。拍照录入进题库，不进学生错题</view>
     <view class="hero-stats">
       <view class="hero-stat" bindtap="showMistakes"><text>{{stats.total || 0}}</text><label>错题</label></view>
       <view class="hero-divider"></view>
@@ -10,6 +10,7 @@
       <view class="hero-divider"></view>
       <view class="hero-stat" bindtap="showBank"><text>{{bankCount}}</text><label>题库</label></view>
     </view>
+    <button class="ghost-btn hero-btn" bindtap="goCapture">拍照录入</button>
   </view>
 
   <view class="chip-row">
@@ -41,7 +42,6 @@
 
   <view class="filter-row">
     <view class="chip {{onlyHot ? 'on' : ''}}" wx:if="{{sourceFilter === 'mistakes'}}" bindtap="toggleHot">只看高频</view>
-    <view class="chip" bindtap="goCapture">拍照录入</view>
     <view class="chip" wx:if="{{!picking}}" bindtap="startPick">选题</view>
     <view class="chip" wx:if="{{picking && !visibleAllSelected}}" bindtap="selectAllVisible">全选当前</view>
     <view class="chip" wx:if="{{picking && visibleAllSelected}}" bindtap="clearVisible">取消当前</view>
@@ -68,9 +68,9 @@
     </view>
   </view>
   <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter === 'bank'}}">还没有老师录入的题<text>点上方「拍照录入」，识别后会进这个班的题库</text></view>
-  <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter !== 'bank'}}">没有符合条件的错题<text>换个分类、学生或搜索词试试</text></view>
+  <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter !== 'bank'}}">没有符合条件的学生错题<text>换个分类、学生或搜索词试试</text></view>
 
-  <view class="loading-line" wx:if="{{loading}}">加载班级错题…</view>
+  <view class="loading-line" wx:if="{{loading}}">加载题目…</view>
 
   <view class="pick-dock" wx:if="{{picking}}">
     <view class="pick-dock-title">已选 {{selectedCount}} 道 · 当前显示 {{visibleCount}} 道</view>

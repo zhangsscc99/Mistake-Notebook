@@ -76,7 +76,7 @@
     <view class="section-head"><text class="section-title">教学工具</text></view>
     <view class="tool-grid">
       <view class="tool-card" bindtap="openQuestions">
-        <view class="tool-title">全班错题</view>
+        <view class="tool-title">全班题目</view>
         <view class="tool-desc">学生错题与班级题库</view>
       </view>
       <view class="tool-card" bindtap="openPaper">

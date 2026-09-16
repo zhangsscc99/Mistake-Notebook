@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">TEACHER</view>
     <view class="hero-title">{{nickName || '教师'}}</view>
-    <view class="hero-sub">拍照录入进班级题库，不进个人错题本。组卷前请先到错题页选题。</view>
+    <view class="hero-sub">拍照录入进班级题库，不进个人错题本。组卷前请先到题目页选题。</view>
     <view class="hero-stats">
       <view class="hero-stat" data-focus="" bindtap="goClass"><text>{{classCount}}</text><label>班级</label></view>
       <view class="hero-divider"></view>
@@ -27,7 +27,7 @@
       <text class="cell-arrow">›</text>
     </view>
     <view class="cell" bindtap="goQuestions">
-      <text class="cell-label">全班错题与高频</text>
+      <text class="cell-label">全班题目</text>
       <text class="cell-arrow">›</text>
     </view>
   </view>

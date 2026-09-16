@@ -8,7 +8,7 @@ Component({
   data: {
     tabs: [
       { key: 'class', text: '班级', url: '/pages/teacher/teacher', icon: '/images/tabbar/home.png', activeIcon: '/images/tabbar/home-active.png' },
-      { key: 'questions', text: '错题', url: '/pages/teacherQuestions/teacherQuestions', icon: '/images/tabbar/apps.png', activeIcon: '/images/tabbar/apps-active.png' },
+      { key: 'questions', text: '题目', url: '/pages/teacherQuestions/teacherQuestions', icon: '/images/tabbar/apps.png', activeIcon: '/images/tabbar/apps-active.png' },
       { key: 'chat', text: '助手', url: '/pages/teacherChat/teacherChat', icon: '/images/tabbar/chat.png', activeIcon: '/images/tabbar/chat-active.png' },
       { key: 'paper', text: '组卷', url: '/pages/teacherPaper/teacherPaper', icon: '/images/tabbar/edit.png', activeIcon: '/images/tabbar/edit-active.png' },
       { key: 'mine', text: '我的', url: '/pages/teacherMine/teacherMine', icon: '/images/tabbar/profile.png', activeIcon: '/images/tabbar/profile-active.png' }

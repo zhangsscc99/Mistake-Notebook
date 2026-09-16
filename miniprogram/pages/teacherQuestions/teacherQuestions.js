@@ -313,7 +313,7 @@ Page({
         q.isHot ? `班级高频 ${q.hotCount} 次 / ${q.hotStudents} 人` : ''
       ].filter(Boolean).join('\n');
       wx.showModal({
-        title: q.category || '班级错题',
+        title: q.category || '学生错题',
         content: `${q.content || ''}${extra ? `\n\n${extra}` : ''}`,
         showCancel: false
       });
