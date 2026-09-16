@@ -26,6 +26,7 @@ Page({
     gradeStudent: {},
     gradeItems: [],
     gradeScore: '',
+    gradeComment: '',
     markHint: '',
     grading: false
   },
@@ -112,6 +113,7 @@ Page({
       gradeStudent: s,
       gradeItems,
       gradeScore: s.score == null ? '' : String(s.score),
+      gradeComment: s.comment || '',
       markHint: right || gradeItems.some((x) => x.result) ? ('对 ' + right + ' / ' + gradeItems.length) : '每题点对或错，分数会按正确率预填'
     });
   },
@@ -124,6 +126,9 @@ Page({
   onScore(e) {
     this._scoreEdited = true;
     this.setData({ gradeScore: e.detail.value || '' });
+  },
+  onComment(e) {
+    this.setData({ gradeComment: e.detail.value || '' });
   },
 
   markQuestion(e) {
@@ -166,7 +171,8 @@ Page({
       const g = await callTeacher('gradeAssignment', {
         submissionId: s.submissionId,
         score,
-        marks
+        marks,
+        comment: this.data.gradeComment || ''
       });
       if (!g.success) throw new Error(g.error || '批改失败');
       wx.showToast({ title: '已批改', icon: 'success' });

@@ -155,3 +155,16 @@
   background: #e11d48;
   box-shadow: 0 6px 16px rgba(225, 29, 72, 0.28);
 }
+
+.comment-input {
+  width: 100%;
+  min-height: 88rpx;
+  margin: 12rpx 0 16rpx;
+  padding: 16rpx;
+  box-sizing: border-box;
+  border-radius: 14rpx;
+  background: #f4f7ff;
+  font-size: 26rpx;
+  color: #0b1633;
+  line-height: 1.5;
+}

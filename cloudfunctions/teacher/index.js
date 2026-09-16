@@ -758,6 +758,7 @@ async function assignmentDetail(teacherId, event) {
       statusKey,
       status,
       score: s && typeof s.score === 'number' ? s.score : null,
+      comment: (s && s.comment) || '',
       answers: (s && s.answers) || [],
       marks: normalizeMarks(s && s.marks, (a.questionIds || []).length),
       submissionId: s ? s._id : '',
@@ -852,16 +853,18 @@ async function gradeAssignment(teacherId, event) {
     if (marked === n && n) score = Math.round(marks.filter((m) => m === 'right').length / n * 100);
     else return fail('请输入有效分数');
   }
+  const comment = String(event.comment || '').replace(/\s+/g, ' ').trim().slice(0, 120);
   await db.collection('assignment_submissions').doc(id).update({
     data: {
       score,
       marks,
+      comment,
       status: 'graded',
       gradedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
   });
-  return { success: true, data: { id, score, marks, status: 'graded' } };
+  return { success: true, data: { id, score, marks, comment, status: 'graded' } };
 }
 
 async function parentReport(teacherId, event) {
@@ -1196,6 +1199,7 @@ async function myAssignmentDetail(event) {
       submissionScore: sub && typeof sub.score === 'number' ? sub.score : null,
       answers,
       marks,
+      comment: (sub && sub.comment) || '',
       submittedAt: (sub && (sub.submittedAt || sub.createdAt)) || '',
       overdue,
       canSubmit: !graded && !overdue,
@@ -1225,6 +1229,7 @@ async function submitAssignment(event) {
     status: 'submitted',
     score: null,
     marks: [],
+    comment: '',
     submittedAt: now,
     updatedAt: now
   };
