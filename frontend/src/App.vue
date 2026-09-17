@@ -92,11 +92,16 @@ export default {
   position: relative !important;
   overflow: visible !important;
   padding: 8px 4px !important;
+  cursor: pointer !important;
 }
 
+.van-tabbar-item:hover,
 :deep(.van-tabbar-item:hover) {
-  color: var(--text-primary) !important;
-  transform: translateY(-1px);
+  color: var(--text-accent) !important;
+  transform: none !important;
+  background: rgba(36, 89, 255, 0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
 }
 
 .van-tabbar-item--active,

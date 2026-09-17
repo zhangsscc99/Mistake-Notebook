@@ -9,20 +9,23 @@
     "build:dev": "vue-cli-service build --mode development",
     "build:serve": "vue-cli-service build --mode server",
     "lint": "vue-cli-service lint",
-    "lint:fix": "vue-cli-service lint --fix"
+    "lint:fix": "vue-cli-service lint --fix",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
-    "vue": "^3.3.0",
-    "@vue/compiler-sfc": "^3.3.0",
-    "vue-router": "^4.2.0",
-    "axios": "^1.4.0",
-    "vant": "^4.6.0",
     "@vant/touch-emulator": "^1.4.0",
+    "@vue/compiler-sfc": "^3.3.0",
+    "axios": "^1.4.0",
+    "compressorjs": "^1.2.1",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.1",
-    "compressorjs": "^1.2.1"
+    "vant": "^4.6.0",
+    "vue": "^3.3.0",
+    "vue-router": "^4.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.56.1",
     "@vue/cli-plugin-router": "^5.0.0",
     "@vue/cli-service": "^5.0.0",
     "vue-cli-plugin-vant": "^1.0.1"

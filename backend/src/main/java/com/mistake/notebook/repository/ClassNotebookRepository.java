@@ -8,7 +8,9 @@ import java.util.Optional;
 
 public interface ClassNotebookRepository extends JpaRepository<ClassNotebook, Long> {
     List<ClassNotebook> findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(Long teacherId);
+    List<ClassNotebook> findByTeacherIdAndClassIdAndIsDeletedFalseOrderByCreatedAtDesc(Long teacherId, Long classId);
     List<ClassNotebook> findByTeacherIdInAndIsDeletedFalseAndPushedAtIsNotNullOrderByPushedAtDesc(List<Long> teacherIds);
+    List<ClassNotebook> findByClassIdInAndIsDeletedFalseOrderByCreatedAtDesc(List<Long> classIds);
     Optional<ClassNotebook> findByIdAndTeacherId(Long id, Long teacherId);
     void deleteByTeacherId(Long teacherId);
 }

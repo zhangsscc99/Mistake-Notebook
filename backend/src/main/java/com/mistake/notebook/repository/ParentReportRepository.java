@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface ParentReportRepository extends JpaRepository<ParentReport, Long> {
     List<ParentReport> findByTeacherIdAndStudentIdOrderByCreatedAtDesc(Long teacherId, Long studentId);
+    List<ParentReport> findByTeacherIdAndClassIdOrderByCreatedAtDesc(Long teacherId, Long classId);
     List<ParentReport> findByStudentIdOrderByCreatedAtDesc(Long studentId);
     Optional<ParentReport> findByIdAndTeacherId(Long id, Long teacherId);
     void deleteByStudentId(Long studentId);

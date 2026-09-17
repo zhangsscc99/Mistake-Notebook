@@ -121,6 +121,7 @@
               <div class="meta-left">
                 <span class="q-index">#{{ question.displayIndex }}</span>
                 <span class="q-difficulty" :class="'diff-' + question.difficulty">{{ getDifficultyText(question.difficulty) }}</span>
+                <span v-if="!question.paperReady" class="parse-flag">未解析</span>
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
                 <span v-if="question.hasNote" class="note-flag">📝</span>
               </div>
@@ -135,7 +136,7 @@
                   {{ question.mastered ? '已掌握' : '掌握' }}
                 </button>
                 <button class="mark-btn" :class="{ on: question.favorite }" @click.stop="toggleFavorite(question)">{{ question.favorite ? '★' : '☆' }}</button>
-                <button class="mark-btn" :class="{ on: question.pinned }" @click.stop="togglePin(question)">📌</button>
+                <button class="mark-btn text" :class="{ on: question.pinned }" @click.stop="togglePin(question)">{{ question.pinned ? '已置顶' : '置顶' }}</button>
               </div>
             </div>
             <van-button
@@ -155,6 +156,7 @@
               @mistake="openMistake"
               @variants="openVariants"
               @note="openNote"
+              @help="openHelp"
             />
             <div v-if="question.showAI && !editMode" class="ai-box">
               <div class="ai-title">AI 标准答案与解析</div>
@@ -222,6 +224,7 @@
               <div class="meta-left">
                 <span class="q-index">#{{ question.displayIndex }}</span>
                 <span class="q-difficulty" :class="'diff-' + question.difficulty">{{ getDifficultyText(question.difficulty) }}</span>
+                <span v-if="!question.paperReady" class="parse-flag">未解析</span>
                 <span class="add-time">{{ formatTime(question.createdAt) }}</span>
                 <span v-if="question.hasNote" class="note-flag">📝</span>
               </div>
@@ -236,7 +239,7 @@
                   {{ question.mastered ? '已掌握' : '掌握' }}
                 </button>
                 <button class="mark-btn" :class="{ on: question.favorite }" @click.stop="toggleFavorite(question)">{{ question.favorite ? '★' : '☆' }}</button>
-                <button class="mark-btn" :class="{ on: question.pinned }" @click.stop="togglePin(question)">📌</button>
+                <button class="mark-btn text" :class="{ on: question.pinned }" @click.stop="togglePin(question)">{{ question.pinned ? '已置顶' : '置顶' }}</button>
               </div>
             </div>
             <van-button
@@ -256,6 +259,7 @@
               @mistake="openMistake"
               @variants="openVariants"
               @note="openNote"
+              @help="openHelp"
             />
             <div v-if="question.showAI && !editMode" class="ai-box">
               <div class="ai-title">AI 标准答案与解析</div>
@@ -354,8 +358,9 @@
         <div class="detail-modal-footer">
           <van-button type="primary" block @click="openExplain(detailQuestion)">错题讲解</van-button>
           <van-button block class="ghost-btn" @click="openAIChat(detailQuestion)">问对话助手</van-button>
-          <van-button block class="ghost-btn" @click="needMultiHint('错因深度分析')">错因深度分析</van-button>
-          <van-button block class="ghost-btn" @click="needMultiHint('变式题')">变式题</van-button>
+          <van-button block class="ghost-btn" @click="openMistake(detailQuestion)">错因分析</van-button>
+          <van-button block class="ghost-btn" @click="openVariants(detailQuestion)">变式题</van-button>
+          <van-button block class="ghost-btn" @click="openHelp(detailQuestion)">发到互助答疑</van-button>
         </div>
       </div>
     </van-popup>
@@ -387,7 +392,9 @@ import {
   getQuestionSegments,
   parseQuestionParas,
   buildAiDisplayText,
-  isPendingQuestion
+  isPendingQuestion,
+  canAddToPaper,
+  partitionPaperQuestions
 } from '../utils/questionFormat'
 import QuestionText from '../components/QuestionText.vue'
 import QuestionStudyTools from '../components/QuestionStudyTools.vue'
@@ -617,8 +624,9 @@ export default {
 
     const buildDetailQuestion = (question, index) => {
       const pending = isPendingQuestion(question)
-      const hasAiAnswer = !!(question.aiAnswer && question.aiAnswer.trim() && question.aiAnswer !== '待补充')
-      const hasAiAnalysis = !!(question.aiAnalysis && question.aiAnalysis.trim() && question.aiAnalysis !== 'AI暂未给出解析')
+      const paperReady = canAddToPaper(question)
+      const hasAiAnswer = !!(question.sourceAiAnswer || (question.aiAnswer && question.aiAnswer.trim() && question.aiAnswer !== '待补充'))
+      const hasAiAnalysis = !!(question.sourceAiAnalysis || (question.aiAnalysis && question.aiAnalysis.trim() && question.aiAnalysis !== 'AI暂未给出解析'))
       const rawContent = question.recognizedText || question.content || '暂无内容'
       const formattedContent = formatQuestionText(rawContent)
       const contentParas = parseQuestionParas(formattedContent)
@@ -656,7 +664,10 @@ export default {
           '暂无 AI 解析',
           'AI 解析生成中…'
         ),
-        formattedDate: formatTime(question.createdAt)
+        formattedDate: formatTime(question.createdAt),
+        paperReady,
+        sourceAiAnswer: question.sourceAiAnswer || question.aiAnswer || '',
+        sourceAiAnalysis: question.sourceAiAnalysis || question.aiAnalysis || ''
       }
     }
 
@@ -698,18 +709,35 @@ export default {
       })
     }
 
-    const openMistake = async () => {
-      needMultiHint('错因深度分析')
-    }
-
-    const openVariants = () => {
-      needMultiHint('变式题')
-    }
-
-    const needMultiHint = (name) => {
+    const openMistake = async (question) => {
+      if (!question?.id) return
       showDetailModal.value = false
-      if (!editMode.value) toggleEditMode()
-      showToast(`${name}至少选 2 道错题，勾选后点底部按钮`)
+      try {
+        showToast('正在做错因分析…')
+        const res = await studyAPI.generateDeepMistakeReport([question.id])
+        router.push('/mistake-report/' + res.data.id)
+      } catch (e) {
+        showToast({ type: 'fail', message: e.response?.data?.message || '生成失败' })
+      }
+    }
+
+    const openVariants = (question) => {
+      showDetailModal.value = false
+      if (!question?.id) return
+      router.push({ path: '/variants', query: { ids: String(question.id) } })
+    }
+
+    const openHelp = (question) => {
+      showDetailModal.value = false
+      if (!question) return
+      router.push({
+        path: '/community/help',
+        query: {
+          title: (question.category || '错题') + '互助',
+          snippet: (question.content || '').slice(0, 120),
+          questionId: question.id
+        }
+      })
     }
 
     const toggleShowAI = (question) => {
@@ -774,6 +802,10 @@ export default {
 
     // 切换选择
     const toggleSelection = (question) => {
+      if (isPaperSelectMode.value && !question.paperReady && !question.selected) {
+        showToast('未解析完成的题目不能加入组卷')
+        return
+      }
       question.selected = !question.selected
     }
 
@@ -786,7 +818,13 @@ export default {
 
     const toggleSelectAll = () => {
       const target = !isAllSelected.value
-      questions.forEach(q => (q.selected = target))
+      questions.forEach(q => {
+        if (isPaperSelectMode.value && !q.paperReady) {
+          q.selected = false
+          return
+        }
+        q.selected = target
+      })
     }
     // 开始练习
     const startPractice = () => {
@@ -799,23 +837,30 @@ export default {
 
     // 加入组卷
     const addToExam = () => {
-      if (selectedQuestions.value.length === 0) {
-        showToast('请先选择题目')
+      const { ready, blocked } = partitionPaperQuestions(selectedQuestions.value)
+      if (!ready.length) {
+        showToast(blocked.length ? '未解析完成的题目不能加入组卷' : '请先选择题目')
         return
+      }
+      if (blocked.length) {
+        showToast(`已跳过 ${blocked.length} 道未解析完成的题`)
       }
 
       // 组卷选题模式：确认组卷 → 直接保存为试卷（对齐小程序一步式确认）
       if (isPaperSelectMode.value) {
-        savePaper()
+        savePaper(ready)
         return
       }
 
       // 把选中题目的完整数据写入 sessionStorage，由 PaperBuilder 读取合并
-      const incoming = selectedQuestions.value.map(q => ({
+      const incoming = ready.map(q => ({
         id: q.id,
         content: q.recognizedText || q.content || '',
-        answer: q.aiAnswer || '待补充',
-        analysis: q.aiAnalysis || 'AI暂未给出解析',
+        answer: q.sourceAiAnswer || q.aiAnswer || '待补充',
+        analysis: q.sourceAiAnalysis || q.aiAnalysis || 'AI暂未给出解析',
+        aiStatus: q.aiStatus || '',
+        aiAnswer: q.sourceAiAnswer || q.aiAnswer || '',
+        aiAnalysis: q.sourceAiAnalysis || q.aiAnalysis || '',
         categoryId: categoryId,
         categoryName: categoryInfo.name,
         difficulty: q.difficulty || 'medium',
@@ -863,15 +908,19 @@ export default {
     }
 
     // 保存为试卷
-    const savePaper = () => {
-      console.log('===== savePaper 开始执行 =====')
-      console.log('selectedQuestions:', selectedQuestions.value)
-      console.log('selectedQuestions 数量:', selectedQuestions.value.length)
-      
-      if (selectedQuestions.value.length === 0) {
-        showToast('请先选择题目')
+    const savePaper = (picked) => {
+      const source = picked || selectedQuestions.value
+      const { ready, blocked } = partitionPaperQuestions(source)
+      if (!ready.length) {
+        showToast(blocked.length ? '未解析完成的题目不能加入组卷' : '请先选择题目')
         return
       }
+      if (blocked.length) {
+        showToast(`已跳过 ${blocked.length} 道未解析完成的题`)
+      }
+
+      console.log('===== savePaper 开始执行 =====')
+      console.log('ready questions:', ready.length)
       
       // 创建输入框元素
       let inputValue = ''
@@ -934,21 +983,28 @@ export default {
         }
 
         // 保存试卷（云端优先，失败回退本地）
-        const { localOnly } = await paperAPI.savePaper(
-          selectedQuestions.value.map(q => ({
-            id: q.id,
-            content: q.recognizedText || q.content,
-            answer: q.aiAnswer || '待补充',
-            analysis: q.aiAnalysis || 'AI暂未给出解析',
-            categoryId: categoryId,
-            categoryName: categoryInfo.name,
-            tags: q.tags || [],
-            difficulty: q.difficulty
-          })),
-          inputValue.trim()
-        )
-
-        showToast({ message: localOnly ? '已本地保存' : '试卷保存成功', type: 'success' })
+        try {
+          const { localOnly } = await paperAPI.savePaper(
+            ready.map(q => ({
+              id: q.id,
+              content: q.recognizedText || q.content,
+              answer: q.sourceAiAnswer || q.aiAnswer || '待补充',
+              analysis: q.sourceAiAnalysis || q.aiAnalysis || 'AI暂未给出解析',
+              aiStatus: q.aiStatus || '',
+              aiAnswer: q.sourceAiAnswer || q.aiAnswer || '',
+              aiAnalysis: q.sourceAiAnalysis || q.aiAnalysis || '',
+              categoryId: categoryId,
+              categoryName: categoryInfo.name,
+              tags: q.tags || [],
+              difficulty: q.difficulty
+            })),
+            inputValue.trim()
+          )
+          showToast({ message: localOnly ? '已本地保存' : '试卷保存成功', type: 'success' })
+        } catch (e) {
+          showToast(e.response?.data?.message || e.message || '保存失败')
+          return
+        }
 
         // 根据模式决定是否跳转
         if (isPaperSelectMode.value) {
@@ -1060,7 +1116,11 @@ export default {
               pinned: false,
               mastered: false,
               hasNote: false,
-              noteContent: ''
+              noteContent: '',
+              aiStatus: question.aiStatus || '',
+              sourceAiAnswer: question.aiAnswer || '',
+              sourceAiAnalysis: question.aiAnalysis || '',
+              paperReady: canAddToPaper(question)
             }
             return buildDetailQuestion(base, index)
           })
@@ -1149,8 +1209,8 @@ export default {
     // 错因深度分析：多道题合成一份报告
     const batchMistake = async () => {
       const selected = selectedQuestions.value
-      if (selected.length < 2) {
-        showToast('错因深度分析至少选择 2 道题')
+      if (!selected.length) {
+        showToast('请先勾选至少 1 道题')
         return
       }
       try {
@@ -1171,8 +1231,8 @@ export default {
 
     const batchVariants = () => {
       const ids = selectedQuestions.value.map(q => q.id)
-      if (ids.length < 2) {
-        showToast('变式题生成至少选择 2 道题')
+      if (!ids.length) {
+        showToast('请先勾选至少 1 道题')
         return
       }
       router.push({ path: '/variants', query: { ids: ids.join(',') } })
@@ -1231,8 +1291,7 @@ export default {
       openAIChat,
       openMistake,
       openVariants,
-      needMultiHint,
-      needMultiHint,
+      openHelp,
       toggleShowAI,
       toggleFavorite,
       togglePin,
@@ -1636,6 +1695,16 @@ export default {
 .q-difficulty.diff-hard {
   background: rgba(238, 10, 36, 0.12);
   color: #ee0a24;
+}
+
+.parse-flag {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 10px;
+  margin-right: 8px;
+  font-weight: 700;
+  background: rgba(217, 119, 6, 0.14);
+  color: #d97706;
 }
 
 .questions-section {

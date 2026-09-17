@@ -24,7 +24,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         String path = request.getRequestURI() == null ? "" : request.getRequestURI();
-        if (isPublic(path)) {
+        if (isPublic(path, request.getMethod())) {
             return true;
         }
         String header = request.getHeader("Authorization");
@@ -49,9 +49,11 @@ public class AuthInterceptor implements HandlerInterceptor {
         AuthContext.clear();
     }
 
-    private boolean isPublic(String path) {
-        return path.contains("/auth/")
-                || path.contains("/uploads/")
-                || path.endsWith("/error");
+    private boolean isPublic(String path, String method) {
+        if (path.contains("/auth/") || path.contains("/uploads/") || path.endsWith("/error")) {
+            return true;
+        }
+        if (path.contains("/orgs/mine")) return false;
+        return "GET".equalsIgnoreCase(method) && path.contains("/orgs");
     }
 }

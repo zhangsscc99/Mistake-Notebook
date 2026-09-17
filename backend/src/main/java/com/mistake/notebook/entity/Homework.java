@@ -21,6 +21,9 @@ public class Homework {
     @Column(name = "teacher_id", nullable = false)
     private Long teacherId;
 
+    @Column(name = "class_id")
+    private Long classId;
+
     @Column(nullable = false, length = 120)
     private String title;
 

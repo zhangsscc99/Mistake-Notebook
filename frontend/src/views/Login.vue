@@ -46,6 +46,7 @@
       </button>
     </div>
     <p class="hint">网页端没有微信一键登录，功能和隔离规则与小程序一致。</p>
+    <button class="cases-link" @click="$router.push('/orgs')">查看机构版（演示案例 + 真实入驻）</button>
   </div>
 </template>
 
@@ -141,10 +142,21 @@ export default {
   color: #fff; font-weight: 700; font-size: 16px;
   background: linear-gradient(135deg, #2459ff, #52b7ff);
   box-shadow: 0 10px 24px rgba(31,91,255,0.30);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .login-btn:not(:disabled):hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px rgba(31, 91, 255, 0.42);
+  }
 }
 .switch-btn {
   margin-top: 10px; width: 100%; height: 40px; border: none; background: transparent;
   color: #2459ff; font-weight: 600;
 }
 .hint { text-align: center; margin-top: 18px; color: rgba(11,22,51,0.4); font-size: 12px; }
+.cases-link {
+  display: block; margin: 8px auto 0; border: none; background: none;
+  color: #2459ff; font-size: 13px; font-weight: 700;
+}
 </style>

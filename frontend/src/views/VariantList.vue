@@ -60,6 +60,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
 import { apiClient } from '../api/config'
+import { partitionPaperQuestions } from '../utils/questionFormat'
 
 export default {
   name: 'VariantListPage',
@@ -98,14 +99,25 @@ export default {
     const toggleSelect = (item) => { item.selected = !item.selected }
 
     const pushPending = (items) => {
+      const { ready, blocked } = partitionPaperQuestions(items)
+      if (!ready.length) {
+        showToast(blocked.length ? '未解析完成的题目不能加入组卷' : '请先选择题目')
+        return
+      }
+      if (blocked.length) {
+        showToast(`已跳过 ${blocked.length} 道未解析完成的题`)
+      }
       const existing = JSON.parse(sessionStorage.getItem('pendingPaperQuestions') || '[]')
-      items.forEach((q) => {
+      ready.forEach((q) => {
         if (!existing.find((e) => e.id === q.id)) {
           existing.push({
             id: q.id,
             content: q.content,
             answer: q.aiAnswer || '待补充',
             analysis: q.aiAnalysis || 'AI暂未给出解析',
+            aiStatus: q.aiStatus || '',
+            aiAnswer: q.aiAnswer || '',
+            aiAnalysis: q.aiAnalysis || '',
             categoryId: q.categoryId,
             categoryName: q.category,
             difficulty: q.difficulty,

@@ -55,7 +55,14 @@
           <div class="status-row failed-row">
             <span class="status-text failed">{{ item.statusText }}</span>
             <div class="row-actions">
-              <van-button size="mini" type="primary" plain @click="retryQuestion(item.id)">重试</van-button>
+              <van-button
+                size="mini"
+                type="primary"
+                plain
+                :loading="retryingId === item.id"
+                :disabled="retryingId === item.id || bulkRetrying"
+                @click="retryQuestion(item.id)"
+              >重试</van-button>
               <van-button size="mini" type="danger" plain @click="deleteQuestion(item)">删除</van-button>
             </div>
           </div>
@@ -105,6 +112,7 @@ export default {
     const loading = ref(true)
     const bulkRetrying = ref(false)
     const bulkDeleting = ref(false)
+    const retryingId = ref(null)
     let stopPoll = null
 
     const analyzingList = computed(() => splitPending(pendingList).analyzing)
@@ -126,16 +134,23 @@ export default {
     }
 
     const retryQuestion = async (id) => {
-      if (!id) return
+      if (!id || retryingId.value) return
+      retryingId.value = id
       showLoadingToast({ message: '重新排队…', forbidClick: true })
       try {
-        await apiClient.post(`/questions/${id}/retry-ai`)
+        const res = await apiClient.post(`/questions/${id}/retry-ai`)
         closeToast()
+        if (res.data && res.data.success === false) {
+          showToast(res.data.message || '重试失败')
+          return
+        }
         showToast('已重新排队')
         await loadPending()
-      } catch {
+      } catch (e) {
         closeToast()
-        showToast('重试失败')
+        showToast(e.response?.data?.message || '重试失败')
+      } finally {
+        retryingId.value = null
       }
     }
 
@@ -220,6 +235,7 @@ export default {
       allDone,
       bulkRetrying,
       bulkDeleting,
+      retryingId,
       retryQuestion,
       deleteQuestion,
       retryAll,

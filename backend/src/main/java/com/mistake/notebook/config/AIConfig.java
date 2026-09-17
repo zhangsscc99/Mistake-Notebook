@@ -28,6 +28,11 @@ public class AIConfig {
     private String model;
 
     /**
+     * 单次补全上限。兼容接口必须带 max_tokens，不能真的无上限；默认 10000。
+     */
+    private int maxTokens = 10000;
+
+    /**
      * 智能体应用 ID（可选）
      */
     private String applicationId;

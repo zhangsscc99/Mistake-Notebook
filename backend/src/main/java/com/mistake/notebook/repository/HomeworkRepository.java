@@ -9,6 +9,8 @@ import java.util.Optional;
 public interface HomeworkRepository extends JpaRepository<Homework, Long> {
     List<Homework> findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(Long teacherId);
     List<Homework> findByTeacherIdInAndIsDeletedFalseOrderByCreatedAtDesc(List<Long> teacherIds);
+    List<Homework> findByClassIdAndIsDeletedFalseOrderByCreatedAtDesc(Long classId);
+    List<Homework> findByClassIdInAndIsDeletedFalseOrderByCreatedAtDesc(List<Long> classIds);
     Optional<Homework> findByIdAndTeacherId(Long id, Long teacherId);
     void deleteByTeacherId(Long teacherId);
 }

@@ -8,6 +8,7 @@
     <button class="note-btn" :class="{ on: question.hasNote }" @click="$emit('note', question)">
       {{ question.hasNote ? '查看批注与笔记' : '错题批注与笔记' }}
     </button>
+    <button class="note-btn help" @click="$emit('help', question)">发到互助答疑</button>
   </div>
 </template>
 
@@ -18,7 +19,7 @@ export default {
     question: { type: Object, required: true },
     editMode: { type: Boolean, default: false }
   },
-  emits: ['explain', 'mistake', 'variants', 'note']
+  emits: ['explain', 'mistake', 'variants', 'note', 'help']
 }
 </script>
 
@@ -52,4 +53,5 @@ export default {
   font-weight: 600;
 }
 .note-btn.on { background: rgba(36, 89, 255, 0.12); color: #2459ff; }
+.note-btn.help { background: #fff; color: #2459ff; border: 1px solid rgba(36, 89, 255, 0.18); }
 </style>

@@ -27,6 +27,13 @@ const StudentHomework = () => import(/* webpackChunkName: "page-homework" */ '..
 const StudentHomeworkDetail = () => import(/* webpackChunkName: "page-homework-detail" */ '../views/StudentHomeworkDetail.vue')
 const ParentReports = () => import(/* webpackChunkName: "page-parent-reports" */ '../views/ParentReports.vue')
 const CheckinPlaza = () => import(/* webpackChunkName: "page-plaza" */ '../views/CheckinPlaza.vue')
+const Community = () => import(/* webpackChunkName: "page-community" */ '../views/Community.vue')
+const HelpBoard = () => import(/* webpackChunkName: "page-help" */ '../views/HelpBoard.vue')
+const HelpDetail = () => import(/* webpackChunkName: "page-help-detail" */ '../views/HelpDetail.vue')
+const FriendsPk = () => import(/* webpackChunkName: "page-pk" */ '../views/FriendsPk.vue')
+const PkPlay = () => import(/* webpackChunkName: "page-pk-play" */ '../views/PkPlay.vue')
+const OrgCases = () => import(/* webpackChunkName: "page-orgs" */ '../views/OrgCases.vue')
+const OrgCaseDetail = () => import(/* webpackChunkName: "page-org-detail" */ '../views/OrgCaseDetail.vue')
 
 // 教师后台
 const TeacherHome = () => import(/* webpackChunkName: "teacher-home" */ '../views/teacher/TeacherHome.vue')
@@ -38,6 +45,14 @@ const TeacherHomework = () => import(/* webpackChunkName: "teacher-homework" */ 
 const TeacherHomeworkDetail = () => import(/* webpackChunkName: "teacher-homework-detail" */ '../views/teacher/TeacherHomeworkDetail.vue')
 const TeacherAnalytics = () => import(/* webpackChunkName: "teacher-analytics" */ '../views/teacher/TeacherAnalytics.vue')
 const TeacherParentReport = () => import(/* webpackChunkName: "teacher-parent-report" */ '../views/teacher/TeacherParentReport.vue')
+const TeacherQuestions = () => import(/* webpackChunkName: "teacher-questions" */ '../views/teacher/TeacherQuestions.vue')
+const TeacherCapture = () => import(/* webpackChunkName: "teacher-capture" */ '../views/teacher/TeacherCapture.vue')
+const TeacherAssistant = () => import(/* webpackChunkName: "teacher-assistant" */ '../views/teacher/TeacherAssistant.vue')
+const TeacherPaperHub = () => import(/* webpackChunkName: "teacher-paper" */ '../views/teacher/TeacherPaperHub.vue')
+const TeacherSend = () => import(/* webpackChunkName: "teacher-send" */ '../views/teacher/TeacherSend.vue')
+const TeacherMine = () => import(/* webpackChunkName: "teacher-mine" */ '../views/teacher/TeacherMine.vue')
+const TeacherOrg = () => import(/* webpackChunkName: "teacher-org" */ '../views/teacher/TeacherOrg.vue')
+const TeacherClassReport = () => import(/* webpackChunkName: "teacher-class-report" */ '../views/teacher/TeacherClassReport.vue')
 
 const routes = [
   { path: '/', redirect: '/homepage' },
@@ -68,13 +83,28 @@ const routes = [
   { path: '/parent-reports', name: 'ParentReports', component: ParentReports, meta: { title: '家长端报告', student: true } },
   { path: '/parent-reports/:id', name: 'ParentReportView', component: ParentReports, meta: { title: '家长端报告', student: true } },
   { path: '/plaza', name: 'CheckinPlaza', component: CheckinPlaza, meta: { title: '打卡广场' } },
+  { path: '/community', name: 'Community', component: Community, meta: { title: '学习社区' } },
+  { path: '/community/help', name: 'HelpBoard', component: HelpBoard, meta: { title: '互助答疑' } },
+  { path: '/community/help/:id', name: 'HelpDetail', component: HelpDetail, meta: { title: '互助详情' } },
+  { path: '/community/pk', name: 'FriendsPk', component: FriendsPk, meta: { title: '好友 PK' } },
+  { path: '/community/pk/:id', name: 'PkPlay', component: PkPlay, meta: { title: '答题 PK' } },
+  { path: '/orgs', name: 'OrgCases', component: OrgCases, meta: { title: '机构版', public: true } },
+  { path: '/orgs/:slug', name: 'OrgCaseDetail', component: OrgCaseDetail, meta: { title: '机构主页', public: true } },
 
-  { path: '/teacher', name: 'TeacherHome', component: TeacherHome, meta: { title: '教师工作台', teacher: true } },
-  { path: '/teacher/students', name: 'TeacherStudents', component: TeacherStudents, meta: { title: '学员管理', teacher: true } },
+  { path: '/teacher', name: 'TeacherHome', component: TeacherHome, meta: { title: '班级工作台', teacher: true } },
+  { path: '/teacher/questions', name: 'TeacherQuestions', component: TeacherQuestions, meta: { title: '全班题目', teacher: true } },
+  { path: '/teacher/capture', name: 'TeacherCapture', component: TeacherCapture, meta: { title: '拍照录入', teacher: true } },
+  { path: '/teacher/assistant', name: 'TeacherAssistant', component: TeacherAssistant, meta: { title: '班级助手', teacher: true } },
+  { path: '/teacher/paper', name: 'TeacherPaperHub', component: TeacherPaperHub, meta: { title: '班级组卷', teacher: true } },
+  { path: '/teacher/send', name: 'TeacherSend', component: TeacherSend, meta: { title: '发给班级', teacher: true } },
+  { path: '/teacher/mine', name: 'TeacherMine', component: TeacherMine, meta: { title: '我的', teacher: true } },
+  { path: '/teacher/org', name: 'TeacherOrg', component: TeacherOrg, meta: { title: '机构主页', teacher: true } },
+  { path: '/teacher/report', name: 'TeacherClassReport', component: TeacherClassReport, meta: { title: '家长报告', teacher: true } },
+  { path: '/teacher/students', name: 'TeacherStudents', component: TeacherStudents, meta: { title: '班级学生', teacher: true } },
   { path: '/teacher/students/:id', name: 'TeacherStudentDetail', component: TeacherStudentDetail, meta: { title: '学生详情', teacher: true } },
   { path: '/teacher/class-notebooks', name: 'TeacherClassNotebooks', component: TeacherClassNotebooks, meta: { title: '班级错题本', teacher: true } },
   { path: '/teacher/class-notebooks/:id', name: 'TeacherNotebookDetail', component: TeacherNotebookDetail, meta: { title: '班级错题本', teacher: true } },
-  { path: '/teacher/homework', name: 'TeacherHomework', component: TeacherHomework, meta: { title: '作业布置与批改', teacher: true } },
+  { path: '/teacher/homework', name: 'TeacherHomework', component: TeacherHomework, meta: { title: '作业批改', teacher: true } },
   { path: '/teacher/homework/:id', name: 'TeacherHomeworkDetail', component: TeacherHomeworkDetail, meta: { title: '作业详情', teacher: true } },
   { path: '/teacher/analytics', name: 'TeacherAnalytics', component: TeacherAnalytics, meta: { title: '教学效果分析', teacher: true } },
   { path: '/teacher/parent-reports/:id', name: 'TeacherParentReport', component: TeacherParentReport, meta: { title: '家长端报告', teacher: true } }

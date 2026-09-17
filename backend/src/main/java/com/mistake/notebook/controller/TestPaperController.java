@@ -4,6 +4,7 @@ import com.mistake.notebook.dto.ApiResponse;
 import com.mistake.notebook.dto.QuestionDTO;
 import com.mistake.notebook.service.PDFService;
 import com.mistake.notebook.service.QuestionService;
+import com.mistake.notebook.util.PaperReadiness;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -46,6 +47,11 @@ public class TestPaperController {
             if (questions.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("未找到有效题目"));
+            }
+            if (questions.stream().anyMatch(q ->
+                    !PaperReadiness.studentReady(q.getAiStatus(), q.getAiAnswer(), q.getAiAnalysis()))) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("未解析完成的题目不能加入组卷"));
             }
 
             // 生成PDF
@@ -94,6 +100,11 @@ public class TestPaperController {
             if (questions.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(ApiResponse.error("未找到有效题目"));
+            }
+            if (questions.stream().anyMatch(q ->
+                    !PaperReadiness.studentReady(q.getAiStatus(), q.getAiAnswer(), q.getAiAnalysis()))) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(ApiResponse.error("未解析完成的题目不能加入组卷"));
             }
 
             byte[] pdfBytes = pdfService.generateAnswerSheet(request.getTitle(), questions);

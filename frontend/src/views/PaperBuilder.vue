@@ -114,7 +114,7 @@ import { showToast, showLoadingToast, showDialog, showConfirmDialog } from 'vant
 import categoryAPI from '../api/category'
 import paperAPI from '../api/paper'
 import { apiClient } from '../api/config'
-import { formatQuestionText, formatQuestionHtml } from '../utils/questionFormat'
+import { formatQuestionText, formatQuestionHtml, partitionPaperQuestions } from '../utils/questionFormat'
 import QuestionText from '../components/QuestionText.vue'
 import AppTabBar from '../components/AppTabBar.vue'
 
@@ -668,7 +668,11 @@ export default {
       if (json) {
         try {
           const list = JSON.parse(json)
-          pendingQuestions.splice(0, pendingQuestions.length, ...list.map(q => ({ ...q, score: q.score || 5 })))
+          const { ready, blocked } = partitionPaperQuestions(list)
+          if (blocked.length) {
+            sessionStorage.setItem('pendingPaperQuestions', JSON.stringify(ready))
+          }
+          pendingQuestions.splice(0, pendingQuestions.length, ...ready.map(q => ({ ...q, score: q.score || 5 })))
         } catch (e) {
           console.error('解析草稿题目失败:', e)
         }
@@ -696,9 +700,15 @@ export default {
 
     // 将草稿保存为试卷
     const savePendingAsPaper = () => {
-      if (pendingQuestions.length === 0) {
-        showToast('当前组卷没有题目')
+      const { ready, blocked } = partitionPaperQuestions(pendingQuestions)
+      if (!ready.length) {
+        showToast(blocked.length ? '未解析完成的题目不能加入组卷' : '当前组卷没有题目')
         return
+      }
+      if (blocked.length) {
+        pendingQuestions.splice(0, pendingQuestions.length, ...ready.map(q => ({ ...q, score: q.score || 5 })))
+        sessionStorage.setItem('pendingPaperQuestions', JSON.stringify(pendingQuestions))
+        showToast(`已跳过 ${blocked.length} 道未解析完成的题`)
       }
       let inputValue = '数学练习卷'
       showConfirmDialog({
@@ -723,14 +733,18 @@ export default {
         }
       }).then(async () => {
         if (!inputValue || !inputValue.trim()) { showToast('请输入试卷名称'); return }
-        const { paper, localOnly } = await paperAPI.savePaper(
-          pendingQuestions.map(q => ({ ...q })),
-          inputValue.trim()
-        )
-        savedPapers.unshift(paper)
-        pendingQuestions.splice(0)
-        sessionStorage.removeItem('pendingPaperQuestions')
-        showToast({ message: localOnly ? '已本地保存' : '试卷保存成功', type: 'success' })
+        try {
+          const { paper, localOnly } = await paperAPI.savePaper(
+            pendingQuestions.map(q => ({ ...q })),
+            inputValue.trim()
+          )
+          savedPapers.unshift(paper)
+          pendingQuestions.splice(0)
+          sessionStorage.removeItem('pendingPaperQuestions')
+          showToast({ message: localOnly ? '已本地保存' : '试卷保存成功', type: 'success' })
+        } catch (e) {
+          showToast(e.response?.data?.message || e.message || '保存失败')
+        }
       }).catch(() => {})
       setTimeout(() => {
         const input = document.getElementById('pending-paper-title')
@@ -1424,8 +1438,8 @@ export default {
 :deep(.van-tabbar-item) {
   color: rgba(11, 22, 51, 0.60) !important;
   border-radius: 12px !important;
-  margin: 0 4px !important;
-  padding: 6px 8px !important;
+  margin: 0 1px !important;
+  padding: 6px 2px !important;
   transition: transform 0.22s var(--ease-smooth), background 0.22s var(--ease-smooth), color 0.22s var(--ease-smooth) !important;
   position: relative !important;
   overflow: hidden !important;

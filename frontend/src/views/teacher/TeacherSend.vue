@@ -1,0 +1,130 @@
+<template>
+  <div class="page">
+    <van-nav-bar title="发给班级" left-arrow @click-left="$router.back()" fixed placeholder />
+    <div class="hero">
+      <div class="kicker">SEND</div>
+      <h1>发给班级</h1>
+      <p>题目已在组卷页选好。这里只选发给班级的方式：练习看题，作业作答批改</p>
+    </div>
+    <div class="section-head"><span>发给班级的方式</span></div>
+    <div class="chips">
+      <button class="chip" :class="{ on: kind === 'practice' }" @click="kind = 'practice'">练习</button>
+      <button class="chip" :class="{ on: kind === 'homework' }" @click="kind = 'homework'">作业</button>
+    </div>
+    <p class="hint">{{ kind === 'practice' ? '学生在「我的班级」查看题目，不用提交' : '学生需要作答提交，老师可在作业页打分' }}</p>
+
+    <div class="section-head"><span>班级</span></div>
+    <div class="chips">
+      <button v-for="c in classes" :key="c.id" class="chip" :class="{ on: selected.id === c.id }" @click="selected = c">{{ c.name }}</button>
+    </div>
+
+    <div class="section-head"><span>名称</span></div>
+    <div class="card"><input v-model="title" class="field" :placeholder="kind === 'homework' ? '例如：周五作业' : '例如：周五练习'" maxlength="30" /></div>
+
+    <template v-if="kind === 'homework'">
+      <div class="section-head"><span>截止时间</span></div>
+      <div class="card row">
+        <input v-model="dueAt" type="date" class="field" />
+        <button v-if="dueAt" class="link" @click="dueAt = ''">清除</button>
+      </div>
+    </template>
+
+    <div class="section-head"><span>本次题目</span><span class="note" v-if="cart.length">{{ cart.length }} 道</span></div>
+    <div v-for="q in cart" :key="q.id" class="card">
+      <b>{{ q.index }}. {{ q.content }}</b>
+      <span class="meta">{{ q.sourceLabel }} · {{ q.category }}</span>
+    </div>
+    <div v-if="!cart.length" class="empty">还没有组卷选题<span class="go" @click="$router.push('/teacher/questions?pick=1')">去题目页勾选，再带到组卷</span></div>
+    <div v-if="cart.length" class="footer">
+      <button class="primary" :disabled="saving" @click="submit">{{ saving ? '发送中…' : '发给班级' }}</button>
+    </div>
+  </div>
+</template>
+
+<script>
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { showToast } from 'vant'
+import teacherAPI from '../../api/teacher'
+import { pickIds, readPick, setSelectedClassId, shortText, writePick } from '../../utils/teacherClass'
+
+export default {
+  name: 'TeacherSend',
+  setup() {
+    const route = useRoute()
+    const router = useRouter()
+    const classes = ref([])
+    const selected = ref({})
+    const kind = ref(route.query.mode === 'homework' ? 'homework' : 'practice')
+    const title = ref('')
+    const dueAt = ref('')
+    const cart = ref([])
+    const saving = ref(false)
+    const fail = (e) => showToast({ type: 'fail', message: e.response?.data?.message || '发送失败' })
+
+    const boot = async () => {
+      const res = await teacherAPI.dashboard()
+      classes.value = (res.data && res.data.classes) || []
+      const want = Number(route.query.classId || readPick().classId || 0)
+      selected.value = classes.value.find((c) => c.id === want) || classes.value[0] || {}
+      const ids = pickIds()
+      if (ids.length) {
+        const r = await teacherAPI.picked(ids)
+        cart.value = (r.data || []).map((q, i) => ({
+          id: q.id,
+          index: i + 1,
+          content: shortText(q.content, 60),
+          category: q.category || '未分类',
+          sourceLabel: q.source === 'teacher_bank' ? '题库' : '错题'
+        }))
+      }
+    }
+
+    const submit = async () => {
+      if (!selected.value.id) return showToast('请先选择班级')
+      const ids = pickIds()
+      if (!ids.length) return showToast('请先选题')
+      const name = title.value.trim() || (kind.value === 'homework' ? '班级作业' : '班级错题练习')
+      saving.value = true
+      try {
+        if (kind.value === 'practice') {
+          await teacherAPI.publishNotebook({ classId: selected.value.id, title: name, questionIds: ids })
+        } else {
+          await teacherAPI.createHomework({ classId: selected.value.id, title: name, questionIds: ids, dueAt: dueAt.value })
+        }
+        writePick(null)
+        setSelectedClassId(selected.value.id)
+        showToast({ type: 'success', message: '已发给班级' })
+        router.replace(kind.value === 'homework' ? '/teacher/homework' : '/teacher/paper')
+      } catch (e) { fail(e) }
+      finally { saving.value = false }
+    }
+
+    onMounted(() => boot().catch(fail))
+    return { classes, selected, kind, title, dueAt, cart, saving, submit }
+  }
+}
+</script>
+
+<style scoped>
+.page { min-height: 100vh; padding-bottom: 32px; background: #eef3fb; }
+.hero { margin: 12px 16px; background: linear-gradient(135deg, #2459ff, #52b7ff); border-radius: 20px; padding: 18px; color: #fff; }
+.kicker { font-size: 12px; opacity: 0.85; }
+.hero h1 { margin: 4px 0 6px; font-size: 22px; }
+.hero p { margin: 0; font-size: 13px; opacity: 0.88; }
+.section-head { display: flex; justify-content: space-between; margin: 16px 16px 8px; font-weight: 800; }
+.note { font-weight: 500; color: rgba(11,22,51,0.45); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 16px; }
+.chip { border: none; background: #fff; border-radius: 999px; padding: 6px 12px; font-weight: 700; }
+.chip.on { background: linear-gradient(135deg,#2459ff,#52b7ff); color: #fff; }
+.hint { margin: 8px 16px; font-size: 12px; color: rgba(11,22,51,0.5); }
+.card { background: #fff; margin: 0 16px 8px; padding: 14px; border-radius: 16px; border: 1px solid rgba(11,22,51,0.06); }
+.card.row { display: flex; align-items: center; gap: 8px; }
+.field { width: 100%; height: 40px; border: none; background: transparent; }
+.meta { display: block; margin-top: 4px; font-size: 12px; color: rgba(11,22,51,0.5); }
+.link { border: none; background: none; color: #2459ff; font-weight: 700; }
+.empty { text-align: center; padding: 24px; color: rgba(11,22,51,0.45); }
+.go { display: block; margin-top: 8px; color: #2459ff; font-weight: 700; }
+.footer { padding: 16px; }
+.primary { width: 100%; height: 44px; border: none; border-radius: 999px; color: #fff; font-weight: 700; background: linear-gradient(135deg,#2459ff,#52b7ff); }
+</style>

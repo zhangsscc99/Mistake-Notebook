@@ -2,6 +2,23 @@ const cloud = require('wx-server-sdk');
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
 
+function isPaperReady(q, teacher) {
+  if (!q) return false;
+  const source = String(q.source || '').toLowerCase();
+  if (teacher && source === 'teacher_bank') {
+    return !!(q.content || q.recognizedText || '').trim();
+  }
+  const status = String(q.aiStatus || '').toLowerCase();
+  if (status === 'pending' || status === 'processing' || status === 'failed') return false;
+  const answer = String(q.aiAnswer || q.answer || '').trim();
+  if (!answer || answer === '待补充') return false;
+  const analysis = String(q.aiAnalysis || q.analysis || '').trim();
+  if (analysis.indexOf('生成异常') >= 0 || analysis.indexOf('AI答案生成异常') >= 0 || analysis.indexOf('无法解析') >= 0) {
+    return false;
+  }
+  return true;
+}
+
 function normalizePaper(record) {
   if (!record) return record;
   const id = record.id || record._id || '';
@@ -79,6 +96,33 @@ async function savePaper(openId, event) {
   }
   if (!paper.questions || !Array.isArray(paper.questions) || paper.questions.length === 0) {
     return { success: false, error: 'Missing paper questions' };
+  }
+
+  const ids = paper.questions.map((q) => q.id || q._id).filter(Boolean).map(String);
+  if (!ids.length) {
+    return { success: false, error: '试卷题目缺少有效编号' };
+  }
+  const owned = [];
+  const _ = db.command;
+  for (let i = 0; i < ids.length; i += 20) {
+    const chunk = ids.slice(i, i + 20);
+    const res = await db.collection('questions').where({
+      _id: _.in(chunk),
+      openid: openId,
+      isDeleted: false
+    }).get();
+    owned.push(...(res.data || []));
+  }
+  const byId = {};
+  owned.forEach((q) => { byId[String(q._id)] = q; });
+  for (const id of ids) {
+    const doc = byId[id];
+    if (!doc) {
+      return { success: false, error: '题目不存在或不属于当前用户' };
+    }
+    if (!isPaperReady(doc, false)) {
+      return { success: false, error: '未解析完成的题目不能加入组卷' };
+    }
   }
 
   const now = new Date().toISOString();

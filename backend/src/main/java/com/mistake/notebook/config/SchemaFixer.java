@@ -48,6 +48,57 @@ public class SchemaFixer implements CommandLineRunner {
         ensureColumn("users", "class_name", "`class_name` VARCHAR(60) DEFAULT ''");
         ensureColumn("mistake_reports", "question_ids", "`question_ids` TEXT");
         ensureColumn("mistake_reports", "question_count", "`question_count` INT DEFAULT 1");
+        ensureColumn("questions", "source", "`source` VARCHAR(32) DEFAULT ''");
+        ensureColumn("questions", "class_id", "`class_id` BIGINT NULL");
+        ensureColumn("homeworks", "class_id", "`class_id` BIGINT NULL");
+        ensureColumn("homework_submissions", "marks_json", "`marks_json` TEXT");
+        ensureColumn("class_notebooks", "class_id", "`class_id` BIGINT NULL");
+        ensureColumn("class_notebooks", "question_ids", "`question_ids` TEXT");
+        ensureColumn("parent_reports", "class_id", "`class_id` BIGINT NULL");
+        ensureColumn("parent_reports", "snapshot_json", "`snapshot_json` LONGTEXT");
+        ensureTable("teacher_classes", """
+                CREATE TABLE IF NOT EXISTS `teacher_classes` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `teacher_id` BIGINT NOT NULL,
+                  `name` VARCHAR(80) NOT NULL,
+                  `grade` VARCHAR(40) DEFAULT '',
+                  `join_code` VARCHAR(16) NOT NULL,
+                  `is_deleted` TINYINT(1) DEFAULT 0,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_teacher_classes_join` (`join_code`),
+                  KEY `idx_teacher_classes_teacher` (`teacher_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("class_members", """
+                CREATE TABLE IF NOT EXISTS `class_members` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `class_id` BIGINT NOT NULL,
+                  `student_id` BIGINT NOT NULL,
+                  `status` VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+                  `requested_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  `approved_at` DATETIME NULL,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_class_member` (`class_id`, `student_id`),
+                  KEY `idx_class_members_student` (`student_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("teacher_papers", """
+                CREATE TABLE IF NOT EXISTS `teacher_papers` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `teacher_id` BIGINT NOT NULL,
+                  `class_id` BIGINT NOT NULL,
+                  `title` VARCHAR(120) NOT NULL,
+                  `question_ids` TEXT,
+                  `question_count` INT DEFAULT 0,
+                  `duration` INT DEFAULT 90,
+                  `is_deleted` TINYINT(1) DEFAULT 0,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_teacher_papers_teacher` (`teacher_id`),
+                  KEY `idx_teacher_papers_class` (`class_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
         ensureTable("checkin_posts", """
                 CREATE TABLE IF NOT EXISTS `checkin_posts` (
                   `id` BIGINT NOT NULL AUTO_INCREMENT,
@@ -71,6 +122,105 @@ public class SchemaFixer implements CommandLineRunner {
                   `user_id` BIGINT NOT NULL,
                   PRIMARY KEY (`id`),
                   UNIQUE KEY `uk_checkin_like_post_user` (`post_id`, `user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("help_posts", """
+                CREATE TABLE IF NOT EXISTS `help_posts` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `user_id` BIGINT NOT NULL,
+                  `nick_name` VARCHAR(40) DEFAULT '',
+                  `subject` VARCHAR(20) DEFAULT '',
+                  `title` VARCHAR(80) NOT NULL,
+                  `content` VARCHAR(800) NOT NULL,
+                  `snippet` VARCHAR(200) DEFAULT '',
+                  `reply_count` INT NOT NULL DEFAULT 0,
+                  `seeded` TINYINT(1) NOT NULL DEFAULT 0,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_help_posts_created` (`created_at`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("help_replies", """
+                CREATE TABLE IF NOT EXISTS `help_replies` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `post_id` BIGINT NOT NULL,
+                  `user_id` BIGINT NOT NULL,
+                  `nick_name` VARCHAR(40) DEFAULT '',
+                  `content` VARCHAR(500) NOT NULL,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_help_replies_post` (`post_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("friendships", """
+                CREATE TABLE IF NOT EXISTS `friendships` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `user_id` BIGINT NOT NULL,
+                  `friend_id` BIGINT NOT NULL,
+                  `status` VARCHAR(16) NOT NULL,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_friendship_pair` (`user_id`, `friend_id`),
+                  KEY `idx_friendship_friend` (`friend_id`, `status`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("pk_matches", """
+                CREATE TABLE IF NOT EXISTS `pk_matches` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `challenger_id` BIGINT NOT NULL,
+                  `opponent_id` BIGINT NOT NULL,
+                  `challenger_score` INT NOT NULL DEFAULT 0,
+                  `opponent_score` INT NOT NULL DEFAULT 0,
+                  `winner_id` BIGINT DEFAULT NULL,
+                  `status` VARCHAR(16) NOT NULL,
+                  `snapshot_json` TEXT,
+                  `mode` VARCHAR(16) DEFAULT 'POWER',
+                  `questions_json` TEXT,
+                  `challenger_answers` TEXT,
+                  `opponent_answers` TEXT,
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  KEY `idx_pk_challenger` (`challenger_id`),
+                  KEY `idx_pk_opponent` (`opponent_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureColumn("help_posts", "question_id", "`question_id` BIGINT NULL");
+        ensureColumn("help_posts", "like_count", "`like_count` INT NOT NULL DEFAULT 0");
+        ensureColumn("pk_matches", "mode", "`mode` VARCHAR(16) DEFAULT 'POWER'");
+        ensureColumn("pk_matches", "questions_json", "`questions_json` TEXT");
+        ensureColumn("pk_matches", "challenger_answers", "`challenger_answers` TEXT");
+        ensureColumn("pk_matches", "opponent_answers", "`opponent_answers` TEXT");
+        ensureTable("help_post_likes", """
+                CREATE TABLE IF NOT EXISTS `help_post_likes` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `post_id` BIGINT NOT NULL,
+                  `user_id` BIGINT NOT NULL,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_help_like_post_user` (`post_id`, `user_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("organizations", """
+                CREATE TABLE IF NOT EXISTS `organizations` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `slug` VARCHAR(40) NOT NULL,
+                  `name` VARCHAR(80) NOT NULL,
+                  `short_name` VARCHAR(20) DEFAULT '',
+                  `city` VARCHAR(40) DEFAULT '',
+                  `mark` VARCHAR(8) DEFAULT '',
+                  `tagline` VARCHAR(200) DEFAULT '',
+                  `headline` VARCHAR(200) DEFAULT '',
+                  `pitch` TEXT,
+                  `logo_url` TEXT,
+                  `primary_color` VARCHAR(16) DEFAULT '#2459ff',
+                  `accent_color` VARCHAR(16) DEFAULT '#52b7ff',
+                  `owner_id` BIGINT NULL,
+                  `demo` TINYINT(1) NOT NULL DEFAULT 0,
+                  `quote` VARCHAR(400) DEFAULT '',
+                  `quote_by` VARCHAR(80) DEFAULT '',
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_org_slug` (`slug`),
+                  UNIQUE KEY `uk_org_owner` (`owner_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
     }

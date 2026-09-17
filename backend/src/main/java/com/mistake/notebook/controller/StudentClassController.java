@@ -5,6 +5,7 @@ import com.mistake.notebook.entity.ParentReport;
 import com.mistake.notebook.entity.TeacherMessage;
 import com.mistake.notebook.security.AuthContext;
 import com.mistake.notebook.service.TeacherService;
+import com.mistake.notebook.service.TeacherWorkspaceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ import java.util.Map;
 public class StudentClassController {
 
     private final TeacherService teacherService;
+    private final TeacherWorkspaceService workspace;
 
     @GetMapping("/teachers")
     public ResponseEntity<ApiResponse<List<Map<String, Object>>>> teachers() {
@@ -30,8 +32,23 @@ public class StudentClassController {
 
     @PostMapping("/teachers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> bind(@RequestBody Map<String, String> body) {
-        return ResponseEntity.ok(ApiResponse.success("已绑定老师",
-                teacherService.bindTeacher(AuthContext.requireUserId(), body.get("code"))));
+        String code = body.get("code") == null ? body.get("joinCode") : body.get("code");
+        Map<String, Object> data = workspace.joinClass(AuthContext.requireUserId(), code);
+        String msg = Boolean.TRUE.equals(data.get("pending")) ? "已提交加入申请，等待老师通过" : "已加入班级";
+        return ResponseEntity.ok(ApiResponse.success(msg, data));
+    }
+
+    @GetMapping("/classes")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> classes() {
+        return ResponseEntity.ok(ApiResponse.success(workspace.myClasses(AuthContext.requireUserId())));
+    }
+
+    @PostMapping("/join")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> join(@RequestBody Map<String, String> body) {
+        String code = body.get("code") == null ? body.get("joinCode") : body.get("code");
+        Map<String, Object> data = workspace.joinClass(AuthContext.requireUserId(), code);
+        String msg = Boolean.TRUE.equals(data.get("pending")) ? "已提交加入申请，等待老师通过" : "已加入班级";
+        return ResponseEntity.ok(ApiResponse.success(msg, data));
     }
 
     @DeleteMapping("/teachers/{teacherId}")
@@ -45,6 +62,7 @@ public class StudentClassController {
         long sid = AuthContext.requireUserId();
         Map<String, Object> d = new java.util.HashMap<>();
         d.put("teachers", teacherService.myTeachers(sid));
+        d.put("classes", workspace.myClasses(sid));
         d.put("unread", teacherService.studentUnread(sid));
         d.put("notebooks", teacherService.studentNotebooks(sid));
         d.put("homework", teacherService.studentHomework(sid));

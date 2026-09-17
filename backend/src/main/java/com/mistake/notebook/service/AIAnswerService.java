@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mistake.notebook.config.AIConfig;
 import com.mistake.notebook.config.SimpleOpenAIClient;
+import com.mistake.notebook.util.AiJsonParser;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -19,13 +20,14 @@ import java.util.*;
 public class AIAnswerService {
 
     private static final String ANSWER_PROMPT = """
-            你是一名专业的教辅老师。请阅读题目内容，输出JSON：
+            你是一名专业的教辅老师。只输出一个完整 JSON 对象，不要 Markdown、不要额外说明。
+            字段顺序必须是 answer → analysis → confidence：
             {
-              "answer": "最终答案或步骤总结",
-              "analysis": "详细解析步骤，指出思路与关键公式",
-              "confidence": 0.0-1.0
+              "answer": "最终答案；选择题只写选项字母",
+              "analysis": "完整解析：结论、逐步推理、关键公式、易错点。把推理写完，不要中途停下",
+              "confidence": 0.85
             }
-            如果无法作答，answer写"待补充"，analysis说明原因。
+            JSON 必须完整闭合。如果无法作答，answer 写"待补充"，analysis 说明原因。
             """;
 
     private final SimpleOpenAIClient openAIClient;
@@ -37,16 +39,35 @@ public class AIAnswerService {
             return AnswerResult.empty("题目内容为空");
         }
 
+        int limit = outputLimit();
+        AnswerResult first = requestAnswer(questionText, limit, ANSWER_PROMPT);
+        if (first.isSuccess()) {
+            return first;
+        }
+        log.warn("首次答案解析失败，按 {} tokens 原提示重试：{}", limit, first.getAnalysis());
+        AnswerResult retry = requestAnswer(questionText, limit, ANSWER_PROMPT);
+        if (retry.isSuccess()) {
+            return retry;
+        }
+        return first;
+    }
+
+    private int outputLimit() {
+        int n = aiConfig.getMaxTokens();
+        return n > 0 ? n : 10000;
+    }
+
+    private AnswerResult requestAnswer(String questionText, int maxTokens, String systemPrompt) {
         try {
             Map<String, Object> requestData = new HashMap<>();
             requestData.put("model", aiConfig.getModel());
             requestData.put("temperature", 0.3);
-            requestData.put("max_tokens", 800);
+            requestData.put("max_tokens", maxTokens);
             requestData.put("stream", false);
             requestData.put("response_format", Map.of("type", "json_object"));
 
             List<Map<String, String>> messages = new ArrayList<>();
-            messages.add(Map.of("role", "system", "content", ANSWER_PROMPT));
+            messages.add(Map.of("role", "system", "content", systemPrompt));
             messages.add(Map.of("role", "user", "content", questionText));
             requestData.put("messages", messages);
 
@@ -70,23 +91,50 @@ public class AIAnswerService {
                     return AnswerResult.empty("AI回答choices为空");
                 }
 
-                String content = choices.get(0).path("message").path("content").asText("");
+                JsonNode choice = choices.get(0);
+                String finishReason = choice.path("finish_reason").asText("");
+                String content = choice.path("message").path("content").asText("");
                 if (content.isBlank()) {
-                    log.warn("AI答案返回内容为空，原始choices：{}", choices.get(0));
+                    log.warn("AI答案返回内容为空，finish_reason={}，choices={}", finishReason, choice);
                     return AnswerResult.empty("AI回答内容为空");
                 }
 
-                JsonNode contentJson = objectMapper.readTree(content);
-                String answer = contentJson.path("answer").asText("待补充");
-                String analysis = contentJson.path("analysis").asText("");
-                double confidence = contentJson.path("confidence").asDouble(0.85);
+                JsonNode strict = null;
+                try {
+                    JsonNode parsed = objectMapper.readTree(AiJsonParser.unwrap(content));
+                    if (parsed != null && parsed.isObject()) {
+                        strict = parsed;
+                    }
+                } catch (Exception ignored) {
+                    // truncated JSON from max_tokens; salvage below
+                }
+                JsonNode contentJson = strict != null ? strict : AiJsonParser.parseObject(objectMapper, content);
+                boolean salvaged = strict == null && contentJson != null;
+                if (contentJson == null) {
+                    log.warn("AI答案JSON无法解析，finish_reason={}，content前200字：{}",
+                            finishReason, content.substring(0, Math.min(200, content.length())));
+                    return AnswerResult.empty("length".equalsIgnoreCase(finishReason)
+                            ? "模型输出被截断，请再点一次重新解析"
+                            : "模型返回的答案格式无法解析，请再点一次重新解析");
+                }
 
-                log.info("AI答案生成成功：answer长度={}，confidence={}", answer.length(), confidence);
+                String answer = contentJson.path("answer").asText("").trim();
+                String analysis = contentJson.path("analysis").asText("").trim();
+                if (answer.isEmpty()) {
+                    return AnswerResult.empty("模型没有给出答案，请再点一次重新解析");
+                }
+                if ((salvaged || "length".equalsIgnoreCase(finishReason)) && !analysis.isBlank()
+                        && !analysis.contains("被截断")) {
+                    analysis = analysis + "\n\n（解析在长度上限处被截断，答案已保留。）";
+                }
+                double confidence = contentJson.path("confidence").asDouble(0.85);
+                log.info("AI答案生成成功：answer长度={}，analysis长度={}，finish_reason={}，confidence={}",
+                        answer.length(), analysis.length(), finishReason, confidence);
                 return new AnswerResult(answer, analysis, confidence, true);
             }
         } catch (Exception e) {
             log.error("生成AI答案失败", e);
-            return AnswerResult.empty("AI答案生成异常：" + e.getMessage());
+            return AnswerResult.empty("AI答案生成异常，请再点一次重新解析");
         }
     }
 
@@ -119,7 +167,7 @@ public class AIAnswerService {
             Map<String, Object> requestData = new HashMap<>();
             requestData.put("model", aiConfig.getModel());
             requestData.put("temperature", 0.6);
-            requestData.put("max_tokens", 1200);
+            requestData.put("max_tokens", outputLimit());
             requestData.put("stream", false);
 
             List<Map<String, String>> chatMessages = new ArrayList<>();
@@ -159,7 +207,7 @@ public class AIAnswerService {
         Map<String, Object> requestData = new HashMap<>();
         requestData.put("model", aiConfig.getModel());
         requestData.put("temperature", 0.4);
-        requestData.put("max_tokens", maxTokens);
+        requestData.put("max_tokens", Math.max(maxTokens, outputLimit()));
         requestData.put("stream", false);
         requestData.put("messages", List.of(
                 Map.of("role", "system", "content", systemPrompt),

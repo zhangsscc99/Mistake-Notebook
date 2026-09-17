@@ -11,7 +11,7 @@
       </div>
       <p v-if="nb.description" class="desc">{{ nb.description }}</p>
       <div class="track"><i :style="{ width: rate(nb) + '%' }"></i></div>
-      <div class="meta">{{ nb.teacherName || '老师' }} 推送 · {{ fmt(nb.pushedAt) }}</div>
+      <div class="meta">{{ nb.className || nb.teacherName || '老师' }} · {{ fmt(nb.pushedAt || nb.createdAt) }}</div>
     </div>
 
     <AppTabBar />

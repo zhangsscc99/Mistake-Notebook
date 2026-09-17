@@ -128,11 +128,17 @@ export default {
     const fail = (e) => showToast({ type: 'fail', message: e.response?.data?.message || '加载失败' })
 
     const loadOverview = async () => {
-      const res = await teacherAPI.studentOverview(studentId)
+      const classId = route.query.classId
+      const res = classId
+        ? await teacherAPI.classStudentOverview(classId, studentId)
+        : await teacherAPI.studentOverview(studentId)
       ov.value = res.data || {}
     }
     const loadQuestions = async () => {
-      const res = await teacherAPI.studentQuestions(studentId)
+      const classId = route.query.classId
+      const res = classId
+        ? await teacherAPI.classStudentQuestions(classId, studentId)
+        : await teacherAPI.studentQuestions(studentId)
       questions.value = (res.data || []).map((q) => ({ ...q, open: false }))
     }
     const loadMessages = async () => {

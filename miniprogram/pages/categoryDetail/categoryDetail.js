@@ -1,6 +1,6 @@
 // pages/categoryDetail/categoryDetail.js
 const app = getApp();
-const { savePaperToCloud, promptPaperTitle } = require('../../utils/paper.js');
+const { savePaperToCloud, promptPaperTitle, canAddToPaper, partitionPaperQuestions } = require('../../utils/paper.js');
 const { formatLatex } = require('../../utils/latex');
 
 const SYMBOL_MAP = {
@@ -179,7 +179,8 @@ Page({
               pinned: false,
               mastered: false,
               // 笔记同理，在 question_notes 里，真值由 loadNotes 合并
-              hasNote: false
+              hasNote: false,
+              paperReady: canAddToPaper(q)
             };
           });
           this.setData({ questions: processed, loading: false });
@@ -227,7 +228,8 @@ Page({
     }
     const processedMock = mockList.map(q => ({
       ...q,
-      displayContent: q.content && q.content.length > 200 ? q.content.slice(0, 200) + '…' : (q.content || '')
+      displayContent: q.content && q.content.length > 200 ? q.content.slice(0, 200) + '…' : (q.content || ''),
+      paperReady: canAddToPaper(q)
     }));
     this.setData({ questions: processedMock });
     this.refreshTags();
@@ -535,6 +537,9 @@ Page({
     const target = !this.data.isAllSelected;
     const questions = this.data.questions.map((q) => {
       if (visibleIds.has(String(q.id))) {
+        if (this.data.isPaperSelectMode && !q.paperReady) {
+          return { ...q, selected: false };
+        }
         return { ...q, selected: target };
       }
       return q;
@@ -563,6 +568,11 @@ Page({
       return;
     }
     const id = String(e.currentTarget.dataset.id);
+    const current = this.data.questions.find((q) => String(q.id) === id);
+    if (this.data.isPaperSelectMode && current && current.paperReady === false && !current.selected) {
+      wx.showToast({ title: '未解析完成的题目不能加入组卷', icon: 'none' });
+      return;
+    }
     const questions = this.data.questions.map((q) => (
       String(q.id) === id ? { ...q, selected: !q.selected } : q
     ));
@@ -865,11 +875,23 @@ Page({
       return;
     }
 
-    const mapped = selected.map((q) => ({
+    const { ready, blocked } = partitionPaperQuestions(selected);
+    if (!ready.length) {
+      wx.showToast({ title: '未解析完成的题目不能加入组卷', icon: 'none' });
+      return;
+    }
+    if (blocked.length) {
+      wx.showToast({ title: `已跳过${blocked.length}道未解析题`, icon: 'none' });
+    }
+
+    const mapped = ready.map((q) => ({
       id: q.id,
       content: q.content,
       answer: q.aiAnswer || '待补充',
       analysis: q.aiAnalysis || 'AI暂未给出解析',
+      aiStatus: q.aiStatus || '',
+      aiAnswer: q.aiAnswer || '',
+      aiAnalysis: q.aiAnalysis || '',
       categoryId: this.data.categoryId,
       categoryName: this.data.categoryName,
       tags: q.tags || [],
@@ -883,6 +905,7 @@ Page({
         merged.push(q);
       }
     });
+    const filtered = partitionPaperQuestions(merged).ready;
 
     const defaultTitle = this.data.categoryName
       ? `${this.data.categoryName}练习卷`
@@ -891,7 +914,7 @@ Page({
     promptPaperTitle(defaultTitle)
       .then((title) => {
         wx.showLoading({ title: '保存中...', mask: true });
-        return savePaperToCloud(merged, title);
+        return savePaperToCloud(filtered, title);
       })
       .then((result) => {
         wx.hideLoading();
@@ -914,6 +937,10 @@ Page({
         wx.hideLoading();
         if (err && err.message === 'cancelled') return;
         if (err && err.message === 'empty_title') return;
+        if (err && err.message === 'not_ready') {
+          wx.showToast({ title: '未解析完成的题目不能加入组卷', icon: 'none' });
+          return;
+        }
         wx.showToast({ title: '保存失败', icon: 'none' });
       });
   },

@@ -10,7 +10,31 @@ const teacherAPI = {
     return unwrap(apiClient.get('/teacher/analytics'))
   },
 
-  // 学员管理
+  classes() {
+    return unwrap(apiClient.get('/teacher/classes'))
+  },
+  createClass(name, grade) {
+    return unwrap(apiClient.post('/teacher/classes', { name, grade }))
+  },
+  classStudents(classId) {
+    return unwrap(apiClient.get(`/teacher/classes/${classId}/students`))
+  },
+  joinRequests(classId) {
+    return unwrap(apiClient.get(`/teacher/classes/${classId}/join-requests`))
+  },
+  approveJoin(classId, studentId) {
+    return unwrap(apiClient.post(`/teacher/classes/${classId}/approve`, { studentId }))
+  },
+  rejectJoin(classId, studentId) {
+    return unwrap(apiClient.post(`/teacher/classes/${classId}/reject`, { studentId }))
+  },
+  classStudentOverview(classId, studentId) {
+    return unwrap(apiClient.get(`/teacher/classes/${classId}/students/${studentId}`))
+  },
+  classStudentQuestions(classId, studentId) {
+    return unwrap(apiClient.get(`/teacher/classes/${classId}/students/${studentId}/questions`))
+  },
+
   students() {
     return unwrap(apiClient.get('/teacher/students'))
   },
@@ -30,7 +54,6 @@ const teacherAPI = {
     return unwrap(apiClient.get(`/teacher/students/${studentId}/questions`))
   },
 
-  // 留言
   messages(studentId) {
     return unwrap(apiClient.get(`/teacher/students/${studentId}/messages`))
   },
@@ -38,7 +61,51 @@ const teacherAPI = {
     return unwrap(apiClient.post(`/teacher/students/${studentId}/messages`, { content }))
   },
 
-  // 班级错题本
+  classQuestions(classId) {
+    return unwrap(apiClient.get('/teacher/class-questions', { params: { classId } }))
+  },
+  classStats(classId) {
+    return unwrap(apiClient.get('/teacher/class-stats', { params: { classId } }))
+  },
+  bank(classId) {
+    return unwrap(apiClient.get('/teacher/bank', { params: { classId } }))
+  },
+  saveBank(payload) {
+    return unwrap(apiClient.post('/teacher/bank', payload))
+  },
+  deleteBank(id) {
+    return unwrap(apiClient.delete('/teacher/bank/' + id))
+  },
+  picked(questionIds) {
+    return unwrap(apiClient.post('/teacher/picked', { questionIds }))
+  },
+
+  papers(classId) {
+    return unwrap(apiClient.get('/teacher/papers', { params: { classId } }))
+  },
+  savePaper(payload) {
+    return unwrap(apiClient.post('/teacher/papers', payload))
+  },
+  paper(id) {
+    return unwrap(apiClient.get('/teacher/papers/' + id))
+  },
+  recallPaper(id) {
+    return unwrap(apiClient.post(`/teacher/papers/${id}/recall`))
+  },
+
+  classNotebooks(classId) {
+    return unwrap(apiClient.get('/teacher/class-notebooks', { params: { classId } }))
+  },
+  classNotebook(id) {
+    return unwrap(apiClient.get('/teacher/class-notebooks/' + id))
+  },
+  publishNotebook(payload) {
+    return unwrap(apiClient.post('/teacher/notebooks/publish', payload))
+  },
+  recallNotebook(id) {
+    return unwrap(apiClient.post(`/teacher/notebooks/${id}/recall`))
+  },
+
   highFrequency() {
     return unwrap(apiClient.get('/teacher/high-frequency'))
   },
@@ -61,7 +128,6 @@ const teacherAPI = {
     return unwrap(apiClient.delete('/teacher/notebooks/' + id))
   },
 
-  // 作业
   homework() {
     return unwrap(apiClient.get('/teacher/homework'))
   },
@@ -74,6 +140,9 @@ const teacherAPI = {
   deleteHomework(id) {
     return unwrap(apiClient.delete('/teacher/homework/' + id))
   },
+  recallHomework(id) {
+    return unwrap(apiClient.post(`/teacher/homework/${id}/recall`))
+  },
   grade(submissionId, payload) {
     return unwrap(apiClient.post(`/teacher/submissions/${submissionId}/grade`, payload))
   },
@@ -81,7 +150,20 @@ const teacherAPI = {
     return unwrap(apiClient.post(`/teacher/submissions/${submissionId}/ai-grade`))
   },
 
-  // 家长报告
+  chat(payload) {
+    return unwrap(apiClient.post('/teacher/chat', payload))
+  },
+
+  classReports(classId) {
+    return unwrap(apiClient.get('/teacher/class-reports', { params: { classId } }))
+  },
+  createClassReport(classId) {
+    return unwrap(apiClient.post('/teacher/class-reports', { classId }))
+  },
+  classReport(id) {
+    return unwrap(apiClient.get('/teacher/class-reports/' + id))
+  },
+
   parentReports(studentId) {
     return unwrap(apiClient.get(`/teacher/students/${studentId}/parent-reports`))
   },

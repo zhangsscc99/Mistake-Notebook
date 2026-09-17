@@ -10,4 +10,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByUsername(String username);
     List<User> findByLeaderboardPublicTrue();
     Optional<User> findByInviteCode(String inviteCode);
+    List<User> findTop12ByUsernameContainingIgnoreCaseOrNickNameContainingIgnoreCase(String username, String nickName);
 }

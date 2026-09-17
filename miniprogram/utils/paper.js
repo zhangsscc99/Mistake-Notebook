@@ -9,6 +9,48 @@ function normalizePaperQuestion(q) {
   };
 }
 
+function isPendingQuestion(q) {
+  if (!q) return false;
+  const status = String(q.aiStatus || '').toLowerCase();
+  if (status) {
+    return status === 'pending' || status === 'processing' || status === 'failed';
+  }
+  const answer = String(q.aiAnswer || q.answer || '').trim();
+  const analysis = String(q.aiAnalysis || q.analysis || '').trim();
+  return !answer || answer === '待补充' || !analysis || analysis === 'AI暂未给出解析' || analysis.indexOf('生成异常') >= 0;
+}
+
+function canAddToPaper(q) {
+  if (!q || isPendingQuestion(q)) return false;
+  const answer = String(q.aiAnswer || q.answer || '').trim();
+  if (!answer || answer === '待补充' || answer.indexOf('AI 答案') === 0) return false;
+  const analysis = String(q.aiAnalysis || q.analysis || '').trim();
+  if (analysis.indexOf('生成异常') >= 0 || analysis.indexOf('AI答案生成异常') >= 0 || analysis.indexOf('无法解析') >= 0) {
+    return false;
+  }
+  return true;
+}
+
+function canTeacherPickForPaper(q) {
+  if (!q) return false;
+  const source = String(q.source || '').toLowerCase();
+  if (source === 'teacher_bank') {
+    return !!(q.content || q.recognizedText || '').trim();
+  }
+  return canAddToPaper(q);
+}
+
+function partitionPaperQuestions(list, teacher) {
+  const ready = [];
+  const blocked = [];
+  const check = teacher ? canTeacherPickForPaper : canAddToPaper;
+  (list || []).forEach((q) => {
+    if (check(q)) ready.push(q);
+    else blocked.push(q);
+  });
+  return { ready, blocked };
+}
+
 function buildPaperPayload(questions, title) {
   const pending = (questions || []).map(normalizePaperQuestion);
   return {
@@ -44,15 +86,25 @@ function persistPaperLocal(paper) {
  * @returns {Promise<{paper: object, papers: object[]}>}
  */
 function savePaperToCloud(questions, title) {
-  const paper = buildPaperPayload(questions, title);
+  const { ready, blocked } = partitionPaperQuestions(questions);
+  if (!ready.length) {
+    return Promise.reject(new Error(blocked.length ? 'not_ready' : 'empty'));
+  }
+  const paper = buildPaperPayload(ready, title);
 
   return new Promise((resolve, reject) => {
     wx.cloud.callFunction({
       name: 'paper',
       data: { action: 'save', paper },
       success: (cloudRes) => {
-        if (cloudRes.result && cloudRes.result.success && cloudRes.result.data) {
-          const cloudPaper = cloudRes.result.data;
+        const result = cloudRes.result || {};
+        if (result.success === false) {
+          const err = String(result.error || '');
+          reject(new Error(err.indexOf('未解析') >= 0 ? 'not_ready' : (err || 'save_failed')));
+          return;
+        }
+        if (result.success && result.data) {
+          const cloudPaper = result.data;
           paper.id = cloudPaper.id || cloudPaper._id || paper.id;
         }
         try {
@@ -104,5 +156,8 @@ module.exports = {
   normalizePaperQuestion,
   buildPaperPayload,
   savePaperToCloud,
-  promptPaperTitle
+  promptPaperTitle,
+  canAddToPaper,
+  canTeacherPickForPaper,
+  partitionPaperQuestions
 };

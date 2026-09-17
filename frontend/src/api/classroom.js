@@ -12,6 +12,12 @@ const classroomAPI = {
   bindTeacher(code) {
     return unwrap(apiClient.post('/classroom/teachers', { code }))
   },
+  joinClass(code) {
+    return unwrap(apiClient.post('/classroom/join', { code }))
+  },
+  classes() {
+    return unwrap(apiClient.get('/classroom/classes'))
+  },
   unbindTeacher(teacherId) {
     return unwrap(apiClient.delete('/classroom/teachers/' + teacherId))
   },

@@ -3,17 +3,23 @@ package com.mistake.notebook.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mistake.notebook.dto.ApiResponse;
+import com.mistake.notebook.entity.Question;
 import com.mistake.notebook.entity.SavedPaper;
+import com.mistake.notebook.repository.QuestionRepository;
 import com.mistake.notebook.repository.SavedPaperRepository;
 import com.mistake.notebook.security.AuthContext;
+import com.mistake.notebook.util.PaperReadiness;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -24,6 +30,7 @@ import java.util.stream.Collectors;
 public class SavedPaperController {
 
     private final SavedPaperRepository savedPaperRepository;
+    private final QuestionRepository questionRepository;
     private final ObjectMapper objectMapper;
 
     @GetMapping
@@ -55,6 +62,10 @@ public class SavedPaperController {
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> questions = (List<Map<String, Object>>) questionsObj;
+            String readinessError = rejectUnreadyStudentQuestions(questions);
+            if (readinessError != null) {
+                return ResponseEntity.badRequest().body(ApiResponse.error(readinessError));
+            }
 
             SavedPaper paper = new SavedPaper();
             paper.setUserId(AuthContext.requireUserId());
@@ -106,6 +117,45 @@ public class SavedPaperController {
             response.put("questions", List.of());
         }
         return response;
+    }
+
+    private String rejectUnreadyStudentQuestions(List<Map<String, Object>> questions) {
+        List<Long> ids = new ArrayList<>();
+        for (Map<String, Object> row : questions) {
+            Long id = parseLongId(row.get("id"));
+            if (id == null) {
+                return "试卷题目缺少有效编号";
+            }
+            ids.add(id);
+        }
+        long userId = AuthContext.requireUserId();
+        List<Question> owned = questionRepository.findByUserIdAndIdInAndIsDeletedFalseOrderByCreatedAtDesc(userId, ids);
+        Set<Long> ownedIds = owned.stream().map(Question::getId).collect(Collectors.toCollection(HashSet::new));
+        for (Long id : ids) {
+            if (!ownedIds.contains(id)) {
+                return "题目不存在或不属于当前用户";
+            }
+        }
+        for (Question q : owned) {
+            if (!PaperReadiness.forStudentPaper(q)) {
+                return "未解析完成的题目不能加入组卷";
+            }
+        }
+        return null;
+    }
+
+    private Long parseLongId(Object value) {
+        if (value instanceof Number n) {
+            return n.longValue();
+        }
+        if (value != null) {
+            try {
+                return Long.parseLong(value.toString());
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private Integer parseInteger(Object value, int defaultValue) {

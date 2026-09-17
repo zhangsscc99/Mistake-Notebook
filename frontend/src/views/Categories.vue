@@ -650,8 +650,8 @@ export default {
 :deep(.van-tabbar-item) {
   color: rgba(11, 22, 51, 0.60) !important;
   border-radius: 12px !important;
-  margin: 0 4px !important;
-  padding: 6px 8px !important;
+  margin: 0 1px !important;
+  padding: 6px 2px !important;
   transition: transform 0.22s var(--ease-smooth), background 0.22s var(--ease-smooth), color 0.22s var(--ease-smooth) !important;
   position: relative !important;
   overflow: hidden !important;

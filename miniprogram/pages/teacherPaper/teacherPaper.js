@@ -1,4 +1,5 @@
 const { callTeacher, formatDay, shortText } = require('../../utils/teacher');
+const { partitionPaperQuestions } = require('../../utils/paper.js');
 
 function readPick() {
   return getApp().globalData.teacherPick || {};
@@ -17,7 +18,7 @@ function writePick(next) {
 
 function decorateCart(questions) {
   return (questions || []).map((q, i) => ({
-    id: q.id,
+    ...q,
     index: i + 1,
     content: shortText(q.content, 52),
     category: q.category || '未分类',
@@ -75,7 +76,11 @@ Page({
       wx.showToast({ title: r.error || '题目加载失败', icon: 'none' });
       return;
     }
-    const found = decorateCart(r.data || []);
+    const { ready, blocked } = partitionPaperQuestions(r.data || [], true);
+    if (blocked.length) {
+      writePick({ classId: pick.classId || classId, questionIds: ready.map((q) => q.id), paperId: ready.length ? pick.paperId : '' });
+    }
+    const found = decorateCart(ready);
     const foundIds = found.map((q) => q.id);
     if (foundIds.length !== ids.length) {
       writePick({ classId: pick.classId || classId, questionIds: foundIds, paperId: foundIds.length ? pick.paperId : '' });
@@ -206,9 +211,14 @@ Page({
   async savePaper() {
     const ids = this.requirePick();
     if (!ids) return;
+    const { ready, blocked } = partitionPaperQuestions(this.data.cart, true);
+    if (!ready.length) {
+      wx.showToast({ title: blocked.length ? '未解析完成的题目不能加入组卷' : '请先选题', icon: 'none' });
+      return;
+    }
     const title = await this.askTitle('题单名称');
     if (!title) return;
-    const r = await callTeacher('savePaper', { classId: this.data.selectedClass.id, title, questionIds: ids });
+    const r = await callTeacher('savePaper', { classId: this.data.selectedClass.id, title, questionIds: ready.map((q) => q.id) });
     wx.showToast({ title: r.success ? '题单已保存' : (r.error || '保存失败'), icon: r.success ? 'success' : 'none' });
     if (r.success) this.reload();
   },

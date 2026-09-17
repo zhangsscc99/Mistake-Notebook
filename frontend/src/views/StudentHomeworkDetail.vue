@@ -18,7 +18,7 @@
       <div class="q-head">
         <span class="idx">{{ i + 1 }}</span>
         <span class="score-tag">{{ q.score || 10 }} 分</span>
-        <span v-if="graded" class="got">得 {{ itemScore(i) }} 分</span>
+        <span v-if="graded && sub.marks?.length" class="got">{{ markText(i) }}</span>
       </div>
       <p class="q-content">{{ q.content }}</p>
       <textarea
@@ -79,6 +79,12 @@ export default {
       if (v == null) return 0
       return typeof v === 'object' ? (v.value ?? 0) : v
     }
+    const markText = (i) => {
+      const m = (sub.value.marks || [])[i]
+      if (m === 'right' || m === '对') return '对'
+      if (m === 'wrong' || m === '错') return '错'
+      return '得 ' + itemScore(i) + ' 分'
+    }
 
     const submit = async () => {
       saving.value = true
@@ -95,7 +101,7 @@ export default {
 
     const fmt = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '')
     onMounted(() => load().catch((e) => showToast({ type: 'fail', message: e.response?.data?.message || '加载失败' })))
-    return { hw, sub, answers, saving, submitted, graded, itemScore, submit, fmt }
+    return { hw, sub, answers, saving, submitted, graded, itemScore, markText, submit, fmt }
   }
 }
 </script>

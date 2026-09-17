@@ -21,8 +21,15 @@ public class ParentReport {
     @Column(name = "teacher_id", nullable = false)
     private Long teacherId;
 
+    /** 0 = 班级学情报告（非单学生） */
     @Column(name = "student_id", nullable = false)
-    private Long studentId;
+    private Long studentId = 0L;
+
+    @Column(name = "class_id")
+    private Long classId;
+
+    @Column(name = "snapshot_json", columnDefinition = "LONGTEXT")
+    private String snapshotJson = "";
 
     @Column(nullable = false, length = 120)
     private String title;

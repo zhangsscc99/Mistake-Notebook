@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mistake.notebook.config.AIConfig;
 import com.mistake.notebook.config.SimpleOpenAIClient;
 import com.mistake.notebook.entity.Question;
+import com.mistake.notebook.util.AiJsonParser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Response;
@@ -99,7 +100,12 @@ public class AIClassificationService {
                     return null;
                 }
 
-                JsonNode resultJson = objectMapper.readTree(content);
+                JsonNode resultJson = AiJsonParser.parseObject(objectMapper, content);
+                if (resultJson == null) {
+                    log.warn("分类LLM JSON无法解析，content前200字：{}",
+                            content.substring(0, Math.min(200, content.length())));
+                    return null;
+                }
                 String category = normalizeCategory(resultJson.path("category").asText("综合"));
                 Question.DifficultyLevel difficulty = parseDifficulty(resultJson.path("difficulty").asText("MEDIUM"));
                 double confidence = clampConfidence(resultJson.path("confidence").asDouble(0.9));

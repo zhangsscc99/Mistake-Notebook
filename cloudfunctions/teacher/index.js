@@ -15,6 +15,23 @@ function openId() {
 function fail(error) {
   return { success: false, error };
 }
+
+function isTeacherPaperReady(q) {
+  if (!q) return false;
+  const source = String(q.source || '').toLowerCase();
+  if (source === 'teacher_bank') {
+    return !!(q.content || '').trim();
+  }
+  const status = String(q.aiStatus || '').toLowerCase();
+  if (status === 'pending' || status === 'processing' || status === 'failed') return false;
+  const answer = String(q.aiAnswer || '').trim();
+  if (!answer || answer === '待补充') return false;
+  const analysis = String(q.aiAnalysis || '').trim();
+  if (analysis.indexOf('生成异常') >= 0 || analysis.indexOf('AI答案生成异常') >= 0 || analysis.indexOf('无法解析') >= 0) {
+    return false;
+  }
+  return true;
+}
 async function teacherDoc(id) {
   const r = await db.collection('users').where({ _id: id }).limit(1).get();
   return (r.data || [])[0] || null;
@@ -45,6 +62,8 @@ function mapQuestion(q) {
     imageUrl: q.imageUrl || '',
     openid: q.openid || '',
     aiStatus: q.aiStatus || '',
+    aiAnswer: q.aiAnswer || '',
+    aiAnalysis: q.aiAnalysis || '',
     createdAt: q.createdAt || '',
     source: q.source || '',
     classId: q.classId || ''
@@ -607,6 +626,19 @@ async function savePaper(teacherId, event) {
   const ids = Array.isArray(event.questionIds) ? event.questionIds.filter(Boolean) : [];
   if (!ids.length) return fail('请选择题目');
   await assertOwnedClass(teacherId, classId);
+  const found = [];
+  for (let i = 0; i < ids.length; i += 20) {
+    const chunk = ids.slice(i, i + 20).map(String);
+    const res = await db.collection('questions').where({ _id: _.in(chunk), isDeleted: false }).get();
+    found.push(...(res.data || []));
+  }
+  const byId = {};
+  found.forEach((q) => { byId[String(q._id)] = q; });
+  for (const id of ids) {
+    const doc = byId[String(id)];
+    if (!doc) return fail('题目不存在');
+    if (!isTeacherPaperReady(doc)) return fail('未解析完成的题目不能加入组卷');
+  }
   const now = new Date().toISOString();
   const r = await db.collection('class_papers').add({
     data: {

@@ -45,6 +45,10 @@ public class HomeworkSubmission {
     @Column(columnDefinition = "TEXT")
     private String feedback = "";
 
+    /** ["right","wrong",...] 与小程序作业批改对/错标记对齐 */
+    @Column(name = "marks_json", columnDefinition = "TEXT")
+    private String marksJson = "[]";
+
     /** AI 自动批改建议 */
     @Column(name = "ai_feedback", columnDefinition = "LONGTEXT")
     private String aiFeedback = "";

@@ -33,6 +33,13 @@ public class Question {
     @Column(name = "source_question_ids", columnDefinition = "TEXT")
     private String sourceQuestionIds;
 
+    /** student_notebook / teacher_bank */
+    @Column(length = 32)
+    private String source = "";
+
+    @Column(name = "class_id")
+    private Long classId;
+
     /**
      * 题目内容
      */

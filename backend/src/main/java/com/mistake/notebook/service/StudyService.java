@@ -94,15 +94,15 @@ public class StudyService {
      */
     @Transactional
     public MistakeReport generateMistakeReport(long userId, List<Long> questionIds) {
-        if (questionIds == null || questionIds.size() < 2) {
-            throw new IllegalArgumentException("错因深度分析至少需要选择 2 道错题");
+        if (questionIds == null || questionIds.isEmpty()) {
+            throw new IllegalArgumentException("请先选择一道错题");
         }
         List<Question> questions = new ArrayList<>();
         for (Long id : questionIds) {
             questionRepository.findByIdAndUserIdAndIsDeletedFalse(id, userId).ifPresent(questions::add);
         }
-        if (questions.size() < 2) {
-            throw new IllegalArgumentException("错因深度分析至少需要 2 道有效错题");
+        if (questions.isEmpty()) {
+            throw new IllegalArgumentException("找不到可分析的错题");
         }
         StringBuilder src = new StringBuilder();
         for (int i = 0; i < questions.size(); i++) {
@@ -111,9 +111,13 @@ public class StudyService {
                     .append(trim(q.getContent(), 400)).append("\n答案：").append(trim(nullToEmpty(q.getAiAnswer()), 200))
                     .append("\n解析：").append(trim(nullToEmpty(q.getAiAnalysis()), 400)).append("\n\n");
         }
-        String system = "你是错因分析老师。学生给你多道错题，请综合分析，找出共性错因与薄弱知识点。" +
-                "严格按以下分节输出，每节以【标题】开头独占一行：【共性错因】【薄弱知识点】【逐题点评】【订正步骤】【同类提醒】【下一步建议】。" +
-                "用中文，不要 markdown 代码块，不要用 # 或 * 符号。";
+        String system = questions.size() == 1
+                ? "你是错因分析老师。学生给你一道错题，请分析这道题为什么容易错。"
+                  + "严格按以下分节输出，每节以【标题】开头独占一行：【错因】【薄弱知识点】【订正步骤】【同类提醒】【下一步建议】。"
+                  + "用中文，不要 markdown 代码块，不要用 # 或 * 符号。"
+                : "你是错因分析老师。学生给你多道错题，请综合分析，找出共性错因与薄弱知识点。"
+                  + "严格按以下分节输出，每节以【标题】开头独占一行：【共性错因】【薄弱知识点】【逐题点评】【订正步骤】【同类提醒】【下一步建议】。"
+                  + "用中文，不要 markdown 代码块，不要用 # 或 * 符号。";
         String content = aiAnswerService.complete(system, "共 " + questions.size() + " 道错题：\n" + src, 2200);
         if (content == null || content.isBlank()) {
             content = "【订正步骤】建议对照解析逐步复查计算与概念，并再做一道同类题巩固。";
@@ -211,8 +215,8 @@ public class StudyService {
     }
 
     public List<Map<String, Object>> generateVariants(long userId, List<Long> questionIds) {
-        if (questionIds == null || questionIds.size() < 2) {
-            throw new IllegalArgumentException("变式题生成至少需要选择 2 道错题");
+        if (questionIds == null || questionIds.isEmpty()) {
+            throw new IllegalArgumentException("请先选择一道错题");
         }
         StringBuilder src = new StringBuilder();
         String category = "数学";
@@ -224,8 +228,8 @@ public class StudyService {
             category = q.getCategory() == null ? category : q.getCategory();
             src.append(q.getContent()).append("\n\n");
         }
-        if (found < 2) {
-            throw new IllegalArgumentException("变式题生成至少需要 2 道有效错题");
+        if (found < 1) {
+            throw new IllegalArgumentException("找不到可出变式的错题");
         }
         String raw = aiAnswerService.complete(
                 "根据原题出 3 道同类变式题。只输出 JSON，不要 Markdown。格式：{\"variants\":[{\"content\":\"\",\"answer\":\"\",\"analysis\":\"\",\"difficulty\":\"MEDIUM\",\"knowledgePoint\":\"\"}]}",

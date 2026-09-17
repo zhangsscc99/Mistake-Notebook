@@ -90,6 +90,7 @@
             <view class="question-meta">
               <view class="meta-left">
                 <text class="badge badge-{{qitem.difficultyClass}}">{{qitem.difficultyText}}</text>
+                <text class="parse-flag" wx:if="{{qitem.paperReady === false}}">未解析</text>
                 <text class="add-time">{{qitem.formattedDate}}</text>
                 <text class="note-flag" wx:if="{{qitem.hasNote}}">📝</text>
               </view>
@@ -149,6 +150,7 @@
           <view class="question-meta">
             <view class="meta-left">
               <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
+              <text class="parse-flag" wx:if="{{item.paperReady === false}}">未解析</text>
               <text class="add-time">{{item.formattedDate}}</text>
               <text class="note-flag" wx:if="{{item.hasNote}}">📝</text>
             </view>

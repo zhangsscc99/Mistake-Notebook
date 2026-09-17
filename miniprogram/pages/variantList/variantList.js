@@ -1,7 +1,7 @@
 // pages/variantList/variantList.js
 // 已保存变式题列表：生成页只出题，勾选「加入错题本」后才会出现在这里。
 const app = getApp();
-const { savePaperToCloud, promptPaperTitle } = require('../../utils/paper.js');
+const { savePaperToCloud, promptPaperTitle, partitionPaperQuestions } = require('../../utils/paper.js');
 
 const DIFFICULTY_TEXT = { easy: '简单', medium: '中等', hard: '困难' };
 
@@ -16,6 +16,9 @@ function mapForPaper(q) {
     content: q.content,
     answer: q.aiAnswer || '待补充',
     analysis: q.aiAnalysis || 'AI暂未给出解析',
+    aiStatus: q.aiStatus || '',
+    aiAnswer: q.aiAnswer || '',
+    aiAnalysis: q.aiAnalysis || '',
     categoryId: q.categoryId,
     categoryName: q.category || q.categoryName,
     tags: q.tags || [],
@@ -117,7 +120,15 @@ Page({
   },
 
   commitExam(items) {
-    const mapped = items.map(mapForPaper);
+    const { ready, blocked } = partitionPaperQuestions(items);
+    if (!ready.length) {
+      wx.showToast({ title: '未解析完成的题目不能加入组卷', icon: 'none' });
+      return;
+    }
+    if (blocked.length) {
+      wx.showToast({ title: `已跳过${blocked.length}道未解析题`, icon: 'none' });
+    }
+    const mapped = ready.map(mapForPaper);
     const existing = app.globalData.selectedPaperQuestions || [];
     const merged = [...existing];
     mapped.forEach((q) => {
@@ -149,6 +160,10 @@ Page({
       .catch((err) => {
         wx.hideLoading();
         if (err && (err.message === 'cancelled' || err.message === 'empty_title')) return;
+        if (err && err.message === 'not_ready') {
+          wx.showToast({ title: '未解析完成的题目不能加入组卷', icon: 'none' });
+          return;
+        }
         wx.showToast({ title: '保存失败', icon: 'none' });
       });
   },

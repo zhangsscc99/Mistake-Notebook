@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <van-nav-bar title="打卡广场" left-arrow @click-left="$router.back()" />
+    <van-nav-bar title="打卡广场" left-arrow @click-left="$router.push('/community')" />
 
     <div class="composer card">
       <div class="kicker">网页端学习社区</div>

@@ -274,3 +274,154 @@ body {
   max-width: 100%;
   margin: 0 auto;
 }
+
+/* 可点控件：手型 + 桌面端悬浮抬起，不然看不出能点 */
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="file"],
+input[type="image"],
+input[type="checkbox"],
+input[type="radio"],
+select,
+summary,
+a,
+label,
+[role="button"],
+[role="tab"],
+[role="link"],
+[role="menuitem"],
+.van-button,
+.van-tabbar-item,
+.van-nav-bar__left,
+.van-nav-bar__right,
+.van-nav-bar__arrow,
+.van-cell--clickable,
+.van-switch,
+.van-checkbox,
+.van-radio,
+.van-tab,
+.van-grid-item,
+.van-dropdown-menu__item,
+.van-action-sheet__item,
+.van-dialog__confirm,
+.van-dialog__cancel,
+.card.post,
+.card.pk,
+.card.tap,
+.card.match,
+.tile,
+.tool,
+.entry,
+.hero-stat,
+.row-card,
+.item-main,
+.nav-action,
+.is-clickable {
+  cursor: pointer;
+}
+
+button,
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+a,
+[role="button"],
+.van-button,
+.van-cell--clickable,
+.van-grid-item,
+.card.post,
+.card.pk,
+.card.tap,
+.card.match,
+.tile,
+.tool,
+.entry,
+.hero-stat,
+.row-card,
+.item-main,
+.nav-action,
+.is-clickable {
+  transition:
+    transform 0.18s var(--ease-smooth),
+    box-shadow 0.18s var(--ease-smooth),
+    border-color 0.18s var(--ease-smooth),
+    background-color 0.18s var(--ease-smooth),
+    filter 0.18s var(--ease-smooth);
+}
+
+button:disabled,
+button[disabled],
+input:disabled,
+select:disabled,
+textarea:disabled,
+.van-button--disabled,
+.van-tabbar-item--disabled,
+[aria-disabled="true"],
+.is-disabled-cursor {
+  cursor: not-allowed;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):not([disabled]):hover,
+  input[type="button"]:not(:disabled):hover,
+  input[type="submit"]:not(:disabled):hover,
+  a:hover,
+  [role="button"]:hover,
+  .van-button:not(.van-button--disabled):hover,
+  .van-cell--clickable:hover,
+  .van-grid-item:hover,
+  .card.post:hover,
+  .card.pk:hover,
+  .card.tap:hover,
+  .card.match:hover,
+  .tile:hover,
+  .tool:hover,
+  .entry:hover,
+  .row-card:hover,
+  .item-main:hover,
+  .nav-action:hover,
+  .is-clickable:hover {
+    position: relative;
+    z-index: 2;
+    transform: translateY(-4px);
+    border-color: rgba(36, 89, 255, 0.35);
+    box-shadow:
+      0 18px 36px rgba(31, 91, 255, 0.20),
+      0 6px 12px rgba(11, 22, 51, 0.06);
+  }
+
+  .van-tabbar-item:hover,
+  .van-tabbar-item.is-clickable:hover,
+  .van-nav-bar__left:hover,
+  .van-nav-bar__right:hover,
+  .van-tab:hover,
+  button.stat:not(:disabled):hover,
+  .hero-stat:hover {
+    transform: none !important;
+    z-index: auto;
+    background: rgba(36, 89, 255, 0.08);
+    border-radius: 12px;
+    box-shadow: none !important;
+  }
+
+  button:not(:disabled):not([disabled]):active,
+  .van-button:not(.van-button--disabled):active,
+  .is-clickable:active,
+  .card.post:active,
+  .card.pk:active,
+  .card.tap:active,
+  .card.match:active {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 16px rgba(31, 91, 255, 0.12);
+  }
+
+  button:disabled:hover,
+  button[disabled]:hover,
+  .van-button--disabled:hover,
+  .is-disabled-cursor:hover {
+    transform: none;
+    box-shadow: none;
+  }
+}

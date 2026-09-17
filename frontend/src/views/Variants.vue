@@ -2,9 +2,9 @@
   <div class="page">
     <van-nav-bar title="变式题" left-arrow @click-left="$router.back()" />
     <div class="card">
-      <p>根据已选的 {{ ids.length }} 道错题生成同类变式。至少需要 2 道原题，确认后会存进你的题库。</p>
-      <p v-if="ids.length < 2" class="warn">请返回分类页点「编辑」，勾选至少 2 道错题后再生成。</p>
-      <button class="primary" :disabled="loading || ids.length < 2" @click="generate">{{ loading ? '生成中…' : '生成变式' }}</button>
+      <p>根据已选的 {{ ids.length }} 道错题生成同类变式。一道原题也可以生成，确认后会存进你的题库。</p>
+      <p v-if="!ids.length" class="warn">请先从分类页打开一道错题，或勾选后再生成。</p>
+      <button class="primary" :disabled="loading || !ids.length" @click="generate">{{ loading ? '生成中…' : '生成变式' }}</button>
     </div>
     <div v-for="(v, i) in variants" :key="i" class="item">
       <p>{{ v.content }}</p>
@@ -29,8 +29,8 @@ export default {
     const saving = ref(false)
     const ids = String(route.query.ids || '').split(',').filter(Boolean)
     const generate = async () => {
-      if (ids.length < 2) {
-        showToast('变式题生成至少需要 2 道错题')
+      if (!ids.length) {
+        showToast('请先选择至少 1 道错题')
         return
       }
       loading.value = true

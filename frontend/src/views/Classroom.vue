@@ -3,11 +3,11 @@
     <van-nav-bar title="我的老师" left-arrow @click-left="$router.push('/profile')" fixed placeholder />
 
     <div class="card">
-      <h3>绑定老师</h3>
-      <p class="hint">输入老师给的 6 位邀请码，绑定后可以收到班级错题本、作业和留言。</p>
+      <h3>加入班级</h3>
+      <p class="hint">输入老师给的班级加入码。提交后需老师通过，才会进入班级、收到练习和作业。</p>
       <div class="row">
         <input v-model="code" maxlength="8" placeholder="邀请码" class="code-input" />
-        <button class="primary slim" :disabled="binding" @click="bind">绑定</button>
+        <button class="primary slim" :disabled="binding" @click="bind">申请加入</button>
       </div>
     </div>
 
@@ -26,7 +26,18 @@
       </div>
     </div>
 
-    <div v-if="!sum.teachers?.length" class="empty">还没有绑定老师。</div>
+    <div v-if="(sum.classes || []).length" class="card">
+      <h3>我的班级</h3>
+      <div v-for="c in sum.classes" :key="c.id" class="cls">
+        <div>
+          <b>{{ c.name }}</b>
+          <span>{{ c.teacherName || '教师' }} · {{ c.status === 'pending' ? '待老师审核' : '已加入' }}</span>
+        </div>
+        <em :class="c.status">{{ c.status === 'pending' ? '待审核' : '已通过' }}</em>
+      </div>
+    </div>
+
+    <div v-if="!(sum.teachers || []).length && !(sum.classes || []).length" class="empty">还没有加入班级。把老师给的加入码填在上面。</div>
 
     <div class="entry-grid">
       <div class="entry" @click="$router.push('/class-notebooks')">
@@ -119,7 +130,7 @@ export default {
         await classroomAPI.bindTeacher(code.value.trim())
         code.value = ''
         await load()
-        showToast({ type: 'success', message: '已绑定老师' })
+        showToast({ type: 'success', message: '已提交加入申请' })
       } catch (e) {
         fail(e)
       } finally {
@@ -187,11 +198,30 @@ export default {
 .del { border: none; background: none; color: #e11d48; font-weight: 700; margin-left: auto; }
 .empty { padding: 24px; text-align: center; color: rgba(11,22,51,0.5); font-size: 13px; }
 .entry-grid { display: flex; flex-direction: column; gap: 10px; margin: 16px; }
-.entry { background: #fff; border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; border: 1px solid rgba(11,22,51,0.06); cursor: pointer; }
+.entry {
+  background: #fff; border-radius: 16px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  border: 1px solid rgba(11,22,51,0.06); cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .entry:hover {
+    z-index: 2;
+    transform: translateY(-4px);
+    border-color: rgba(36, 89, 255, 0.32);
+    box-shadow: 0 16px 32px rgba(31, 91, 255, 0.16);
+  }
+}
 .entry-mark { width: 42px; height: 42px; border-radius: 12px; background: rgba(36,89,255,0.12); color: #2459ff; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .entry-body { flex: 1; display: flex; flex-direction: column; }
 .entry-body b { font-size: 15px; color: #0b1633; }
 .entry-body span { font-size: 12px; color: rgba(11,22,51,0.5); }
+.cls { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid rgba(11,22,51,0.06); }
+.cls:first-of-type { border-top: none; }
+.cls span { display: block; font-size: 12px; color: rgba(11,22,51,0.5); margin-top: 4px; }
+.cls em { font-style: normal; font-size: 12px; font-weight: 700; }
+.cls em.pending { color: #d97706; }
+.cls em.approved { color: #16a34a; }
 .chat-wrap { display: flex; flex-direction: column; height: 100%; }
 .chat-head { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid rgba(11,22,51,0.06); }
 .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #eef3fb; }

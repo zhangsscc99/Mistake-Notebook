@@ -1,4 +1,5 @@
 const { callTeacher } = require('../../utils/teacher');
+const { partitionPaperQuestions } = require('../../utils/paper.js');
 
 function decorateQuestions(questions, hot) {
   const byId = {};
@@ -338,9 +339,19 @@ Page({
   confirmPick() {
     const ids = Object.keys(this.data.selectedMap);
     if (!ids.length) return wx.showToast({ title: '请先选题', icon: 'none' });
+    const pool = (this.data.mistakeQuestions || []).concat(this.data.bankQuestions || []);
+    const picked = pool.filter((q) => this.data.selectedMap[q.id]);
+    const { ready, blocked } = partitionPaperQuestions(picked, true);
+    if (!ready.length) {
+      wx.showToast({ title: blocked.length ? '未解析完成的题目不能加入组卷' : '请先选题', icon: 'none' });
+      return;
+    }
+    if (blocked.length) {
+      wx.showToast({ title: `已跳过${blocked.length}道未解析题`, icon: 'none' });
+    }
     getApp().globalData.teacherPick = {
       classId: this.data.selectedClass.id,
-      questionIds: ids
+      questionIds: ready.map((q) => q.id)
     };
     wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper?fromPick=1' });
   }

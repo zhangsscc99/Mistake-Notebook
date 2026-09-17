@@ -39,6 +39,9 @@ public class TeacherService {
     private final MistakeReportRepository mistakeReportRepository;
     private final LearningReportRepository learningReportRepository;
     private final CheckinRepository checkinRepository;
+    private final TeacherClassRepository teacherClassRepository;
+    private final ClassMemberRepository classMemberRepository;
+    private final TeacherWorkspaceService teacherWorkspaceService;
     private final AIAnswerService aiAnswerService;
     private final ObjectMapper objectMapper;
 
@@ -53,14 +56,27 @@ public class TeacherService {
     }
 
     private User requireStudentOf(long teacherId, long studentId) {
-        teacherStudentRepository.findByTeacherIdAndStudentId(teacherId, studentId)
-                .orElseThrow(() -> new IllegalArgumentException("该学生不在你名下"));
-        return userRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("学生不存在"));
+        if (teacherStudentRepository.findByTeacherIdAndStudentId(teacherId, studentId).isPresent()) {
+            return userRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("学生不存在"));
+        }
+        for (TeacherClass c : teacherClassRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId)) {
+            Optional<ClassMember> m = classMemberRepository.findByClassIdAndStudentId(c.getId(), studentId);
+            if (m.isPresent() && "APPROVED".equals(m.get().getStatus())) {
+                return userRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("学生不存在"));
+            }
+        }
+        throw new IllegalArgumentException("该学生不在你名下");
     }
 
     private List<Long> studentIdsOf(long teacherId) {
-        return teacherStudentRepository.findByTeacherIdOrderByCreatedAtDesc(teacherId)
-                .stream().map(TeacherStudent::getStudentId).toList();
+        LinkedHashSet<Long> ids = new LinkedHashSet<>();
+        teacherStudentRepository.findByTeacherIdOrderByCreatedAtDesc(teacherId)
+                .forEach(link -> ids.add(link.getStudentId()));
+        for (TeacherClass c : teacherClassRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId)) {
+            classMemberRepository.findByClassIdAndStatusOrderByRequestedAtDesc(c.getId(), "APPROVED")
+                    .forEach(m -> ids.add(m.getStudentId()));
+        }
+        return new ArrayList<>(ids);
     }
 
     private Map<String, Object> brief(User u) {
@@ -141,6 +157,24 @@ public class TeacherService {
         link.setRemark(remark == null ? "" : remark.trim());
         link.setCreatedAt(LocalDateTime.now());
         teacherStudentRepository.save(link);
+        List<TeacherClass> classes = teacherClassRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId);
+        if (classes.isEmpty()) {
+            teacherWorkspaceService.ensureClasses(teacherId);
+            classes = teacherClassRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId);
+        }
+        if (!classes.isEmpty()) {
+            TeacherClass cls = classes.get(0);
+            ClassMember member = classMemberRepository.findByClassIdAndStudentId(cls.getId(), s.getId()).orElseGet(() -> {
+                ClassMember m = new ClassMember();
+                m.setClassId(cls.getId());
+                m.setStudentId(s.getId());
+                m.setRequestedAt(LocalDateTime.now());
+                return m;
+            });
+            member.setStatus("APPROVED");
+            member.setApprovedAt(LocalDateTime.now());
+            classMemberRepository.save(member);
+        }
         return brief(s);
     }
 
@@ -149,6 +183,10 @@ public class TeacherService {
         requireTeacher(teacherId);
         teacherStudentRepository.findByTeacherIdAndStudentId(teacherId, studentId)
                 .ifPresent(teacherStudentRepository::delete);
+        for (TeacherClass c : teacherClassRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId)) {
+            classMemberRepository.findByClassIdAndStudentId(c.getId(), studentId)
+                    .ifPresent(classMemberRepository::delete);
+        }
     }
 
     @Transactional
@@ -354,6 +392,7 @@ public class TeacherService {
         m.put("title", nb.getTitle());
         m.put("description", nb.getDescription());
         m.put("questionCount", nb.getQuestionCount());
+        m.put("classId", nb.getClassId());
         m.put("pushedAt", nb.getPushedAt());
         m.put("createdAt", nb.getCreatedAt());
         m.put("updatedAt", nb.getUpdatedAt());
@@ -430,26 +469,45 @@ public class TeacherService {
 
     // 学生侧
     public List<Map<String, Object>> studentNotebooks(long studentId) {
+        LinkedHashMap<Long, Map<String, Object>> uniq = new LinkedHashMap<>();
         List<Long> teacherIds = teacherStudentRepository.findByStudentId(studentId).stream().map(TeacherStudent::getTeacherId).toList();
-        if (teacherIds.isEmpty()) return List.of();
-        List<Map<String, Object>> out = new ArrayList<>();
-        for (ClassNotebook nb : classNotebookRepository.findByTeacherIdInAndIsDeletedFalseAndPushedAtIsNotNullOrderByPushedAtDesc(teacherIds)) {
-            Map<String, Object> row = notebookMap(nb, false);
-            userRepository.findById(nb.getTeacherId()).ifPresent(t -> row.put("teacherName", t.getNickName()));
-            ClassNotebookProgress p = classNotebookProgressRepository.findByNotebookIdAndStudentId(nb.getId(), studentId).orElse(null);
-            row.put("doneCount", p == null ? 0 : p.getDoneCount());
-            row.put("masteredCount", p == null ? 0 : p.getMasteredCount());
-            out.add(row);
+        if (!teacherIds.isEmpty()) {
+            for (ClassNotebook nb : classNotebookRepository.findByTeacherIdInAndIsDeletedFalseAndPushedAtIsNotNullOrderByPushedAtDesc(teacherIds)) {
+                uniq.put(nb.getId(), notebookRowForStudent(nb, studentId));
+            }
         }
-        return out;
+        for (Map<String, Object> row : teacherWorkspaceService.studentClassNotebooks(studentId)) {
+            Long id = ((Number) row.get("id")).longValue();
+            uniq.putIfAbsent(id, row);
+        }
+        return new ArrayList<>(uniq.values());
+    }
+
+    private Map<String, Object> notebookRowForStudent(ClassNotebook nb, long studentId) {
+        Map<String, Object> row = notebookMap(nb, false);
+        userRepository.findById(nb.getTeacherId()).ifPresent(t -> row.put("teacherName", t.getNickName()));
+        ClassNotebookProgress p = classNotebookProgressRepository.findByNotebookIdAndStudentId(nb.getId(), studentId).orElse(null);
+        row.put("doneCount", p == null ? 0 : p.getDoneCount());
+        row.put("masteredCount", p == null ? 0 : p.getMasteredCount());
+        return row;
     }
 
     public Map<String, Object> studentNotebookDetail(long studentId, long id) {
-        ClassNotebook nb = classNotebookRepository.findById(id).filter(n -> !Boolean.TRUE.equals(n.getIsDeleted()) && n.getPushedAt() != null)
+        ClassNotebook nb = classNotebookRepository.findById(id).filter(n -> !Boolean.TRUE.equals(n.getIsDeleted()))
                 .orElseThrow(() -> new IllegalArgumentException("错题本不存在"));
-        teacherStudentRepository.findByTeacherIdAndStudentId(nb.getTeacherId(), studentId)
-                .orElseThrow(() -> new IllegalArgumentException("你不在该老师名下"));
+        boolean linked = teacherStudentRepository.findByTeacherIdAndStudentId(nb.getTeacherId(), studentId).isPresent();
+        boolean inClass = nb.getClassId() != null && classMemberRepository.findByClassIdAndStudentId(nb.getClassId(), studentId)
+                .filter(m -> "APPROVED".equals(m.getStatus())).isPresent();
+        if (!linked && !inClass) throw new IllegalArgumentException("你不在该班级");
+        if (nb.getPushedAt() == null && !inClass) throw new IllegalArgumentException("错题本不存在");
         Map<String, Object> row = notebookMap(nb, true);
+        if (nb.getQuestionIds() != null && !nb.getQuestionIds().isBlank()) {
+            row.put("questions", teacherWorkspaceService.listPickedQuestions(
+                    Arrays.stream(nb.getQuestionIds().split(","))
+                            .filter(s -> !s.isBlank())
+                            .map(Long::valueOf)
+                            .toList()));
+        }
         ClassNotebookProgress p = classNotebookProgressRepository.findByNotebookIdAndStudentId(id, studentId).orElse(null);
         row.put("doneCount", p == null ? 0 : p.getDoneCount());
         row.put("masteredCount", p == null ? 0 : p.getMasteredCount());
@@ -498,6 +556,7 @@ public class TeacherService {
         m.put("description", hw.getDescription());
         m.put("questionCount", hw.getQuestionCount());
         m.put("dueAt", hw.getDueAt());
+        m.put("classId", hw.getClassId());
         m.put("createdAt", hw.getCreatedAt());
         m.put("studentIds", hw.getStudentIds() == null || hw.getStudentIds().isBlank() ? List.of()
                 : Arrays.stream(hw.getStudentIds().split(",")).map(Long::valueOf).toList());
@@ -539,6 +598,10 @@ public class TeacherService {
         }
         if (body.get("dueAt") instanceof String due && !due.isBlank()) {
             try { hw.setDueAt(LocalDateTime.parse(due.length() == 10 ? due + "T23:59:00" : due)); } catch (Exception ignored) {}
+        }
+        if (body.get("classId") instanceof Number n) hw.setClassId(n.longValue());
+        else if (body.get("classId") instanceof String s && !s.isBlank()) {
+            try { hw.setClassId(Long.parseLong(s.trim())); } catch (Exception ignored) {}
         }
         hw.setCreatedAt(LocalDateTime.now());
         hw = homeworkRepository.save(hw);
@@ -602,6 +665,8 @@ public class TeacherService {
         m.put("status", s.getStatus());
         m.put("score", s.getScore());
         m.put("feedback", s.getFeedback());
+        m.put("comment", s.getFeedback());
+        m.put("marks", readAnyList(s.getMarksJson()));
         m.put("aiFeedback", s.getAiFeedback());
         m.put("submittedAt", s.getSubmittedAt());
         m.put("gradedAt", s.getGradedAt());
@@ -613,7 +678,17 @@ public class TeacherService {
     public Map<String, Object> gradeSubmission(long teacherId, long submissionId, Map<String, Object> body) {
         requireTeacher(teacherId);
         HomeworkSubmission s = homeworkSubmissionRepository.findById(submissionId).orElseThrow(() -> new IllegalArgumentException("提交不存在"));
-        homeworkRepository.findByIdAndTeacherId(s.getHomeworkId(), teacherId).orElseThrow(() -> new IllegalArgumentException("无权批改"));
+        Homework hw = homeworkRepository.findByIdAndTeacherId(s.getHomeworkId(), teacherId).orElseThrow(() -> new IllegalArgumentException("无权批改"));
+        List<Long> targets = hw.getClassId() != null
+                ? classMemberRepository.findByClassIdAndStatusOrderByRequestedAtDesc(hw.getClassId(), "APPROVED")
+                    .stream().map(ClassMember::getStudentId).toList()
+                : studentIdsOf(teacherId);
+        if (!targets.contains(s.getStudentId()) && teacherStudentRepository.findByTeacherIdAndStudentId(teacherId, s.getStudentId()).isEmpty()) {
+            throw new IllegalArgumentException("无权批改");
+        }
+        if (body.get("marks") instanceof List<?>) {
+            return teacherWorkspaceService.gradeAssignment(teacherId, submissionId, body);
+        }
         List<Object> itemScores = new ArrayList<>();
         int total = 0;
         if (body.get("itemScores") instanceof List<?> raw) {
@@ -624,9 +699,10 @@ public class TeacherService {
             }
         }
         if (body.get("score") instanceof Number n) total = n.intValue();
+        String feedback = String.valueOf(body.getOrDefault("feedback", body.getOrDefault("comment", "")));
         s.setItemScoresJson(writeJson(itemScores));
         s.setScore(total);
-        s.setFeedback(String.valueOf(body.getOrDefault("feedback", "")));
+        s.setFeedback(feedback);
         s.setStatus("GRADED");
         s.setGradedAt(LocalDateTime.now());
         s = homeworkSubmissionRepository.save(s);
@@ -681,14 +757,32 @@ public class TeacherService {
 
     // 学生侧
     public List<Map<String, Object>> studentHomework(long studentId) {
-        List<Long> teacherIds = teacherStudentRepository.findByStudentId(studentId).stream().map(TeacherStudent::getTeacherId).toList();
-        if (teacherIds.isEmpty()) return List.of();
+        LinkedHashSet<Long> teacherIds = new LinkedHashSet<>();
+        teacherStudentRepository.findByStudentId(studentId).forEach(l -> teacherIds.add(l.getTeacherId()));
+        List<Long> classIds = classMemberRepository.findByStudentIdAndStatus(studentId, "APPROVED")
+                .stream().map(ClassMember::getClassId).toList();
+        for (Long cid : classIds) {
+            teacherClassRepository.findById(cid).ifPresent(c -> teacherIds.add(c.getTeacherId()));
+        }
+        if (teacherIds.isEmpty() && classIds.isEmpty()) return List.of();
+        LinkedHashMap<Long, Homework> uniq = new LinkedHashMap<>();
+        if (!teacherIds.isEmpty()) {
+            for (Homework hw : homeworkRepository.findByTeacherIdInAndIsDeletedFalseOrderByCreatedAtDesc(new ArrayList<>(teacherIds))) {
+                uniq.put(hw.getId(), hw);
+            }
+        }
+        if (!classIds.isEmpty()) {
+            for (Homework hw : homeworkRepository.findByClassIdInAndIsDeletedFalseOrderByCreatedAtDesc(classIds)) {
+                uniq.put(hw.getId(), hw);
+            }
+        }
         List<Map<String, Object>> out = new ArrayList<>();
-        for (Homework hw : homeworkRepository.findByTeacherIdInAndIsDeletedFalseOrderByCreatedAtDesc(teacherIds)) {
+        for (Homework hw : uniq.values()) {
             if (hw.getStudentIds() != null && !hw.getStudentIds().isBlank()
                     && Arrays.stream(hw.getStudentIds().split(",")).noneMatch(x -> x.equals(String.valueOf(studentId)))) {
                 continue;
             }
+            if (hw.getClassId() != null && !classIds.contains(hw.getClassId())) continue;
             Map<String, Object> row = homeworkMap(hw, false);
             userRepository.findById(hw.getTeacherId()).ifPresent(t -> row.put("teacherName", t.getNickName()));
             HomeworkSubmission s = homeworkSubmissionRepository.findByHomeworkIdAndStudentId(hw.getId(), studentId).orElse(null);
@@ -703,14 +797,12 @@ public class TeacherService {
     public Map<String, Object> studentHomeworkDetail(long studentId, long id) {
         Homework hw = homeworkRepository.findById(id).filter(h -> !Boolean.TRUE.equals(h.getIsDeleted()))
                 .orElseThrow(() -> new IllegalArgumentException("作业不存在"));
-        teacherStudentRepository.findByTeacherIdAndStudentId(hw.getTeacherId(), studentId)
-                .orElseThrow(() -> new IllegalArgumentException("你不在该老师名下"));
+        assertCanSeeHomework(studentId, hw);
         Map<String, Object> row = homeworkMap(hw, true);
         HomeworkSubmission s = homeworkSubmissionRepository.findByHomeworkIdAndStudentId(id, studentId).orElse(null);
         if (s != null) {
             row.put("submission", submissionMap(s));
         } else {
-            // 未提交前不给参考答案
             List<Map<String, Object>> qs = readList(hw.getQuestionsJson());
             for (Map<String, Object> q : qs) { q.remove("answer"); q.remove("analysis"); }
             row.put("questions", qs);
@@ -722,8 +814,10 @@ public class TeacherService {
     public Map<String, Object> submitHomework(long studentId, long id, List<Object> answers) {
         Homework hw = homeworkRepository.findById(id).filter(h -> !Boolean.TRUE.equals(h.getIsDeleted()))
                 .orElseThrow(() -> new IllegalArgumentException("作业不存在"));
-        teacherStudentRepository.findByTeacherIdAndStudentId(hw.getTeacherId(), studentId)
-                .orElseThrow(() -> new IllegalArgumentException("你不在该老师名下"));
+        assertCanSeeHomework(studentId, hw);
+        if (hw.getDueAt() != null && LocalDateTime.now().isAfter(hw.getDueAt())) {
+            throw new IllegalArgumentException("已过截止时间，不能提交");
+        }
         HomeworkSubmission s = homeworkSubmissionRepository.findByHomeworkIdAndStudentId(id, studentId).orElseGet(() -> {
             HomeworkSubmission n = new HomeworkSubmission();
             n.setHomeworkId(id);
@@ -736,6 +830,18 @@ public class TeacherService {
         s.setStatus("SUBMITTED");
         s.setUpdatedAt(LocalDateTime.now());
         return submissionMap(homeworkSubmissionRepository.save(s));
+    }
+
+    private void assertCanSeeHomework(long studentId, Homework hw) {
+        if (hw.getClassId() != null) {
+            ClassMember m = classMemberRepository.findByClassIdAndStudentId(hw.getClassId(), studentId)
+                    .orElseThrow(() -> new IllegalArgumentException("你不在该班级"));
+            if ("PENDING".equals(m.getStatus())) throw new IllegalArgumentException("加入申请待老师审核");
+            if (!"APPROVED".equals(m.getStatus())) throw new IllegalArgumentException("你不在该班级");
+            return;
+        }
+        teacherStudentRepository.findByTeacherIdAndStudentId(hw.getTeacherId(), studentId)
+                .orElseThrow(() -> new IllegalArgumentException("你不在该老师名下"));
     }
 
     // ───────────────────────── 家长报告 ─────────────────────────
@@ -906,25 +1012,16 @@ public class TeacherService {
 
     @Transactional
     public Map<String, Object> bindTeacher(long studentId, String code) {
-        User me = userRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("用户不存在"));
-        if ("TEACHER".equals(me.getRole())) throw new IllegalArgumentException("教师账号不能绑定老师");
-        User t = userRepository.findByInviteCode(code == null ? "" : code.trim().toUpperCase())
-                .filter(u -> "TEACHER".equals(u.getRole()))
-                .orElseThrow(() -> new IllegalArgumentException("邀请码不对"));
-        if (teacherStudentRepository.findByTeacherIdAndStudentId(t.getId(), studentId).isPresent()) {
-            throw new IllegalArgumentException("已经绑定过这位老师");
-        }
-        TeacherStudent link = new TeacherStudent();
-        link.setTeacherId(t.getId());
-        link.setStudentId(studentId);
-        link.setCreatedAt(LocalDateTime.now());
-        teacherStudentRepository.save(link);
-        return brief(t);
+        return teacherWorkspaceService.joinClass(studentId, code);
     }
 
     @Transactional
     public void unbindTeacher(long studentId, long teacherId) {
         teacherStudentRepository.findByTeacherIdAndStudentId(teacherId, studentId).ifPresent(teacherStudentRepository::delete);
+        for (TeacherClass c : teacherClassRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId)) {
+            classMemberRepository.findByClassIdAndStudentId(c.getId(), studentId)
+                    .ifPresent(classMemberRepository::delete);
+        }
     }
 
     public long studentUnread(long studentId) {

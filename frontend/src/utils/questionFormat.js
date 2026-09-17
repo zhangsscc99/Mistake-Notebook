@@ -93,6 +93,37 @@ export function isPendingQuestion(q) {
   return answerPending || analysisPending
 }
 
+export function canAddToPaper(q) {
+  if (!q || isPendingQuestion(q)) return false
+  const answer = String(q.sourceAiAnswer || q.aiAnswer || q.answer || '').trim()
+  if (!answer || answer === '待补充' || answer.startsWith('AI 答案')) return false
+  const analysis = String(q.sourceAiAnalysis || q.aiAnalysis || q.analysis || '').trim()
+  if (analysis.includes('生成异常') || analysis.includes('AI答案生成异常') || analysis.includes('无法解析')) {
+    return false
+  }
+  return true
+}
+
+export function canTeacherPickForPaper(q) {
+  if (!q) return false
+  const source = String(q.source || '').toLowerCase()
+  if (source === 'teacher_bank') {
+    return !!(q.content || q.recognizedText || '').trim()
+  }
+  return canAddToPaper(q)
+}
+
+export function partitionPaperQuestions(list, { teacher = false } = {}) {
+  const ready = []
+  const blocked = []
+  const check = teacher ? canTeacherPickForPaper : canAddToPaper
+  ;(list || []).forEach((q) => {
+    if (check(q)) ready.push(q)
+    else blocked.push(q)
+  })
+  return { ready, blocked }
+}
+
 export function isFailedQuestion(q) {
   const status = (q && q.aiStatus || '').toLowerCase()
   if (status) return status === 'failed'
@@ -108,13 +139,29 @@ export function isProcessingQuestion(q) {
 
 // 后台解析正常只要几十秒。超过这个时间还挂着，基本是服务重启把任务丢了，
 // 再显示「解析中」就是在骗用户，按卡住处理，让他能重试或删除。
+// 必须看最近一次排队/处理时间，不能看 createdAt：重试不会改创建时间。
 const STALE_ANALYZING_MS = 10 * 60 * 1000
+
+export function parseQuestionTime(raw) {
+  if (raw == null || raw === '') return NaN
+  if (typeof raw === 'number' && Number.isFinite(raw)) {
+    return raw < 1e12 ? raw * 1000 : raw
+  }
+  if (Array.isArray(raw) && raw.length >= 3) {
+    const [y, m, d, h = 0, min = 0, s = 0] = raw
+    return new Date(y, m - 1, d, h, min, Math.floor(s)).getTime()
+  }
+  const t = new Date(raw).getTime()
+  return Number.isNaN(t) ? NaN : t
+}
 
 export function isStaleAnalyzing(q) {
   if (!q || isFailedQuestion(q)) return false
-  const created = q.createdAt ? new Date(q.createdAt).getTime() : NaN
-  if (Number.isNaN(created)) return false
-  return Date.now() - created > STALE_ANALYZING_MS
+  const status = (q.aiStatus || '').toLowerCase()
+  if (status && status !== 'pending' && status !== 'processing') return false
+  const t = parseQuestionTime(q.updatedAt) || parseQuestionTime(q.createdAt)
+  if (Number.isNaN(t) || !t) return false
+  return Date.now() - t > STALE_ANALYZING_MS
 }
 
 export function decoratePendingItem(item, index) {

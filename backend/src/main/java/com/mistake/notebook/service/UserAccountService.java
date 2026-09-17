@@ -24,6 +24,15 @@ import com.mistake.notebook.repository.ClassNotebookRepository;
 import com.mistake.notebook.repository.ClassNotebookProgressRepository;
 import com.mistake.notebook.repository.ParentReportRepository;
 import com.mistake.notebook.repository.QuestionExplanationRepository;
+import com.mistake.notebook.repository.TeacherClassRepository;
+import com.mistake.notebook.repository.ClassMemberRepository;
+import com.mistake.notebook.repository.TeacherPaperRepository;
+import com.mistake.notebook.repository.HelpPostRepository;
+import com.mistake.notebook.repository.HelpReplyRepository;
+import com.mistake.notebook.repository.FriendshipRepository;
+import com.mistake.notebook.repository.PkMatchRepository;
+import com.mistake.notebook.repository.HelpPostLikeRepository;
+import com.mistake.notebook.repository.OrganizationRepository;
 import com.mistake.notebook.security.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -75,6 +84,15 @@ public class UserAccountService {
     private final ClassNotebookProgressRepository classNotebookProgressRepository;
     private final ParentReportRepository parentReportRepository;
     private final QuestionExplanationRepository questionExplanationRepository;
+    private final TeacherClassRepository teacherClassRepository;
+    private final ClassMemberRepository classMemberRepository;
+    private final TeacherPaperRepository teacherPaperRepository;
+    private final HelpPostRepository helpPostRepository;
+    private final HelpReplyRepository helpReplyRepository;
+    private final FriendshipRepository friendshipRepository;
+    private final PkMatchRepository pkMatchRepository;
+    private final HelpPostLikeRepository helpPostLikeRepository;
+    private final OrganizationRepository organizationRepository;
 
     @Transactional
     public Map<String, Object> register(String username, String password, String nickName) {
@@ -507,6 +525,13 @@ public class UserAccountService {
         List<String> failed = new ArrayList<>();
         purge(failed, removed, "chatMemories", () -> chatMemoryRepository.deleteByClientId("web-" + userId));
         purge(failed, removed, "teacherLinks", () -> { teacherStudentRepository.deleteByStudentId(userId); teacherStudentRepository.deleteByTeacherId(userId); });
+        purge(failed, removed, "classMembers", () -> {
+            classMemberRepository.deleteByStudentId(userId);
+            teacherClassRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                    .forEach(c -> classMemberRepository.deleteByClassId(c.getId()));
+        });
+        purge(failed, removed, "teacherClasses", () -> teacherClassRepository.deleteByTeacherId(userId));
+        purge(failed, removed, "teacherPapers", () -> teacherPaperRepository.deleteByTeacherId(userId));
         purge(failed, removed, "messages", () -> { teacherMessageRepository.deleteByStudentId(userId); teacherMessageRepository.deleteByTeacherId(userId); });
         purge(failed, removed, "homeworkSubmissions", () -> homeworkSubmissionRepository.deleteByStudentId(userId));
         purge(failed, removed, "homeworks", () -> homeworkRepository.deleteByTeacherId(userId));
@@ -518,6 +543,12 @@ public class UserAccountService {
         purge(failed, removed, "mistakeReports", () -> mistakeReportRepository.deleteByUserId(userId));
         purge(failed, removed, "learningReports", () -> learningReportRepository.deleteByUserId(userId));
         purge(failed, removed, "savedPapers", () -> savedPaperRepository.deleteByUserId(userId));
+        purge(failed, removed, "helpLikes", () -> helpPostLikeRepository.deleteByUserId(userId));
+        purge(failed, removed, "helpReplies", () -> helpReplyRepository.deleteByUserId(userId));
+        purge(failed, removed, "helpPosts", () -> helpPostRepository.deleteByUserId(userId));
+        purge(failed, removed, "friendships", () -> friendshipRepository.deleteByUserIdOrFriendId(userId, userId));
+        purge(failed, removed, "pkMatches", () -> pkMatchRepository.deleteByChallengerIdOrOpponentId(userId, userId));
+        purge(failed, removed, "organizations", () -> organizationRepository.deleteByOwnerId(userId));
         purge(failed, removed, "checkinLikes", () -> checkinPostLikeRepository.deleteByUserId(userId));
         purge(failed, removed, "checkinPosts", () -> checkinPostRepository.deleteByUserId(userId));
         purge(failed, removed, "checkins", () -> checkinRepository.deleteByUserId(userId));

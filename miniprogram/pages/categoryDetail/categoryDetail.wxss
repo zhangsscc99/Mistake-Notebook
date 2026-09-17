@@ -259,6 +259,15 @@
     0 12px 36px rgba(31, 91, 255, 0.12);
 }
 
+.parse-flag {
+  font-size: 11px;
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  background: rgba(217, 119, 6, 0.14);
+  color: #d97706;
+  font-weight: 700;
+}
+
 .select-box {
   width: 22px;
   height: 22px;

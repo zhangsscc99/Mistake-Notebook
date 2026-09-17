@@ -34,8 +34,10 @@
       <button class="primary" :disabled="wallet.todayChecked || checking" @click="doCheckin">
         {{ wallet.todayChecked ? '今日已打卡' : '今日打卡' }}
       </button>
-      <button class="ghost-wide" @click="shareCheckinCard">生成打卡分享图</button>
-      <button class="ghost-wide" @click="$router.push('/plaza')">打卡广场（网页社区）</button>
+      <button class="ghost-wide" :disabled="sharing" @click="shareCheckinCard">
+        {{ sharing ? '正在生成…' : '生成打卡分享图' }}
+      </button>
+      <button class="ghost-wide" @click="$router.push('/community')">学习社区（互助 / PK / 打卡）</button>
       <div class="vip-row">
         <div>
           <div class="vip-title">{{ wallet.isVip ? '对话会员' : '对话会员 · 未开通' }}</div>
@@ -82,20 +84,26 @@
     </section>
 
     <section class="card list">
-      <button v-if="isTeacherAccount" @click="$router.push('/teacher')">教师工作台</button>
-      <button v-if="isTeacherAccount" @click="$router.push('/teacher/students')">学员管理</button>
+      <button v-if="isTeacherAccount" @click="$router.push('/teacher')">班级工作台</button>
+      <button v-if="isTeacherAccount" @click="$router.push('/teacher/questions')">全班题目</button>
+      <button v-if="isTeacherAccount" @click="$router.push('/teacher/paper')">班级组卷</button>
       <template v-if="!isTeacherAccount">
         <button @click="$router.push('/classroom')">我的老师 / 班级</button>
         <button @click="$router.push('/homework')">我的作业</button>
         <button @click="$router.push('/class-notebooks')">班级错题本</button>
         <button @click="$router.push('/parent-reports')">家长端报告</button>
         <button @click="$router.push('/practice')">开始练习</button>
+        <button @click="$router.push('/paper-builder')">组合试卷</button>
         <button @click="$router.push('/learning-report')">查询你的个性化学习报告</button>
         <button @click="$router.push('/report-list')">错因分析历史</button>
         <button @click="$router.push('/variant-list')">已保存变式题</button>
       </template>
+      <button @click="$router.push('/community')">学习社区</button>
+      <button @click="$router.push('/community/help')">互助答疑</button>
+      <button @click="$router.push('/community/pk')">好友 PK</button>
       <button @click="$router.push('/plaza')">打卡广场</button>
       <button @click="$router.push('/leaderboard')">学习排行榜</button>
+      <button @click="$router.push('/orgs')">机构目录</button>
       <button @click="$router.push('/settings')">设置</button>
       <button class="danger" @click="logout">退出登录</button>
       <button class="danger" @click="deleteAccount">注销账号</button>
@@ -103,6 +111,16 @@
 
     <AppTabBar v-if="!isTeacherAccount" />
     <TeacherTabBar v-else />
+
+    <div v-if="cardPreview" class="share-mask" @click.self="closeShareCard">
+      <div class="share-sheet">
+        <img :src="cardPreview" alt="打卡分享图" />
+        <p>长按图片可保存到相册。电脑端点下载。</p>
+        <button class="primary" @click="downloadShareCard">下载图片</button>
+        <button class="ghost-wide" @click="goPlaza">发到打卡广场</button>
+        <button class="ghost-wide" @click="closeShareCard">关闭</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -116,7 +134,7 @@ import userAPI from '../api/user'
 import { uploadClient, API_BASE_URL } from '../api/config'
 import { setSession, clearSession, getProfile, isTeacher } from '../utils/auth'
 import { buildAchievements, EMPTY_ACH } from '../utils/achievements'
-import { shareCheckin } from '../utils/shareCard'
+import { shareCheckin, downloadBlob } from '../utils/shareCard'
 
 export default {
   name: 'ProfilePage',
@@ -139,6 +157,9 @@ export default {
     const checking = ref(false)
     const pwd = reactive({ oldPassword: '', newPassword: '' })
     const changingPwd = ref(false)
+    const sharing = ref(false)
+    const cardPreview = ref('')
+    const cardBlob = ref(null)
 
     const load = async () => {
       const [me, w, s] = await Promise.all([userAPI.me(), userAPI.wallet(), userAPI.stats()])
@@ -232,20 +253,42 @@ export default {
       }
     }
 
+    const closeShareCard = () => {
+      if (cardPreview.value) URL.revokeObjectURL(cardPreview.value)
+      cardPreview.value = ''
+      cardBlob.value = null
+    }
+
     const shareCheckinCard = async () => {
+      sharing.value = true
       try {
+        closeShareCard()
         const res = await shareCheckin({
           nickName: profile.nickName,
           streak: wallet.checkinStreak,
           totalDays: wallet.checkinTotalDays,
           questionCount: stats.totalQuestions,
           coins: wallet.coins
-        }, window.location.origin + '/login')
-        if (res.mode === 'download') showToast({ type: 'success', message: '打卡图已保存，可发到群里' })
+        })
+        cardBlob.value = res.blob
+        cardPreview.value = res.previewUrl
       } catch (e) {
-        if (e?.name === 'AbortError') return
-        showToast({ type: 'fail', message: '生成分享图失败' })
+        console.error(e)
+        showToast({ type: 'fail', message: e?.message || '生成分享图失败' })
+      } finally {
+        sharing.value = false
       }
+    }
+
+    const downloadShareCard = () => {
+      if (!cardBlob.value) return
+      downloadBlob(cardBlob.value, 'zhi-juan-checkin.png')
+      showToast({ type: 'success', message: '已开始下载' })
+    }
+
+    const goPlaza = () => {
+      closeShareCard()
+      router.push('/plaza')
     }
 
     const showMedal = (m) => {
@@ -276,9 +319,9 @@ export default {
     onMounted(() => { load().catch(() => {}) })
     return {
       profile, form, wallet, stats, ach, checking, defaultAvatar, pwd, changingPwd,
-      isTeacherAccount,
+      isTeacherAccount, sharing, cardPreview,
       doCheckin, doVip, saveProfile, onAvatar, showMedal, logout, deleteAccount,
-      changePassword, shareCheckinCard
+      changePassword, shareCheckinCard, closeShareCard, downloadShareCard, goPlaza
     }
   }
 }
@@ -304,6 +347,7 @@ export default {
 .primary { width: 100%; height: 42px; border: none; border-radius: 999px; color: #fff; font-weight: 700; background: linear-gradient(135deg,#2459ff,#52b7ff); }
 .ghost { border: none; background: #eef3fb; color: #2459ff; border-radius: 999px; padding: 8px 12px; font-weight: 700; }
 .ghost-wide { width: 100%; margin-top: 8px; border: none; background: #eef3fb; color: #2459ff; border-radius: 999px; padding: 11px; font-weight: 700; }
+.ghost-wide:disabled { opacity: 0.45; }
 .bonus-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .bonus { font-size: 11px; padding: 4px 10px; border-radius: 999px; background: #f4f7fb; color: rgba(11,22,51,0.45); }
 .bonus.on { background: rgba(22,163,74,0.12); color: #16a34a; }
@@ -323,4 +367,22 @@ export default {
 .check { display: flex; gap: 8px; align-items: center; margin: 8px 0 12px; font-size: 13px; }
 .list button { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid rgba(11,22,51,0.06); padding: 14px 0; font-size: 15px; color: #0b1633; }
 .danger { color: #e11d48 !important; }
+.share-mask {
+  position: fixed; inset: 0; z-index: 3000;
+  background: rgba(11,22,51,0.55);
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px 16px;
+}
+.share-sheet {
+  width: min(420px, 100%);
+  background: #fff; border-radius: 20px; padding: 16px;
+}
+.share-sheet img {
+  width: 100%; border-radius: 14px; display: block;
+  background: #eef3fb;
+}
+.share-sheet p {
+  margin: 10px 0 8px; text-align: center;
+  font-size: 13px; color: rgba(11,22,51,0.55);
+}
 </style>

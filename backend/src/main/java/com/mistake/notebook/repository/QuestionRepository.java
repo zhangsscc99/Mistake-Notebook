@@ -125,6 +125,12 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     List<Question> findByUserIdAndIdInAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, List<Long> ids);
 
+    List<Question> findByIdInAndIsDeletedFalse(List<Long> ids);
+
+    List<Question> findByUserIdInAndIsDeletedFalseOrderByCreatedAtDesc(List<Long> userIds);
+
+    List<Question> findByUserIdAndSourceAndClassIdAndIsDeletedFalseOrderByCreatedAtDesc(Long userId, String source, Long classId);
+
     List<Question> findByUserId(Long userId);
 
     @Query("SELECT DISTINCT q FROM Question q JOIN q.tags t WHERE q.userId = :userId AND t = :tag AND q.isDeleted = false ORDER BY q.createdAt DESC")

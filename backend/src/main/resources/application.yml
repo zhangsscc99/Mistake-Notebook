@@ -73,6 +73,7 @@ ai:
     api-key: ${AI_ALIYUN_API_KEY:not-configured}
     base-url: ${AI_ALIYUN_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1/}
     model: ${AI_ALIYUN_MODEL:qwen-plus}
+    max-tokens: ${AI_ALIYUN_MAX_TOKENS:10000}
     application-id: ${AI_ALIYUN_APPLICATION_ID:}
     system-content: ${AI_ALIYUN_SYSTEM_CONTENT:你是一个擅长教育领域的智能助手，回答简洁、准确。}
     payment-model: ${AI_ALIYUN_PAYMENT_MODEL:qwen-plus}

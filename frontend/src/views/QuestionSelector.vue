@@ -3,7 +3,7 @@
     <!-- 头部导航 -->
     <div class="header">
       <van-nav-bar
-        title="去手写"
+        title="确认题目"
         left-arrow
         @click-left="goBack"
         :safe-area-inset-top="true"

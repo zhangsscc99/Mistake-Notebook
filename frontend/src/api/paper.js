@@ -1,4 +1,5 @@
 import { apiClient } from './config'
+import { partitionPaperQuestions } from '../utils/questionFormat'
 
 const LOCAL_KEY = 'savedPapers'
 
@@ -83,7 +84,13 @@ const paperAPI = {
    * @returns {Promise<{paper, localOnly}>}
    */
   async savePaper(questions, title, options = {}) {
-    const payload = buildPaperPayload(questions, title, options)
+    const { ready, blocked } = partitionPaperQuestions(questions)
+    if (!ready.length) {
+      const err = new Error(blocked.length ? '未解析完成的题目不能加入组卷' : '请先选择题目')
+      err.code = 'NOT_READY'
+      throw err
+    }
+    const payload = buildPaperPayload(ready, title, options)
     try {
       const res = await apiClient.post('/test-paper/saved', payload)
       const body = res.data
@@ -98,6 +105,9 @@ const paperAPI = {
         return { paper: cloudPaper, localOnly: false }
       }
     } catch (e) {
+      if (e.code === 'NOT_READY' || e.response?.status === 400) {
+        throw e
+      }
       console.warn('云端保存试卷失败，仅本地保存', e)
     }
     const localPaper = {

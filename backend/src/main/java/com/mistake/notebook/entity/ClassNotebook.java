@@ -22,6 +22,13 @@ public class ClassNotebook {
     @Column(name = "teacher_id", nullable = false)
     private Long teacherId;
 
+    @Column(name = "class_id")
+    private Long classId;
+
+    /** 来自题库/学生错题的题目 id，逗号分隔 */
+    @Column(name = "question_ids", columnDefinition = "TEXT")
+    private String questionIds = "";
+
     @Column(nullable = false, length = 120)
     private String title;
 

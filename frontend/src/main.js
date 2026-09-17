@@ -12,6 +12,7 @@ import '@vant/touch-emulator'
 // 引入全局样式
 import './styles/global.css'
 import './styles/mobile-optimization.css'
+import { installClickCursor } from './utils/clickCursor'
 
 const app = createApp(App)
 
@@ -27,5 +28,6 @@ app.config.globalProperties.$ELEMENT = {}
 
 app.use(router)
 app.use(Vant)
+installClickCursor(app)
 
 app.mount('#app')

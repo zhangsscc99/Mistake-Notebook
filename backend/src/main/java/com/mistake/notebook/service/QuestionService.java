@@ -15,6 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -333,20 +334,25 @@ public class QuestionService {
     public void markAiProcessing(Long id) {
         questionRepository.findById(id).ifPresent(q -> {
             q.setAiStatus(Question.AiStatus.PROCESSING);
+            q.setUpdatedAt(LocalDateTime.now());
             questionRepository.save(q);
         });
     }
 
     /**
-     * 将题目重置为待解析（用于重试）
+     * 将题目重置为待解析（用于重试）。
+     * 必须刷新 updatedAt，否则前端会按创建时间把刚重试的题判成「排队太久卡住」。
      */
     @Transactional
     public boolean markAiPending(Long id) {
+        long userId = uid();
         return questionRepository.findById(id)
-                .filter(q -> !q.getIsDeleted())
+                .filter(q -> !Boolean.TRUE.equals(q.getIsDeleted()))
+                .filter(q -> q.getUserId() != null && q.getUserId() == userId)
                 .map(q -> {
                     q.setAiStatus(Question.AiStatus.PENDING);
                     q.setAiError(null);
+                    q.setUpdatedAt(LocalDateTime.now());
                     questionRepository.save(q);
                     return true;
                 })
