@@ -1,0 +1,32 @@
+<view class="teacher-shell">
+  <view class="teacher-hero">
+    <view class="hero-kicker">PARENT</view>
+    <view class="hero-title">{{nickName || '家长'}}</view>
+    <view class="hero-sub">本账号已绑定家长身份。只能查看已绑定孩子的作业和报告。</view>
+  </view>
+
+  <view class="section-head">
+    <text class="section-title">已绑定</text>
+    <text class="section-note" bindtap="goBind">添加 ›</text>
+  </view>
+  <view class="white-card" wx:for="{{children}}" wx:key="studentId">
+    <view class="cell">
+      <text class="cell-label">{{item.nickName}}</text>
+      <text class="cell-arrow danger" data-id="{{item.studentId}}" data-name="{{item.nickName}}" bindtap="unbind">解除</text>
+    </view>
+  </view>
+  <view class="empty-block" wx:if="{{!children.length}}">还没有绑定孩子</view>
+
+  <view class="section-head"><text class="section-title">账号</text></view>
+  <view class="white-card">
+    <view class="cell" bindtap="onLogout">
+      <text class="cell-label">退出登录</text>
+      <text class="cell-arrow">›</text>
+    </view>
+    <view class="cell" bindtap="onDeleteAccount">
+      <text class="cell-label danger">注销账号</text>
+      <text class="cell-arrow">›</text>
+    </view>
+  </view>
+  <parent-tabbar active="mine"></parent-tabbar>
+</view>

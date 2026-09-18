@@ -22,6 +22,16 @@
     <view class="chip {{sourceFilter === 'bank' ? 'on' : ''}}" bindtap="showBank">班级题库</view>
   </view>
 
+  <view class="date-row">
+    <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
+      <view class="date-cell">{{fromDate}}</view>
+    </picker>
+    <text class="date-sep">至</text>
+    <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
+      <view class="date-cell">{{toDate}}</view>
+    </picker>
+  </view>
+
   <view class="search-box">
     <input class="search-input" value="{{keyword}}" placeholder="搜索题干" confirm-type="search" bindinput="onSearch" />
     <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">清除</text>
@@ -68,7 +78,18 @@
     </view>
   </view>
   <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter === 'bank'}}">还没有老师录入的题<text>点上方「拍照录入」，识别后会进这个班的题库</text></view>
-  <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter !== 'bank'}}">没有符合条件的学生错题<text>换个分类、学生或搜索词试试</text></view>
+  <view class="empty-block" wx:if="{{!loading && !visibleCount && sourceFilter !== 'bank'}}">这段时间没有符合条件的学生错题<text>换个日期、分类、学生或搜索词试试</text></view>
+
+  <button
+    class="more-btn"
+    wx:if="{{!loading && sourceFilter === 'bank' && bankHasMore}}"
+    loading="{{loadingMore}}"
+    bindtap="loadMore">加载更多</button>
+  <button
+    class="more-btn"
+    wx:elif="{{!loading && mistakeHasMore}}"
+    loading="{{loadingMore}}"
+    bindtap="loadMore">加载更多</button>
 
   <view class="loading-line" wx:if="{{loading}}">加载题目…</view>
 

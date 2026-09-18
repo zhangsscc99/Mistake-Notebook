@@ -1,0 +1,70 @@
+<view class="page-root">
+<view class="teacher-shell detail-page" wx:if="{{report}}">
+  <view class="teacher-hero">
+    <view class="hero-kicker">{{report.createdText}}</view>
+    <view class="hero-title">{{report.title}}</view>
+    <view class="hero-stats">
+      <view class="hero-stat"><text>{{report.studentCount}}</text><label>学生</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{report.questionTotal}}</text><label>错题</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{report.assignmentCount}}</text><label>作业</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{report.classAverageText}}</text><label>均分</label></view>
+    </view>
+  </view>
+  <view class="copy-wrap">
+    <button class="primary-btn" bindtap="copyReport">复制给家长</button>
+  </view>
+
+  <view class="section-head"><text class="section-title">学科分布</text></view>
+  <view class="white-card" wx:if="{{report.byCategory.length}}">
+    <view class="dist-row" wx:for="{{report.byCategory}}" wx:key="name">
+      <text class="dist-name">{{item.name}}</text>
+      <view class="dist-track"><view class="dist-fill" style="width: {{item.pct}}%;"></view></view>
+      <text class="dist-num">{{item.count}}</text>
+    </view>
+  </view>
+  <view class="empty-block" wx:else>这份报告还没有学科数据</view>
+
+  <view class="section-head"><text class="section-title">高频错题</text></view>
+  <view class="white-card" wx:for="{{report.hot}}" wx:key="key">
+    <view class="hot-line">{{item.preview}}</view>
+    <view class="hot-meta">{{item.category}} · {{item.count}} 次 / {{item.studentCount}} 人</view>
+  </view>
+  <view class="empty-block" wx:if="{{!report.hot.length}}">还没有高频错题</view>
+
+  <view class="section-head"><text class="section-title">学生</text></view>
+  <view class="white-card tap-card" wx:for="{{report.students}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="openStudent">
+    <view class="stu-name">{{item.nickName}}</view>
+    <view class="stu-meta">错题 {{item.questionCount}} · 作业已交 {{item.submitted}} · 均分 {{item.scoreText}}</view>
+    <view class="stu-weak">{{item.weakText}}</view>
+  </view>
+  <view class="empty-block" wx:if="{{!report.students.length}}">班里还没有学生</view>
+
+  <view class="section-head"><text class="section-title">全班错题</text></view>
+  <view class="date-row">
+    <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
+      <view class="date-cell">{{fromDate}}</view>
+    </picker>
+    <text class="date-sep">至</text>
+    <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
+      <view class="date-cell">{{toDate}}</view>
+    </picker>
+  </view>
+  <view class="white-card" wx:for="{{questions}}" wx:key="id">
+    <view class="q-index">第 {{item.index}} 题 · {{item.day}}</view>
+    <view class="q-content">{{item.preview}}</view>
+    <view class="q-meta">
+      <text class="badge">{{item.category}}</text>
+      <text class="q-nick">{{item.nickName}}</text>
+      <text class="img-link" wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}">查看原图</text>
+    </view>
+  </view>
+  <view class="empty-block" wx:if="{{!loading && !questions.length}}">这段时间班里没有错题</view>
+  <button class="more-btn" wx:if="{{hasMore}}" loading="{{loadingMore}}" bindtap="loadMore">加载更多</button>
+  <view class="loading-line" wx:if="{{loading}}">加载中…</view>
+</view>
+<view class="loading-line" wx:elif="{{loading}}">加载报告…</view>
+<view class="empty-block" wx:else>未找到报告</view>
+</view>

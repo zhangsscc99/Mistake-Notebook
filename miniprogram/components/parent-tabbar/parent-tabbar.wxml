@@ -1,0 +1,11 @@
+<view class="teacher-tabbar">
+  <view
+    class="tab {{active === item.key ? 'on' : ''}}"
+    wx:for="{{tabs}}"
+    wx:key="key"
+    data-url="{{item.url}}"
+    bindtap="onTap">
+    <image class="tab-icon" src="{{active === item.key ? item.activeIcon : item.icon}}" mode="aspectFit"></image>
+    <text class="tab-text">{{item.text}}</text>
+  </view>
+</view>

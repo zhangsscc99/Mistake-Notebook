@@ -50,6 +50,16 @@
     <text bindtap="goCapture">去拍照录入题库</text>
   </view>
 
+  <view class="date-row history-dates">
+    <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
+      <view class="date-cell">{{fromDate}}</view>
+    </picker>
+    <text class="date-sep">至</text>
+    <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
+      <view class="date-cell">{{toDate}}</view>
+    </picker>
+  </view>
+
   <view id="section-papers" class="section-head"><text class="section-title">题单草稿</text></view>
   <view class="white-card tap-card" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" data-type="paper" bindtap="openSet">
     <view class="paper-title">{{item.title}}</view>

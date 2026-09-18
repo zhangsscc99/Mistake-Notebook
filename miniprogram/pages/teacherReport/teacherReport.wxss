@@ -7,82 +7,6 @@
   box-shadow: inset 0 0 0 2rpx rgba(255, 255, 255, 0.45);
 }
 
-.mini-hero { margin-top: 8rpx; }
-
-.copy-wrap { margin: 16rpx 24rpx 8rpx; }
-
-.dist-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  margin-top: 16rpx;
-}
-.dist-row:first-child { margin-top: 0; }
-
-.dist-name {
-  width: 140rpx;
-  flex-shrink: 0;
-  font-size: 22rpx;
-  font-weight: 700;
-  color: #0b1633;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dist-track {
-  flex: 1;
-  height: 12rpx;
-  border-radius: 999px;
-  background: rgba(36, 89, 255, 0.12);
-  overflow: hidden;
-}
-
-.dist-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #2459ff, #52b7ff);
-}
-
-.dist-num {
-  width: 56rpx;
-  text-align: right;
-  font-size: 22rpx;
-  font-weight: 700;
-  color: #2459ff;
-}
-
-.hot-line {
-  font-size: 26rpx;
-  color: #0b1633;
-  line-height: 1.5;
-}
-
-.hot-meta {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: rgba(11, 22, 51, 0.5);
-}
-
-.stu-name {
-  font-size: 28rpx;
-  font-weight: 800;
-  color: #0b1633;
-}
-
-.stu-meta {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: rgba(11, 22, 51, 0.5);
-}
-
-.stu-weak {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: #2459ff;
-  font-weight: 700;
-}
-
 .his-title {
   font-size: 28rpx;
   font-weight: 800;
@@ -95,6 +19,9 @@
   color: rgba(11, 22, 51, 0.5);
 }
 
-.on-card {
-  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.35);
+.his-go {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #2459ff;
 }

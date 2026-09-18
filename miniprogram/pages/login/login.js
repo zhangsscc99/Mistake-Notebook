@@ -1,10 +1,8 @@
 const { ensureCloudSession } = require('../../utils/cloud');
 const {
   setLoggedIn,
-  isLoggedIn,
   restoreSessionFromCloud,
   isOptedOut,
-  getSessionRole,
   enterByRole,
   hasLockedRole
 } = require('../../utils/auth');
@@ -22,7 +20,9 @@ function clipNick(raw) {
 }
 
 function roleLabel(role) {
-  return role === 'teacher' ? '老师' : '学生';
+  if (role === 'teacher') return '老师';
+  if (role === 'parent') return '家长';
+  return '学生';
 }
 
 Page({
@@ -54,12 +54,8 @@ Page({
       this.refreshLockedRole();
       return;
     }
-    if (isLoggedIn() && hasLockedRole(getSessionRole())) {
-      enterByRole(getSessionRole());
-      return;
-    }
-
-    this.applyKnownProfile(getCachedProfile());
+    // 换微信号时本地 profileCache 还是上一个人的。等云端 ensure 对上 openid
+    // 再画资料，避免「欢迎回来 / 已绑定老师」闪一下。
     restoreSessionFromCloud()
       .then((result) => {
         const profile = (result && result.profile) || getCachedProfile();
@@ -71,6 +67,7 @@ Page({
         this.setData({ checking: false });
       })
       .catch(() => {
+        this.applyKnownProfile(null);
         this.setData({ checking: false });
       });
   },
@@ -85,8 +82,9 @@ Page({
   applyKnownProfile: function (p) {
     const nick = clipNick(p && p.nickName);
     const avatarFileID = (p && p.avatarFileID) || '';
-    const returning = !!(p && (p.hasProfile || nick || avatarFileID));
     const locked = hasLockedRole(p && p.role);
+    // ensure 会立刻建档（昵称默认「匿名用户」），不能因此当成「欢迎回来」。
+    const returning = locked || !!(nick && nick !== DEFAULT_NICK) || !!avatarFileID;
     const patch = {
       returning,
       nickName: returning ? (nick || DEFAULT_NICK) : DEFAULT_NICK,
@@ -94,6 +92,7 @@ Page({
       roleLocked: locked
     };
     if (locked) patch.intentRole = p.role;
+    else if (!this._pickedRole) patch.intentRole = 'student';
     this.setData(patch);
   },
 
@@ -125,7 +124,9 @@ Page({
 
   selectRole: function (e) {
     if (this.data.roleLocked || this.data.submitting) return;
-    const intentRole = e.currentTarget.dataset.role === 'teacher' ? 'teacher' : 'student';
+    const allowed = { teacher: 'teacher', student: 'student', parent: 'parent' };
+    const intentRole = allowed[e.currentTarget.dataset.role] || 'student';
+    this._pickedRole = true;
     this.setData({ intentRole });
   },
 

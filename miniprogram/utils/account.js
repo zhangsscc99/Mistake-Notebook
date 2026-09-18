@@ -19,6 +19,8 @@ const FAILED_LABELS = {
   categories: '分类',
   classMembers: '班级成员',
   classMembersByClass: '班级成员',
+  parentBindingsAsParent: '家长绑定',
+  parentBindingsAsStudent: '家长绑定',
   classPapers: '班级题单',
   classNotebooks: '班级练习',
   parentReports: '家长报告',

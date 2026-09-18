@@ -1,4 +1,4 @@
-const { callTeacher } = require('../../utils/teacher');
+const { callTeacher, defaultDateRange } = require('../../utils/teacher');
 const { partitionPaperQuestions } = require('../../utils/paper.js');
 
 function decorateQuestions(questions, hot) {
@@ -75,14 +75,21 @@ Page({
     bankQuestions: [],
     picking: false,
     selectedMap: {},
-    selectedCount: 0
+    selectedCount: 0,
+    fromDate: '',
+    toDate: '',
+    today: '',
+    mistakeHasMore: false,
+    bankHasMore: false,
+    loadingMore: false
   },
 
   onLoad(options) {
     const picking = !!(options && options.pick === '1');
     const sourceFilter = options && options.bank === '1' ? 'bank' : 'mistakes';
     this._preferClassId = (options && options.classId) || '';
-    this.setData({ picking, sourceFilter });
+    const range = defaultDateRange();
+    this.setData({ picking, sourceFilter, fromDate: range.from, toDate: range.to, today: range.today });
     this.boot();
   },
   onShow() {
@@ -159,19 +166,23 @@ Page({
           stats: { total: 0, hot: [], studentCount: 0, byCategory: [] },
           hotCount: 0,
           bankCount: 0,
-          categoryChips: [{ name: '全部', value: '', count: 0 }]
+          categoryChips: [{ name: '全部', value: '', count: 0 }],
+          mistakeHasMore: false,
+          bankHasMore: false
         });
         return;
       }
+      const range = { from: this.data.fromDate, to: this.data.toDate };
       const [qs, st, stu, bank] = await Promise.all([
-        callTeacher('teacherQuestions', { classId }),
-        callTeacher('classStats', { classId }),
+        callTeacher('teacherQuestions', { classId, from: range.from, to: range.to, skip: 0 }),
+        callTeacher('classStats', { classId, from: range.from, to: range.to }),
         callTeacher('students', { classId }),
-        callTeacher('listBank', { classId })
+        callTeacher('listBank', { classId, from: range.from, to: range.to, skip: 0 })
       ]);
       const stats = (st.success && st.data) || { total: 0, hot: [], studentCount: 0, byCategory: [] };
       const mistakeQuestions = decorateQuestions((qs.success && qs.data && qs.data.questions) || [], stats.hot);
-      const bankQuestions = ((bank.success && bank.data) || []).map((q) => ({
+      const bankRows = (bank.success && bank.data && (bank.data.questions || bank.data)) || [];
+      const bankQuestions = (Array.isArray(bankRows) ? bankRows : []).map((q) => ({
         ...q,
         isHot: false,
         hotCount: 0,
@@ -188,7 +199,9 @@ Page({
         stats,
         hotCount: (stats.hot || []).length,
         bankCount: bankQuestions.length,
-        students
+        students,
+        mistakeHasMore: !!(qs.success && qs.data && qs.data.hasMore),
+        bankHasMore: !!(bank.success && bank.data && bank.data.hasMore)
       });
     } finally {
       this.setData({ loading: false });
@@ -274,6 +287,64 @@ Page({
 
   toggleHot() {
     this.syncView({ onlyHot: !this.data.onlyHot });
+  },
+
+  onFromDate(e) {
+    let fromDate = e.detail.value;
+    let toDate = this.data.toDate;
+    if (fromDate > toDate) toDate = fromDate;
+    this.setData({ fromDate, toDate }, () => this.reload());
+  },
+
+  onToDate(e) {
+    let toDate = e.detail.value;
+    let fromDate = this.data.fromDate;
+    if (fromDate > toDate) fromDate = toDate;
+    this.setData({ fromDate, toDate }, () => this.reload());
+  },
+
+  async loadMore() {
+    if (this.data.loadingMore) return;
+    const classId = this.data.selectedClass.id;
+    const isBank = this.data.sourceFilter === 'bank';
+    if (!classId || (isBank ? !this.data.bankHasMore : !this.data.mistakeHasMore)) return;
+    this.setData({ loadingMore: true });
+    try {
+      const range = { from: this.data.fromDate, to: this.data.toDate };
+      if (isBank) {
+        const r = await callTeacher('listBank', {
+          classId,
+          from: range.from,
+          to: range.to,
+          skip: this.data.bankQuestions.length
+        });
+        const rows = (r.success && r.data && (r.data.questions || r.data)) || [];
+        const extra = (Array.isArray(rows) ? rows : []).map((q) => ({
+          ...q,
+          isHot: false,
+          hotCount: 0,
+          hotStudents: 0
+        }));
+        this.syncView({
+          bankQuestions: this.data.bankQuestions.concat(extra),
+          bankHasMore: !!(r.success && r.data && r.data.hasMore)
+        });
+      } else {
+        const r = await callTeacher('teacherQuestions', {
+          classId,
+          from: range.from,
+          to: range.to,
+          skip: this.data.mistakeQuestions.length
+        });
+        const extra = decorateQuestions((r.success && r.data && r.data.questions) || [], this.data.stats.hot);
+        this.syncView({
+          mistakeQuestions: this.data.mistakeQuestions.concat(extra),
+          mistakeHasMore: !!(r.success && r.data && r.data.hasMore)
+        });
+      }
+    } finally {
+      this.setData({ loadingMore: false });
+    }
   },
 
   startPick() { this.syncView({ picking: true }); },

@@ -15,6 +15,7 @@ Page({
     categories: [],
     homework: [],
     questions: [],
+    parentCode: '',
     visibleQuestions: [],
     category: '',
     categoryChips: []
@@ -64,6 +65,7 @@ Page({
         categories: d.categories || [],
         homework,
         questions,
+        parentCode: student.parentCode || '',
         visibleQuestions: questions,
         categoryChips,
         category: ''
@@ -97,6 +99,15 @@ Page({
       title: q.category || '错题',
       content: `${q.content || ''}${q.day ? `\n\n录入：${q.day}` : ''}`,
       showCancel: false
+    });
+  },
+
+  copyParentCode() {
+    const code = this.data.parentCode;
+    if (!code) return;
+    wx.setClipboardData({
+      data: code,
+      success: () => wx.showToast({ title: '已复制', icon: 'success' })
     });
   },
 

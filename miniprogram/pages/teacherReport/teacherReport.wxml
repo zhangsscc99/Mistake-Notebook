@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">REPORT</view>
     <view class="hero-title">家长报告</view>
-    <view class="hero-sub">生成班级学情快照，复制后发给家长。点学生可进入档案</view>
+    <view class="hero-sub">生成班级学情快照。点报告进入详情，可按日期查看全班错题。</view>
     <button class="ghost-btn hero-btn" loading="{{generating}}" disabled="{{generating}}" bindtap="generate">生成最新报告</button>
   </view>
 
@@ -11,54 +11,11 @@
   </view>
   <view class="empty-block" wx:if="{{!classes.length}}">还没有班级<text>先去「班级」新建</text></view>
 
-  <block wx:if="{{report}}">
-    <view class="teacher-hero mini-hero">
-      <view class="hero-kicker">{{report.createdText}}</view>
-      <view class="hero-title">{{report.title}}</view>
-      <view class="hero-stats">
-        <view class="hero-stat"><text>{{report.studentCount}}</text><label>学生</label></view>
-        <view class="hero-divider"></view>
-        <view class="hero-stat"><text>{{report.questionTotal}}</text><label>错题</label></view>
-        <view class="hero-divider"></view>
-        <view class="hero-stat"><text>{{report.assignmentCount}}</text><label>作业</label></view>
-        <view class="hero-divider"></view>
-        <view class="hero-stat"><text>{{report.classAverageText}}</text><label>均分</label></view>
-      </view>
-    </view>
-    <view class="copy-wrap">
-      <button class="primary-btn" bindtap="copyReport">复制给家长</button>
-    </view>
-
-    <view class="section-head"><text class="section-title">学科分布</text></view>
-    <view class="white-card" wx:if="{{report.byCategory.length}}">
-      <view class="dist-row" wx:for="{{report.byCategory}}" wx:key="name">
-        <text class="dist-name">{{item.name}}</text>
-        <view class="dist-track"><view class="dist-fill" style="width: {{item.pct}}%;"></view></view>
-        <text class="dist-num">{{item.count}}</text>
-      </view>
-    </view>
-    <view class="empty-block" wx:else>这份报告还没有学科数据</view>
-
-    <view class="section-head"><text class="section-title">高频错题</text></view>
-    <view class="white-card" wx:for="{{report.hot}}" wx:key="key">
-      <view class="hot-line">{{item.preview}}</view>
-      <view class="hot-meta">{{item.category}} · {{item.count}} 次 / {{item.studentCount}} 人</view>
-    </view>
-    <view class="empty-block" wx:if="{{!report.hot.length}}">还没有高频错题</view>
-
-    <view class="section-head"><text class="section-title">学生</text></view>
-    <view class="white-card tap-card" wx:for="{{report.students}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="openStudent">
-      <view class="stu-name">{{item.nickName}}</view>
-      <view class="stu-meta">错题 {{item.questionCount}} · 作业已交 {{item.submitted}} · 均分 {{item.scoreText}}</view>
-      <view class="stu-weak">{{item.weakText}}</view>
-    </view>
-    <view class="empty-block" wx:if="{{!report.students.length}}">班里还没有学生</view>
-  </block>
-
   <view class="section-head"><text class="section-title">历史报告</text></view>
-  <view class="white-card tap-card {{report.id === item.id ? 'on-card' : ''}}" wx:for="{{history}}" wx:key="id" data-id="{{item.id}}" bindtap="openHistory">
+  <view class="white-card tap-card" wx:for="{{history}}" wx:key="id" data-id="{{item.id}}" bindtap="openHistory">
     <view class="his-title">{{item.title}}</view>
     <view class="his-meta">{{item.createdText}} · {{item.studentCount}} 人 · 错题 {{item.questionTotal}}</view>
+    <view class="his-go">查看详情 ›</view>
   </view>
   <view class="empty-block" wx:if="{{!history.length}}">还没有生成过报告<text>点上方「生成最新报告」</text></view>
 </view>
