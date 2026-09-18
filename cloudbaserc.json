@@ -80,6 +80,12 @@
       "timeout": 30,
       "memorySize": 256,
       "runtime": "Nodejs16.13"
+    },
+    {
+      "name": "parent",
+      "timeout": 20,
+      "memorySize": 256,
+      "runtime": "Nodejs16.13"
     }
   ]
 }

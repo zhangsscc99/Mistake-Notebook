@@ -88,13 +88,14 @@
 
 .role-chip {
   flex: 1;
+  min-width: 0;
   height: 72rpx;
   line-height: 72rpx;
   text-align: center;
   border-radius: 999px;
   background: #f4f7fd;
   color: rgba(11, 22, 51, 0.62);
-  font-size: 28rpx;
+  font-size: 26rpx;
   font-weight: 700;
 }
 

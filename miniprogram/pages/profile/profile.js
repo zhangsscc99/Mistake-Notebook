@@ -7,7 +7,7 @@ const {
   getCachedProfile,
   setCachedProfile
 } = require('../../utils/profile');
-const { clearSession, goLogin, dismissLoginOverlay, bounceTeacherOffStudentShell } = require('../../utils/auth');
+const { clearSession, goLogin, dismissLoginOverlay, guardStudentShell } = require('../../utils/auth');
 const { performDeleteAccount, finishDeleteAccount } = require('../../utils/account');
 const { checkinCard, inviteCard, enableShareMenu } = require('../../utils/share');
 const { renderInvitePoster, savePosterToAlbum, saveFailHint } = require('../../utils/invitePoster');
@@ -86,7 +86,7 @@ Page({
   },
 
   onShow: function () {
-    if (bounceTeacherOffStudentShell()) return;
+    if (guardStudentShell()) return;
     dismissLoginOverlay();
     enableShareMenu();
     this._nickDraft = '';
@@ -407,7 +407,7 @@ Page({
   confirmDeleteAccount: function () {
     wx.showModal({
       title: '最后确认',
-      content: '再次确认删除全部云端数据？\n\n微信账号不受影响。注销后同一微信可以重新选择学生或老师。',
+      content: '再次确认删除全部云端数据？\n\n微信账号不受影响。注销后同一微信可以重新选择学生、老师或家长。',
       confirmText: '确认删除',
       confirmColor: '#ff4d4f',
       success: (res) => {
@@ -468,6 +468,38 @@ Page({
 
   goCategories: function () {
     wx.switchTab({ url: '/pages/categories/categories' });
+  },
+
+  showParentCode: function () {
+    wx.cloud.callFunction({
+      name: 'parent',
+      data: { action: 'myParentCode' },
+      success: (result) => {
+        const body = result.result || {};
+        if (!body.success) {
+          wx.showToast({ title: body.error || '获取失败', icon: 'none' });
+          return;
+        }
+        const code = (body.data && body.data.parentCode) || '';
+        if (!code) {
+          wx.showToast({ title: '暂时没有绑定码', icon: 'none' });
+          return;
+        }
+        wx.showModal({
+          title: '家长绑定码',
+          content: '把这串码发给家长：' + code,
+          confirmText: '复制',
+          success: (res) => {
+            if (!res.confirm) return;
+            wx.setClipboardData({
+              data: code,
+              success: () => wx.showToast({ title: '已复制', icon: 'success' })
+            });
+          }
+        });
+      },
+      fail: () => wx.showToast({ title: '获取失败，请稍后重试', icon: 'none' })
+    });
   },
 
   joinClass: function () {

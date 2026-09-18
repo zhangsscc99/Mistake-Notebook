@@ -1,10 +1,8 @@
 const { ensureCloudSession } = require('../../utils/cloud');
 const {
   setLoggedIn,
-  isLoggedIn,
   restoreSessionFromCloud,
   isOptedOut,
-  getSessionRole,
   enterByRole,
   hasLockedRole
 } = require('../../utils/auth');
@@ -12,7 +10,9 @@ const { setCachedProfile, getCachedProfile, getProfile } = require('../../utils/
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share');
 
 function roleLabel(role) {
-  return role === 'teacher' ? '老师' : '学生';
+  if (role === 'teacher') return '老师';
+  if (role === 'parent') return '家长';
+  return '学生';
 }
 
 Page({
@@ -40,12 +40,8 @@ Page({
       this.refreshKnownProfile();
       return;
     }
-    if (isLoggedIn() && hasLockedRole(getSessionRole())) {
-      enterByRole(getSessionRole());
-      return;
-    }
-
-    this.applyKnownProfile(getCachedProfile());
+    // 换微信号时本地 profileCache 还是上一个人的。等云端 ensure 对上 openid
+    // 再画资料，避免「欢迎回来 / 已绑定老师」闪一下。
     restoreSessionFromCloud()
       .then((result) => {
         const profile = (result && result.profile) || getCachedProfile();
@@ -57,6 +53,7 @@ Page({
         this.setData({ checking: false });
       })
       .catch(() => {
+        this.applyKnownProfile(null);
         this.setData({ checking: false });
       });
   },
@@ -79,7 +76,8 @@ Page({
 
   selectRole: function (e) {
     if (this.data.submitting) return;
-    const intentRole = e.currentTarget.dataset.role === 'teacher' ? 'teacher' : 'student';
+    const allowed = { teacher: 'teacher', student: 'student', parent: 'parent' };
+    const intentRole = allowed[e.currentTarget.dataset.role] || 'student';
     this.setData({ intentRole });
   },
 

@@ -147,6 +147,11 @@
   line-height: 1.6;
 }
 
+.history-dates {
+  margin-top: 12rpx;
+  margin-bottom: 8rpx;
+}
+
 .empty-action-btn {
   display: flex !important;
   align-items: center !important;

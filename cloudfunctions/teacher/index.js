@@ -30,6 +30,51 @@ function asId(v) {
   return String(v);
 }
 
+function parseDay(s) {
+  const v = String(s || '').trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '';
+}
+
+function createdAtRange(from, to) {
+  let a = parseDay(from);
+  let b = parseDay(to);
+  if (!a && !b) return null;
+  if (a && !b) b = a;
+  if (b && !a) a = b;
+  if (a > b) {
+    const t = a;
+    a = b;
+    b = t;
+  }
+  return {
+    fromDay: a,
+    toDay: b,
+    gte: new Date(a + 'T00:00:00+08:00').toISOString(),
+    lte: new Date(b + 'T23:59:59.999+08:00').toISOString()
+  };
+}
+
+function shanghaiYmd(offsetDays) {
+  const t = Date.now() + 8 * 3600 * 1000 + (Number(offsetDays) || 0) * 86400000;
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+function reportWindow(from, to) {
+  let range = createdAtRange(from, to);
+  if (range) return range;
+  const today = shanghaiYmd(0);
+  const utcDay = new Date(Date.now() + 8 * 3600 * 1000).getUTCDay();
+  const sinceMonday = utcDay === 0 ? 6 : utcDay - 1;
+  return createdAtRange(shanghaiYmd(-sinceMonday), today);
+}
+
+function isoInRange(iso, range) {
+  if (!range) return true;
+  const t = Date.parse(iso || '');
+  if (!Number.isFinite(t)) return false;
+  return t >= Date.parse(range.gte) && t <= Date.parse(range.lte);
+}
+
 function isTeacherPaperReady(q) {
   if (!q) return false;
   const source = String(q.source || '').toLowerCase();
@@ -183,20 +228,37 @@ async function mapMemberUsers(members) {
   });
 }
 
-async function questionsByOpenIds(ids, limit) {
+async function fetchClassQuestionRows(ids, range, limit) {
+  const cap = Math.max(1, Math.min(limit || 100, 400));
   if (!ids.length) return [];
-  const cap = Math.min(limit || 100, 200);
   const rows = [];
-  for (let i = 0; i < ids.length && rows.length < cap; i += 20) {
+  for (let i = 0; i < ids.length; i += 20) {
     const part = ids.slice(i, i + 20);
+    const cond = { openid: _.in(part), isDeleted: false };
+    if (range) cond.createdAt = _.and(_.gte(range.gte), _.lte(range.lte));
     const r = await db.collection('questions')
-      .where({ openid: _.in(part), isDeleted: false })
+      .where(cond)
       .orderBy('createdAt', 'desc')
-      .limit(cap - rows.length)
+      .limit(cap)
       .get();
-    rows.push(...(r.data || []).filter((q) => q.source !== 'teacher_bank'));
+    rows.push(...(r.data || []));
   }
-  return rows;
+  const seen = {};
+  const uniq = [];
+  rows
+    .filter((q) => q.source !== 'teacher_bank')
+    .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')))
+    .forEach((q) => {
+      if (q && q._id && !seen[q._id]) {
+        seen[q._id] = true;
+        uniq.push(q);
+      }
+    });
+  return uniq.slice(0, cap);
+}
+
+async function questionsByOpenIds(ids, limit) {
+  return fetchClassQuestionRows(ids, null, Math.min(limit || 100, 200));
 }
 
 async function questionsByIds(ids) {
@@ -290,6 +352,7 @@ exports.main = async (event) => {
       parentReport,
       listParentReports,
       parentReportDetail,
+      classMistakes,
       chat,
       joinRequests,
       approveJoin,
@@ -375,7 +438,8 @@ async function students(teacherId, event) {
         nickName: u.nickName || '',
         avatarFileID: u.avatarFileID || '',
         questionCount: questions[i] || 0,
-        lastActiveAt: u.updatedAt || ''
+        lastActiveAt: u.updatedAt || '',
+        parentCode: u.parentCode || ''
       };
     })
   };
@@ -404,6 +468,7 @@ async function studentOverview(teacherId, event) {
   }
   const users = (await db.collection('users').where({ _id: studentId }).limit(1).get()).data || [];
   const user = users[0] || {};
+  if (users[0]) user._id = user._id || studentId;
   const qrows = (await db.collection('questions').where({ openid: studentId, isDeleted: false }).orderBy('createdAt', 'desc').limit(100).get()).data || [];
   const questions = qrows.map((q) => ({ ...mapQuestion(q), createdAt: q.createdAt || '' }));
   const catMap = {};
@@ -456,7 +521,8 @@ async function studentOverview(teacherId, event) {
         nickName: user.nickName || '未设置昵称',
         avatarFileID: user.avatarFileID || '',
         lastActiveAt: user.updatedAt || '',
-        joinedAt: member.createdAt || ''
+        joinedAt: member.createdAt || '',
+        parentCode: await ensureStudentParentCode(user)
       },
       className: cls.name,
       classId,
@@ -473,27 +539,11 @@ async function studentOverview(teacherId, event) {
 }
 
 async function teacherQuestions(teacherId, event) {
-  const classes = await ownedClasses(teacherId);
-  const classIds = classes.map((c) => c._id);
-  const target = event.classId && classIds.includes(String(event.classId)) ? String(event.classId) : (classIds[0] || '');
-  if (!target) return { success: true, data: { classId: '', questions: [], stats: [] } };
-  const studentIds = await classStudentIds(target);
-  const rows = await questionsByOpenIds(studentIds, 100);
-  const users = studentIds.length
-    ? ((await db.collection('users').where({ _id: _.in(studentIds) }).get()).data || [])
-    : [];
-  const names = {};
-  users.forEach((u) => { names[u._id] = u.nickName || ''; });
-  return {
-    success: true,
-    data: {
-      classId: target,
-      questions: rows.map((q) => ({
-        ...mapQuestion(q),
-        nickName: names[q.openid] || '未设置昵称'
-      }))
-    }
-  };
+  const classId = String(event.classId || '');
+  if (!classId) return { success: true, data: { classId: '', questions: [], hasMore: false } };
+  const result = await classMistakes(teacherId, event);
+  if (!result.success) return result;
+  return { success: true, data: { classId, ...result.data } };
 }
 
 async function classStats(teacherId, event) {
@@ -502,7 +552,8 @@ async function classStats(teacherId, event) {
   const target = event.classId && classIds.includes(String(event.classId)) ? String(event.classId) : (classIds[0] || '');
   if (!target) return { success: true, data: { classId: '', total: 0, byCategory: [], hot: [] } };
   const studentIds = await classStudentIds(target);
-  const rows = await questionsByOpenIds(studentIds, 200);
+  const range = createdAtRange(event.from, event.to);
+  const rows = await fetchClassQuestionRows(studentIds, range, 200);
   const catMap = {};
   const hotMap = {};
   rows.forEach((q) => {
@@ -588,19 +639,30 @@ async function saveBankQuestions(teacherId, event) {
   return { success: true, data: { ids, savedCount: ids.length } };
 }
 
-async function listBank(teacherId) {
+async function listBank(teacherId, event) {
+  event = event || {};
+  const skip = Math.max(0, Number(event.skip) || 0);
+  const page = 40;
+  const range = createdAtRange(event.from, event.to);
+  const cond = { openid: teacherId, isDeleted: false };
+  if (range) cond.createdAt = _.and(_.gte(range.gte), _.lte(range.lte));
   const r = await db.collection('questions')
-    .where({ openid: teacherId, isDeleted: false })
+    .where(cond)
     .orderBy('createdAt', 'desc')
-    .limit(100)
+    .skip(skip)
+    .limit(80)
     .get();
   const rows = (r.data || []).filter((q) => q.source === 'teacher_bank');
+  const hasMore = rows.length > page;
   return {
     success: true,
-    data: rows.map((q) => ({
-      ...mapQuestion(q),
-      nickName: '老师录入'
-    }))
+    data: {
+      hasMore,
+      questions: rows.slice(0, page).map((q) => ({
+        ...mapQuestion(q),
+        nickName: '老师录入'
+      }))
+    }
   };
 }
 
@@ -708,11 +770,11 @@ async function updatePaper(teacherId, event) {
 }
 
 async function listPapers(teacherId, event) {
-  const r = await db.collection('class_papers')
-    .where({ teacherId, isDeleted: false })
-    .orderBy('createdAt', 'desc')
-    .limit(50)
-    .get();
+  event = event || {};
+  const where = { teacherId, isDeleted: false };
+  const range = createdAtRange(event.from, event.to);
+  if (range) where.createdAt = _.and(_.gte(range.gte), _.lte(range.lte));
+  const r = await db.collection('class_papers').where(where).orderBy('createdAt', 'desc').limit(50).get();
   return {
     success: true,
     data: (r.data || []).map((p) => ({
@@ -734,6 +796,8 @@ async function listNotebooks(teacherId, event) {
     await assertOwnedClass(teacherId, classId);
     where.classId = classId;
   }
+  const range = createdAtRange(event.from, event.to);
+  if (range) where.createdAt = _.and(_.gte(range.gte), _.lte(range.lte));
   try {
     const r = await db.collection('class_notebooks').where(where).orderBy('createdAt', 'desc').limit(50).get();
     return {
@@ -879,8 +943,11 @@ async function assignmentDetail(teacherId, event) {
   };
 }
 
-async function teacherAssignments(teacherId) {
-  const r = await db.collection('assignments').where({ teacherId, isDeleted: false }).orderBy('createdAt', 'desc').limit(50).get();
+async function teacherAssignments(teacherId, event) {
+  const where = { teacherId, isDeleted: false };
+  const range = createdAtRange(event && event.from, event && event.to);
+  if (range) where.createdAt = _.and(_.gte(range.gte), _.lte(range.lte));
+  const r = await db.collection('assignments').where(where).orderBy('createdAt', 'desc').limit(50).get();
   const list = r.data || [];
   if (!list.length) return { success: true, data: [] };
   const classIds = Array.from(new Set(list.map((a) => a.classId).filter(Boolean)));
@@ -997,10 +1064,12 @@ async function recallNotebook(teacherId, event) {
 async function parentReport(teacherId, event) {
   const classId = String(event.classId || '');
   const cls = await assertOwnedClass(teacherId, classId);
+  const window = reportWindow(event.from, event.to);
   const members = await approvedMembers(classId);
   const ids = members.map((m) => m.studentId);
   const users = ids.length ? ((await db.collection('users').where({ _id: _.in(ids) }).get()).data || []) : [];
-  const assignments = (await db.collection('assignments').where({ classId, isDeleted: false }).get()).data || [];
+  let assignments = (await db.collection('assignments').where({ classId, isDeleted: false }).get()).data || [];
+  assignments = assignments.filter((a) => isoInRange(a.createdAt, window));
   const assignmentIds = assignments.map((a) => a._id);
   const submissions = [];
   for (let i = 0; i < assignmentIds.length; i += 20) {
@@ -1008,11 +1077,10 @@ async function parentReport(teacherId, event) {
     const s = await db.collection('assignment_submissions').where({ assignmentId: _.in(part) }).get();
     submissions.push(...(s.data || []));
   }
-  const qrows = await questionsByOpenIds(ids, 200);
+  const qrows = await fetchClassQuestionRows(ids, window, 200);
   const qCount = {};
   const catBy = {};
   const catMap = {};
-  const hotMap = {};
   qrows.forEach((q) => {
     const sid = q.openid || '';
     const cat = q.category || '未分类';
@@ -1020,10 +1088,6 @@ async function parentReport(teacherId, event) {
     if (!catBy[sid]) catBy[sid] = {};
     catBy[sid][cat] = (catBy[sid][cat] || 0) + 1;
     catMap[cat] = (catMap[cat] || 0) + 1;
-    const key = contentKey(q.content) || q._id;
-    if (!hotMap[key]) hotMap[key] = { content: q.content || '', category: cat, count: 0, students: {} };
-    hotMap[key].count += 1;
-    if (sid) hotMap[key].students[sid] = true;
   });
   const rows = ids.map((id) => {
     const u = users.find((x) => x._id === id) || {};
@@ -1047,7 +1111,9 @@ async function parentReport(teacherId, event) {
     teacherId,
     classId,
     className: cls.name,
-    title: `${cls.name} 学习情况报告`,
+    title: `${cls.name} ${window.fromDay} 至 ${window.toDay} 学情`,
+    from: window.fromDay,
+    to: window.toDay,
     createdAt: now,
     studentCount: ids.length,
     questionTotal: qrows.length,
@@ -1058,12 +1124,6 @@ async function parentReport(teacherId, event) {
       count: catMap[name],
       pct: qrows.length ? Math.round((catMap[name] * 100) / qrows.length) : 0
     })).sort((a, b) => b.count - a.count).slice(0, 8),
-    hot: Object.keys(hotMap).map((k) => ({
-      content: hotMap[k].content,
-      category: hotMap[k].category,
-      count: hotMap[k].count,
-      studentCount: Object.keys(hotMap[k].students).length
-    })).sort((a, b) => b.count - a.count || b.studentCount - a.studentCount).slice(0, 5),
     students: rows
   };
   const saved = await db.collection('parent_reports').add({ data: report });
@@ -1087,6 +1147,8 @@ async function listParentReports(teacherId, event) {
         classId: p.classId,
         className: p.className,
         createdAt: p.createdAt,
+        from: p.from || '',
+        to: p.to || '',
         studentCount: p.studentCount || (p.students || []).length,
         assignmentCount: p.assignmentCount || 0,
         questionTotal: p.questionTotal || 0
@@ -1103,6 +1165,40 @@ async function parentReportDetail(teacherId, event) {
   const p = (await db.collection('parent_reports').doc(id).get()).data;
   if (!p || p.teacherId !== teacherId) return fail('无权查看该报告');
   return { success: true, data: { id: p._id, ...p } };
+}
+
+async function classMistakes(teacherId, event) {
+  const classId = String(event.classId || '');
+  if (!classId) return fail('缺少班级');
+  await assertOwnedClass(teacherId, classId);
+  const ids = await classStudentIds(classId);
+  if (!ids.length) return { success: true, data: { questions: [], hasMore: false } };
+  const skip = Math.max(0, Number(event.skip) || 0);
+  const page = 40;
+  const range = createdAtRange(event.from, event.to);
+  const rows = await fetchClassQuestionRows(ids, range, skip + page + 1);
+  const pageRows = rows.slice(skip, skip + page);
+  const nameIds = Array.from(new Set(pageRows.map((q) => q.openid).filter(Boolean)));
+  const names = {};
+  for (let i = 0; i < nameIds.length; i += 20) {
+    const users = (await db.collection('users').where({ _id: _.in(nameIds.slice(i, i + 20)) }).get()).data || [];
+    users.forEach((u) => { names[u._id] = u.nickName || ''; });
+  }
+  return {
+    success: true,
+    data: {
+      skip,
+      hasMore: rows.length > skip + page,
+      questions: pageRows.map((q) => ({
+        id: q._id,
+        content: q.content || q.recognizedText || '',
+        category: q.category || '未分类',
+        createdAt: q.createdAt || '',
+        imageUrl: q.imageUrl || '',
+        nickName: names[q.openid] || '未设置昵称'
+      }))
+    }
+  };
 }
 
 async function chat(teacherId, event) {
@@ -1175,8 +1271,31 @@ async function rejectJoin(teacherId, event) {
   return { success: true, data: { classId, studentId } };
 }
 
+async function uniqueParentCode() {
+  for (let i = 0; i < 8; i++) {
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const hit = await db.collection('users').where({ parentCode: code }).limit(1).get();
+    if (!(hit.data || []).length) return code;
+  }
+  return ('P' + Date.now().toString(36)).slice(-6).toUpperCase();
+}
+
+async function ensureStudentParentCode(user) {
+  if (!user || !user._id) return '';
+  if (user.parentCode) return String(user.parentCode).toUpperCase();
+  const code = await uniqueParentCode();
+  await db.collection('users').doc(user._id).update({
+    data: { parentCode: code, updatedAt: new Date().toISOString() }
+  });
+  user.parentCode = code;
+  return code;
+}
+
 async function joinClass(event) {
   const studentId = openId();
+  const me = await teacherDoc(studentId);
+  if (me && me.role === 'teacher') return fail('老师不能加入班级');
+  if (me && me.role === 'parent') return fail('家长请用家长绑定码绑定孩子');
   const joinCode = String(event.joinCode || '').trim().toUpperCase();
   if (!studentId || !joinCode) return fail('请输入班级加入码');
   const r = await db.collection('classes').where({ joinCode, isDeleted: false }).limit(1).get();

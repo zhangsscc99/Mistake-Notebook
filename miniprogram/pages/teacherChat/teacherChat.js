@@ -9,13 +9,13 @@ const SUGGESTIONS = [
 
 function greetingFor(cls, stats) {
   if (!cls || !cls.id) {
-    return '你好老师，我是班级教学助手，不是学生答疑。先去「班级」建班并把加入码发给学生，他们在学生端录入错题后，我就能帮你看高频错题、薄弱学科，并建议组卷后发给班级。';
+    return '你好老师。先去「班级」建班，把加入码发给学生，他们录入错题后，我就能帮你看高频题和组卷建议。';
   }
   const name = cls.name || '当前班级';
   const total = (stats && stats.total) || 0;
   const hot = ((stats && stats.hot) || [])[0];
   if (!total) {
-    return `你好老师，现在看的是「${name}」。班里还没有可统计的错题。等学生在学生端录入后，再问我高频错题或组卷建议。`;
+    return `你好老师，现在看的是「${name}」。班里还没有可统计的错题。等学生录入后，再问我高频题或组卷建议。`;
   }
   const hotHint = hot
     ? `目前最高频的是「${String(hot.content || '').slice(0, 24)}」（${hot.count} 次 / ${hot.studentCount} 人）。`

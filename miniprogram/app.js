@@ -1,14 +1,15 @@
 // app.js
 const {
-  isLoggedIn,
   restoreSessionFromCloud,
   getSessionRole,
   goLogin,
   bounceTeacherOffStudentShell,
-  STUDENT_TAB_ROUTES
+  bounceParentOffOtherShells,
+  hasLockedRole
 } = require('./utils/auth');
 
 const TEACHER_PREFIX = 'pages/teacher';
+const PARENT_PREFIX = 'pages/parent';
 
 App({
   // 全局数据声明在顶层，不能放进 onLaunch —— onLaunch 开头有个
@@ -21,6 +22,7 @@ App({
     recognitionDraft: null,
     selectedPaperQuestions: [],
     teacherPick: null,
+    parentChildId: '',
     categoriesMode: null,
     aiChatContext: ''
   },
@@ -70,37 +72,33 @@ App({
   },
 
   routeAfterRestore: function (result) {
-    if (!result || result.uncertain) return;
-    if (result.optedOut || result.needsRole || (!result.loggedIn && !isLoggedIn())) {
+    if (!result || result.uncertain) {
+      if (!hasLockedRole(getSessionRole())) goLogin({ force: true });
+      else {
+        bounceTeacherOffStudentShell();
+        bounceParentOffOtherShells();
+      }
+      return;
+    }
+    if (result.optedOut || result.needsRole || !result.loggedIn) {
       goLogin({ force: true });
       return;
     }
-    bounceTeacherOffStudentShell();
+    if (bounceTeacherOffStudentShell()) return;
+    if (bounceParentOffOtherShells()) return;
+    const pages = getCurrentPages();
+    const route = (pages.length && pages[pages.length - 1] && pages[pages.length - 1].route) || '';
+    const role = getSessionRole();
+    if (role === 'student' && (route.indexOf(TEACHER_PREFIX) === 0 || route.indexOf(PARENT_PREFIX) === 0)) {
+      wx.switchTab({ url: '/pages/index/index' });
+    }
   },
 
   onShow: function () {
-    // 已登录则按身份留在对应壳；未登录且尚未选身份、或已退出，才整栈去登录页。
     const pages = getCurrentPages();
     const cur = pages[pages.length - 1];
     const route = (cur && cur.route) || '';
     if (route === 'pages/login/login') return;
-
-    if (isLoggedIn()) {
-      const role = getSessionRole();
-      if (!role) {
-        goLogin({ force: true });
-        return;
-      }
-      if (role === 'teacher' && (!route || STUDENT_TAB_ROUTES[route])) {
-        wx.reLaunch({ url: '/pages/teacher/teacher' });
-        return;
-      }
-      if (bounceTeacherOffStudentShell()) return;
-      if (role !== 'teacher' && route.indexOf(TEACHER_PREFIX) === 0) {
-        wx.switchTab({ url: '/pages/index/index' });
-      }
-      return;
-    }
 
     restoreSessionFromCloud()
       .then((result) => this.routeAfterRestore(result))

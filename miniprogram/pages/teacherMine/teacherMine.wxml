@@ -73,6 +73,6 @@
       <text class="cell-arrow">›</text>
     </view>
   </view>
-  <view class="empty-block"><text>退出登录后可重新选择学生或老师。班级和学生错题数据都会保留；注销才会删除云端数据。</text></view>
+  <view class="empty-block"><text>退出登录后可重新选择学生、老师或家长。班级和学生错题数据都会保留；注销才会删除云端数据。</text></view>
   <teacher-tabbar active="mine"></teacher-tabbar>
 </view>

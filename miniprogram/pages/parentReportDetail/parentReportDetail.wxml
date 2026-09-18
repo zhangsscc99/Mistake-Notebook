@@ -1,0 +1,39 @@
+<view class="teacher-shell detail-page">
+  <view class="teacher-hero">
+    <view class="hero-kicker">REPORT</view>
+    <view class="hero-title">{{title}}</view>
+    <view class="hero-sub">{{meta}}</view>
+    <view class="hero-stats">
+      <view class="hero-stat"><text>{{childQuestionCount}}</text><label>孩子错题</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{submitted}}</text><label>已交作业</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{graded}}</text><label>已批改</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{averageText}}</text><label>均分</label></view>
+    </view>
+  </view>
+
+  <view class="section-head"><text class="section-title">孩子学科</text></view>
+  <view class="white-card" wx:if="{{childCategories.length}}">
+    <view class="dist-row" wx:for="{{childCategories}}" wx:key="name">
+      <text class="dist-name">{{item.name}}</text>
+      <view class="dist-track"><view class="dist-fill" style="width: {{item.pct}}%;"></view></view>
+      <text class="dist-num">{{item.count}}</text>
+    </view>
+  </view>
+  <view class="empty-block" wx:elif="{{!loading}}">这份报告还没有这个孩子的学科分布</view>
+
+  <view class="section-head"><text class="section-title">班级对照</text></view>
+  <view class="white-card">
+    <view class="class-meta">{{classMeta}} · 均分 {{classAverageText}}</view>
+    <view class="class-compare" wx:if="{{vsClassText}}">{{vsClassText}}</view>
+    <view class="dist-row" wx:for="{{classCategories}}" wx:key="name">
+      <text class="dist-name">{{item.name}}</text>
+      <view class="dist-track"><view class="dist-fill class" style="width: {{item.pct}}%;"></view></view>
+      <text class="dist-num">{{item.count}}</text>
+    </view>
+    <view class="class-empty" wx:if="{{!classCategories.length}}">这份报告还没有班级学科数据</view>
+  </view>
+  <view class="loading-line" wx:if="{{loading}}">加载中…</view>
+</view>

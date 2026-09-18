@@ -16,6 +16,16 @@
     </button>
   </view>
 
+  <view class="date-row history-dates">
+    <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
+      <view class="date-cell">{{fromDate}}</view>
+    </picker>
+    <text class="date-sep">至</text>
+    <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
+      <view class="date-cell">{{toDate}}</view>
+    </picker>
+  </view>
+
   <view class="section-head" wx:if="{{papers.length}}"><text class="section-title">我的试卷</text></view>
   <view class="paper-card" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" bindtap="openPaper">
     <view class="paper-left-accent"></view>
@@ -37,7 +47,7 @@
 
   <view class="empty-state" wx:if="{{!loading && !papers.length}}">
     <text class="empty-title">还没有试卷</text>
-    <text class="empty-desc-text">从题目里选题组成试卷，打开后再发给任意班级</text>
+    <text class="empty-desc-text">这段时间没有试卷。可换个日期，或从题目里选题组成试卷</text>
     <button class="empty-action-btn" bindtap="createNewPaper">
       <text class="create-btn-text">立即组建新卷</text>
     </button>

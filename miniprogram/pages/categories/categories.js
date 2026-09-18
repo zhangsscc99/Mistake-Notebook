@@ -2,7 +2,7 @@
 const app = getApp();
 const { startPendingWatch, closePendingWatch, fetchPendingQuestions, kickAnswerWorker } = require('../../utils/aiPendingWatch.js');
 const { inviteCard, timelineCard, enableShareMenu } = require('../../utils/share.js');
-const { dismissLoginOverlay, bounceTeacherOffStudentShell } = require('../../utils/auth.js');
+const { dismissLoginOverlay, guardStudentShell } = require('../../utils/auth.js');
 
 const SYMBOL_MAP = {
   '数学': '数', '物理': '物', '化学': '化', '英语': '英',
@@ -41,7 +41,7 @@ Page({
   },
 
   onShow: function () {
-    if (bounceTeacherOffStudentShell()) return;
+    if (guardStudentShell()) return;
     dismissLoginOverlay();
     enableShareMenu();
     const isPaperBuilderMode = app.globalData.categoriesMode === 'paper-builder';

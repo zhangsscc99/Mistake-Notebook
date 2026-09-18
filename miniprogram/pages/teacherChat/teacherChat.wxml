@@ -2,7 +2,7 @@
   <view class="chip-row">
     <view class="chip {{selectedClass.id === item.id ? 'on' : ''}}" wx:for="{{classes}}" wx:key="id" data-id="{{item.id}}" bindtap="selectClass">{{item.name}}</view>
   </view>
-  <view class="chat-hint">面向老师：基于当前班级错题统计，帮你看高频、薄弱学科和组卷建议。不会像学生端那样讲题答疑。</view>
+  <view class="chat-hint">根据班级错题，帮你看高频题、薄弱学科和组卷建议。</view>
   <scroll-view class="msg-scroll" scroll-y scroll-into-view="{{scrollToId}}" scroll-with-animation>
     <view class="msg-list">
       <view wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}" class="msg-row {{item.role === 'user' ? 'msg-row-user' : ''}}">

@@ -188,6 +188,10 @@
         <text class="cell-label">加入班级</text>
         <text class="cell-arrow">›</text>
       </view>
+      <view class="cell" bindtap="showParentCode">
+        <text class="cell-label">家长绑定码</text>
+        <text class="cell-arrow">›</text>
+      </view>
       <view class="cell" bindtap="goClasses">
         <text class="cell-label">我的班级</text>
         <text class="cell-arrow">›</text>
@@ -238,7 +242,7 @@
         <text class="cell-arrow">›</text>
       </view>
     </view>
-    <view class="section-hint">退出登录后可重新选择学生或老师，错题和班级数据都会保留。注销会删除你名下的资料与学习记录。</view>
+    <view class="section-hint">退出登录后可重新选择学生、老师或家长，错题和班级数据都会保留。注销会删除你名下的资料与学习记录。</view>
   </view>
 
   <!-- 关于 -->

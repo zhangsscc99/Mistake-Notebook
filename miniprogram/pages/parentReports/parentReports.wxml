@@ -1,0 +1,27 @@
+<view class="teacher-shell">
+  <view class="teacher-hero">
+    <view class="hero-kicker">REPORTS</view>
+    <view class="hero-title">学情报告</view>
+    <view class="hero-sub">查看老师发来的班级学情。</view>
+  </view>
+
+  <view class="chip-row" wx:if="{{children.length}}">
+    <view
+      class="picker-chip {{childId === item.studentId ? 'active' : ''}}"
+      wx:for="{{children}}"
+      wx:key="studentId"
+      data-id="{{item.studentId}}"
+      bindtap="selectChild">{{item.nickName}}</view>
+  </view>
+
+  <view class="white-card tap-card" wx:for="{{reports}}" wx:key="id" data-id="{{item.id}}" bindtap="openReport">
+    <view class="rep-title">{{item.title}}</view>
+    <view class="rep-meta">{{item.className}} · {{item.createdText}} · 孩子 {{item.averageText}}</view>
+    <view class="rep-weak">{{item.weakText}}</view>
+    <view class="rep-go">查看详情 ›</view>
+  </view>
+  <view class="empty-block" wx:if="{{!loading && childId && !reports.length}}">老师还没有发过学情报告</view>
+  <view class="empty-block" wx:if="{{!loading && !children.length}}">请先绑定孩子</view>
+  <view class="loading-line" wx:if="{{loading}}">加载中…</view>
+  <parent-tabbar active="reports"></parent-tabbar>
+</view>

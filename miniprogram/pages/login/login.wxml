@@ -3,7 +3,10 @@
   <view class="hero">
     <view class="mark">错</view>
     <view class="title">智卷错题通</view>
-    <view class="subtitle">{{invited ? '同学推荐你来一起整理错题' : (intentRole === 'teacher' ? '教师工作台与学生端分开，登录后只看班级学情' : '用微信账号区分身份，每人一份自己的错题本')}}</view>
+    <view class="subtitle" wx:if="{{invited}}">同学推荐你来一起整理错题</view>
+    <view class="subtitle" wx:elif="{{intentRole === 'teacher'}}">教师工作台与学生端分开，登录后只看班级学情</view>
+    <view class="subtitle" wx:elif="{{intentRole === 'parent'}}">绑定孩子后，查看作业和学情</view>
+    <view class="subtitle" wx:else>用微信账号区分身份，每人一份自己的错题本</view>
   </view>
 
   <view class="card" wx:if="{{checking}}">
@@ -13,12 +16,13 @@
 
   <view class="card" wx:else>
     <view class="card-title">{{returning ? '欢迎回来' : '选择身份'}}</view>
-    <view class="card-desc" wx:if="{{returning}}">请选择这次要以学生还是老师进入。退出登录后可再切换，数据都会保留</view>
-    <view class="card-desc" wx:else>第一次使用会自动注册。请选择学生或老师，退出后可再切换</view>
+    <view class="card-desc" wx:if="{{returning}}">请选择这次要以学生、老师还是家长进入。退出登录后可再切换，数据都会保留</view>
+    <view class="card-desc" wx:else>第一次使用会自动注册。请选择学生、老师或家长，退出后可再切换</view>
 
     <view class="role-row">
       <view class="role-chip {{intentRole === 'student' ? 'on' : ''}}" data-role="student" bindtap="selectRole">学生</view>
       <view class="role-chip {{intentRole === 'teacher' ? 'on' : ''}}" data-role="teacher" bindtap="selectRole">老师</view>
+      <view class="role-chip {{intentRole === 'parent' ? 'on' : ''}}" data-role="parent" bindtap="selectRole">家长</view>
     </view>
 
     <button
@@ -26,13 +30,16 @@
       loading="{{submitting}}"
       disabled="{{submitting}}"
       bindtap="onLogin">
-      <text class="login-btn-label">{{submitting ? '正在进入…' : (intentRole === 'teacher' ? '进入教师工作台' : '进入错题本')}}</text>
+      <text class="login-btn-label" wx:if="{{submitting}}">正在进入…</text>
+      <text class="login-btn-label" wx:elif="{{intentRole === 'teacher'}}">进入教师工作台</text>
+      <text class="login-btn-label" wx:elif="{{intentRole === 'parent'}}">进入家长端</text>
+      <text class="login-btn-label" wx:else>进入错题本</text>
     </button>
   </view>
 
   <view class="hints" wx:if="{{!checking}}">
     <view class="hint">登录只用来区分账号，不会读取微信头像、微信昵称或手机号</view>
-    <view class="hint">头像和昵称可在「我的」里自行设置。学生整理错题，老师建班后查看班级学情</view>
-    <view class="hint">退出登录后可重新选择学生或老师。注销才会删除云端数据</view>
+    <view class="hint">头像和昵称可在「我的」里自行设置。学生整理错题，老师看班级学情，家长查看孩子情况</view>
+    <view class="hint">退出登录后可重新选择学生、老师或家长。注销才会删除云端数据</view>
   </view>
 </view>

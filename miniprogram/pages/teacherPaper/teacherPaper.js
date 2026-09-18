@@ -1,10 +1,13 @@
-const { callTeacher, formatDay } = require('../../utils/teacher');
+const { callTeacher, formatDay, defaultDateRange } = require('../../utils/teacher');
 
 Page({
   data: {
     loading: true,
     papers: [],
-    totalQuestionCount: 0
+    totalQuestionCount: 0,
+    fromDate: '',
+    toDate: '',
+    today: ''
   },
 
   onLoad() {
@@ -16,6 +19,12 @@ Page({
   onPullDownRefresh() { this.reload().finally(() => wx.stopPullDownRefresh()); },
 
   async boot() {
+    const range = defaultDateRange();
+    this.setData({
+      fromDate: range.from,
+      toDate: range.to,
+      today: range.today
+    });
     await this.reload();
     this._ready = true;
   },
@@ -23,7 +32,11 @@ Page({
   async reload() {
     this.setData({ loading: true });
     try {
-      const papers = await callTeacher('listPapers');
+      const range = {
+        from: this.data.fromDate,
+        to: this.data.toDate
+      };
+      const papers = await callTeacher('listPapers', range);
       const list = ((papers.success && papers.data) || []).map((p) => ({
         ...p,
         createdAt: formatDay(p.createdAt)
@@ -33,6 +46,20 @@ Page({
     } finally {
       this.setData({ loading: false });
     }
+  },
+
+  onFromDate(e) {
+    let fromDate = e.detail.value;
+    let toDate = this.data.toDate;
+    if (fromDate > toDate) toDate = fromDate;
+    this.setData({ fromDate, toDate }, () => this.reload());
+  },
+
+  onToDate(e) {
+    let toDate = e.detail.value;
+    let fromDate = this.data.fromDate;
+    if (fromDate > toDate) fromDate = toDate;
+    this.setData({ fromDate, toDate }, () => this.reload());
   },
 
   createNewPaper() {

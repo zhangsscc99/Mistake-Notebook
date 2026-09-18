@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "孩子错题",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "parent-tabbar": "/components/parent-tabbar/parent-tabbar"
+  }
+}

@@ -1,0 +1,35 @@
+<view class="teacher-shell">
+  <view class="teacher-hero">
+    <view class="hero-kicker">PARENT</view>
+    <view class="hero-title">{{childName || '家长端'}}</view>
+    <view class="hero-sub">查看孩子的作业进度、分数和评语。</view>
+    <button class="ghost-btn hero-btn" bindtap="goBind">绑定孩子</button>
+  </view>
+
+  <view class="section-head" wx:if="{{children.length}}">
+    <text class="section-title">孩子</text>
+    <text class="section-note">{{children.length}} 人</text>
+  </view>
+  <view class="chip-row" wx:if="{{children.length}}">
+    <view
+      class="picker-chip {{childId === item.studentId ? 'active' : ''}}"
+      wx:for="{{children}}"
+      wx:key="studentId"
+      data-id="{{item.studentId}}"
+      bindtap="selectChild">{{item.nickName}}</view>
+  </view>
+
+  <view class="section-head" wx:if="{{childId}}">
+    <text class="section-title">作业</text>
+    <text class="section-note">{{homework.length}} 份</text>
+  </view>
+  <view class="white-card tap-card" wx:for="{{homework}}" wx:key="id" data-id="{{item.id}}" bindtap="openHomework">
+    <view class="hw-title">{{item.title}}</view>
+    <view class="hw-meta">{{item.meta}}</view>
+    <view class="hw-action">{{item.action}}</view>
+  </view>
+  <view class="empty-block" wx:if="{{!loading && childId && !homework.length}}">这个孩子所在班级还没有作业</view>
+  <view class="empty-block" wx:if="{{!loading && !children.length}}">还没有绑定孩子<text>向学生或老师要家长绑定码</text></view>
+  <view class="loading-line" wx:if="{{loading}}">加载中…</view>
+  <parent-tabbar active="home"></parent-tabbar>
+</view>

@@ -122,7 +122,8 @@ function emptyUserFields(openId) {
     checkinStreak: 0,
     checkinLastDay: '',
     checkinTotalDays: 0,
-    leaderboardPublic: false
+    leaderboardPublic: false,
+    parentCode: ''
   };
 }
 
@@ -269,16 +270,32 @@ async function getProfile(openId) {
 
 function lockedRoleOf(record) {
   const role = record && record.role;
-  if (role === 'teacher' || role === 'student') return role;
+  if (role === 'teacher' || role === 'student' || role === 'parent') return role;
   return '';
 }
 
-// 登录页选定学生/老师时写入。只改调用者自己的档。
+function roleLabel(role) {
+  if (role === 'teacher') return '老师';
+  if (role === 'parent') return '家长';
+  return '学生';
+}
+
+async function uniqueParentCode() {
+  for (let i = 0; i < 8; i++) {
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const hit = await db.collection(COLLECTION).where({ parentCode: code }).limit(1).get();
+    if (!(hit.data || []).length) return code;
+  }
+  return ('P' + Date.now().toString(36)).slice(-6).toUpperCase();
+}
+
+// 登录页选定学生/老师/家长时写入。只改调用者自己的档。
 // 相同身份幂等成功；退出后再登录可以换成另一种身份，错题和班级数据都保留。
 async function setRole(openId, event) {
-  const requested = event.role === 'teacher' ? 'teacher' : (event.role === 'student' ? 'student' : '');
+  const allowed = { teacher: 'teacher', student: 'student', parent: 'parent' };
+  const requested = allowed[event.role] || '';
   if (!requested) {
-    return { success: false, error: '请选择学生或老师身份' };
+    return { success: false, error: '请选择学生、老师或家长身份' };
   }
 
   const now = new Date().toISOString();
@@ -290,6 +307,9 @@ async function setRole(openId, event) {
   }
 
   const patch = { role: requested, roleSetAt: now, updatedAt: now };
+  if (requested === 'student') {
+    patch.parentCode = await uniqueParentCode();
+  }
   if (!current) {
     const data = {
       ...emptyUserFields(openId),
@@ -933,6 +953,8 @@ async function deleteAccount(openId) {
 
   // 班级关系：学生退出班级；老师删掉自己建的班和班里的作业/报告。
   // 不删学生自己的错题以外的他人数据。
+  await purge(failed, removed, 'parentBindingsAsParent', 'parent_bindings', { parentId: openId });
+  await purge(failed, removed, 'parentBindingsAsStudent', 'parent_bindings', { studentId: openId });
   await purgeClassWorkspace(openId, failed, removed);
 
   if (avatarFileID) {
