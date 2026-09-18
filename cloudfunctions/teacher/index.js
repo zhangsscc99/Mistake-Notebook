@@ -1190,11 +1190,7 @@ async function classMistakes(teacherId, event) {
       skip,
       hasMore: rows.length > skip + page,
       questions: pageRows.map((q) => ({
-        id: q._id,
-        content: q.content || q.recognizedText || '',
-        category: q.category || '未分类',
-        createdAt: q.createdAt || '',
-        imageUrl: q.imageUrl || '',
+        ...mapQuestion(q),
         nickName: names[q.openid] || '未设置昵称'
       }))
     }
