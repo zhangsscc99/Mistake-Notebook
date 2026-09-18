@@ -24,12 +24,23 @@
       class="answer {{readOnly ? 'locked' : ''}}"
       data-index="{{index}}"
       value="{{answers[index]}}"
-      placeholder="{{readOnly ? '未作答' : '写下你的答案或解题过程'}}"
+      placeholder="{{readOnly ? '未作答' : '写下你的答案或解题过程，也可以只上传图片'}}"
       disabled="{{readOnly}}"
       auto-height="{{true}}"
       maxlength="2000"
       bindinput="onAnswer"
     />
+    <view class="ans-img-frame" wx:if="{{answerImages[index]}}">
+      <image class="q-image" src="{{answerImages[index]}}" mode="aspectFill" bindtap="previewImage" data-url="{{answerImages[index]}}"></image>
+      <view class="img-preview" catchtap="previewImage" data-url="{{answerImages[index]}}">查看原图</view>
+      <view class="img-remove" wx:if="{{!readOnly}}" catchtap="removeAnswerImage" data-index="{{index}}">删除图片</view>
+    </view>
+    <view class="pick-row" wx:if="{{!readOnly}}">
+      <view class="pick-btn" data-index="{{index}}" data-source="camera" bindtap="chooseAnswerImage">拍照</view>
+      <view class="pick-btn" data-index="{{index}}" data-source="album" bindtap="chooseAnswerImage">相册</view>
+      <text class="pick-hint" wx:if="{{uploadingIndex == index}}">正在上传…</text>
+      <text class="pick-hint" wx:elif="{{answerImages[index]}}">可换一张</text>
+    </view>
   </view>
   <view class="empty" wx:if="{{!loading && !questions.length}}">这份作业里没有可显示的题目</view>
 

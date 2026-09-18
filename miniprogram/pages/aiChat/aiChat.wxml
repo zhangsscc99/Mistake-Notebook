@@ -42,44 +42,47 @@
   <scroll-view
     class="msg-scroll"
     scroll-y
-    scroll-into-view="{{scrollToId}}"
+    scroll-top="{{scrollTop}}"
     scroll-with-animation
     enhanced
     show-scrollbar="{{false}}">
     <view class="msg-list">
-      <view
-        wx:for="{{messages}}"
-        wx:key="id"
-        id="msg-{{item.id}}"
-        class="msg-row {{item.role === 'user' ? 'msg-row-user' : 'msg-row-ai'}}">
-
-        <view class="msg-avatar msg-avatar-ai" wx:if="{{item.role === 'assistant'}}">AI</view>
-
-        <view class="msg-bubble {{item.role === 'user' ? 'bubble-user' : 'bubble-ai'}}">
-          <view class="typing" wx:if="{{item.typing}}">
+      <block wx:for="{{messages}}" wx:key="id">
+        <view wx:if="{{item.typing}}" class="typing-row">
+          <view class="typing-card">
             <view class="dot"></view>
             <view class="dot"></view>
             <view class="dot"></view>
+            <text class="typing-label">正在思考，请稍等</text>
           </view>
-          <text wx:else class="msg-text" decode>{{item.display || item.content}}</text>
         </view>
-
-        <view class="msg-avatar msg-avatar-user" wx:if="{{item.role === 'user'}}">
-          <!-- 没设过头像就退回原来那个「我」字，不留空白 -->
-          <image
-            wx:if="{{avatarFileID}}"
-            class="msg-avatar-img"
-            src="{{avatarFileID}}"
-            mode="aspectFill"></image>
-          <text wx:else>我</text>
+        <view wx:if="{{!item.typing}}" class="msg-row {{item.role === 'user' ? 'msg-row-user' : 'msg-row-ai'}}">
+          <view class="msg-avatar msg-avatar-ai" wx:if="{{item.role === 'assistant'}}">AI</view>
+          <view class="msg-bubble {{item.role === 'user' ? 'bubble-user' : 'bubble-ai'}}">
+            <text class="msg-text" decode>{{item.display || item.content}}</text>
+          </view>
+          <view class="msg-avatar msg-avatar-user" wx:if="{{item.role === 'user'}}">
+            <image
+              wx:if="{{avatarFileID}}"
+              class="msg-avatar-img"
+              src="{{avatarFileID}}"
+              mode="aspectFill"></image>
+            <text wx:else>我</text>
+          </view>
         </view>
-      </view>
+      </block>
     </view>
     <view class="scroll-pad" style="height: {{inputBottom}}px;"></view>
   </scroll-view>
 
   <!-- 底部输入栏 -->
   <view class="input-bar">
+    <view class="wait-bar" wx:if="{{sending}}">
+      <view class="dot"></view>
+      <view class="dot"></view>
+      <view class="dot"></view>
+      <text class="wait-text">正在思考，请稍等…</text>
+    </view>
     <view class="ai-disclaimer">内容是由AI生成，仅供参考</view>
     <view class="input-row">
       <input

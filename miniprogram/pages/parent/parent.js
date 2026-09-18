@@ -73,6 +73,10 @@ Page({
     wx.navigateTo({ url: '/pages/parentBind/parentBind' });
   },
 
+  goReports() {
+    wx.navigateTo({ url: '/pages/parentReports/parentReports' });
+  },
+
   openHomework(e) {
     const id = e.currentTarget.dataset.id;
     const childId = this.data.childId;

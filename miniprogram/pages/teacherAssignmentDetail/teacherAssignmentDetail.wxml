@@ -52,7 +52,12 @@
         <view class="grade-q" wx:for="{{gradeItems}}" wx:key="index">
           <view class="q-index">第 {{item.index}} 题</view>
           <view class="q-content">{{item.content}}</view>
-          <view class="grade-answer">{{item.answer || '（空）'}}</view>
+          <view class="grade-answer" wx:if="{{item.answer}}">{{item.answer}}</view>
+          <view class="grade-answer" wx:elif="{{!item.answerImage}}">（空）</view>
+          <view class="ans-img-frame" wx:if="{{item.answerImage}}">
+            <image class="q-image" src="{{item.answerImage}}" mode="aspectFill" catchtap="previewImage" data-url="{{item.answerImage}}"></image>
+            <view class="img-preview" catchtap="previewImage" data-url="{{item.answerImage}}">查看原图</view>
+          </view>
           <view class="mark-row">
             <view class="mark-chip {{item.result === 'right' ? 'on-right' : ''}}" data-index="{{index}}" data-result="right" bindtap="markQuestion">对</view>
             <view class="mark-chip {{item.result === 'wrong' ? 'on-wrong' : ''}}" data-index="{{index}}" data-result="wrong" bindtap="markQuestion">错</view>

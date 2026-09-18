@@ -156,6 +156,51 @@
   color: rgba(11, 22, 51, 0.72);
 }
 
+.ans-img-frame {
+  position: relative;
+  height: 300rpx;
+  margin-top: 16rpx;
+  overflow: hidden;
+  border-radius: 16rpx;
+  background: rgba(36, 89, 255, 0.08);
+}
+
+.img-remove {
+  position: absolute;
+  left: 12rpx;
+  bottom: 12rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  background: rgba(225, 29, 72, 0.78);
+}
+
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.pick-btn {
+  height: 64rpx;
+  padding: 0 28rpx;
+  line-height: 64rpx;
+  border-radius: 999px;
+  color: #2459ff;
+  font-size: 24rpx;
+  font-weight: 800;
+  background: #fff;
+  box-shadow: inset 0 0 0 2rpx rgba(36, 89, 255, 0.30), 0 8rpx 18rpx rgba(11, 22, 51, 0.05);
+}
+
+.pick-hint {
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.48);
+}
+
 .submit-wrap {
   position: fixed;
   left: 24rpx;

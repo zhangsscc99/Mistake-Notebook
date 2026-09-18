@@ -1,4 +1,5 @@
 const { callTeacher, formatDay, isPastDue } = require('../../utils/teacher');
+const { ensureCloudSession } = require('../../utils/cloud');
 
 function statusCopy(status, score, overdue) {
   if (status === 'graded') {
@@ -8,7 +9,7 @@ function statusCopy(status, score, overdue) {
     return status === 'submitted' ? '已截止，等待老师批改' : '已过截止时间，不能再提交';
   }
   if (status === 'submitted') return '已提交，等待批改。批改前还可修改再交';
-  return '写下答案后提交。老师批改后就不能再改';
+  return '可以打字，也可以拍照或从相册上传图片。老师批改后就不能再改';
 }
 
 Page({
@@ -25,6 +26,8 @@ Page({
     comment: '',
     questions: [],
     answers: [],
+    answerImages: [],
+    uploadingIndex: -1,
     submitting: false
   },
 
@@ -55,6 +58,7 @@ Page({
         };
       });
       const answers = questions.map((_, i) => String((d.answers && d.answers[i]) || ''));
+      const answerImages = questions.map((_, i) => String((d.answerImages && d.answerImages[i]) || ''));
       const status = d.submissionStatus || 'pending';
       const score = d.submissionScore;
       const overdue = !!d.overdue || isPastDue(d.dueAt);
@@ -69,7 +73,8 @@ Page({
         canSubmit: d.canSubmit !== false && !overdue,
         submitLabel: status === 'submitted' ? '重新提交' : '提交作业',
         questions,
-        answers
+        answers,
+        answerImages
       });
       wx.setNavigationBarTitle({
         title: status === 'graded' ? '作业批改' : (status === 'submitted' ? '已交作业' : '完成作业')
@@ -103,9 +108,84 @@ Page({
     wx.previewImage({ urls: [url], current: url });
   },
 
+  chooseAnswerImage(e) {
+    if (this.data.readOnly || this.data.uploadingIndex >= 0) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const source = e.currentTarget.dataset.source === 'album' ? ['album'] : ['camera'];
+    this._pickAnswerImage(index, source);
+  },
+
+  _pickAnswerImage(index, sourceType) {
+    const that = this;
+    const onPicked = (filePath) => {
+      if (!filePath) return;
+      that._uploadAnswerImage(index, filePath);
+    };
+    if (wx.chooseMedia) {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType,
+        camera: 'back',
+        success: (res) => {
+          const file = (res.tempFiles || [])[0] || {};
+          onPicked(file.tempFilePath);
+        }
+      });
+    } else {
+      wx.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType,
+        success: (res) => onPicked((res.tempFilePaths || [])[0])
+      });
+    }
+  },
+
+  _uploadOne(filePath, index) {
+    const cloudPath = 'homework/' + this.id + '/' + Date.now() + '-' + index + '-' + Math.random().toString(36).slice(2, 8) + '.jpg';
+    return new Promise((resolve, reject) => {
+      wx.cloud.uploadFile({
+        cloudPath,
+        filePath,
+        config: { timeout: 60000 },
+        success: (res) => resolve(res.fileID),
+        fail: reject
+      });
+    });
+  },
+
+  async _uploadAnswerImage(index, filePath) {
+    this.setData({ uploadingIndex: index });
+    try {
+      await ensureCloudSession();
+      const fileID = await this._uploadOne(filePath, index);
+      const answerImages = this.data.answerImages.slice();
+      answerImages[index] = fileID;
+      this.setData({ answerImages });
+    } catch (e) {
+      wx.showToast({ title: (e && e.errMsg) || e.message || '上传失败', icon: 'none' });
+    } finally {
+      this.setData({ uploadingIndex: -1 });
+    }
+  },
+
+  removeAnswerImage(e) {
+    if (this.data.readOnly) return;
+    const index = Number(e.currentTarget.dataset.index);
+    const answerImages = this.data.answerImages.slice();
+    answerImages[index] = '';
+    this.setData({ answerImages });
+  },
+
   async submit() {
     if (this.data.submitting || this.data.readOnly || !this.data.canSubmit) return;
-    const blank = (this.data.answers || []).every((a) => !String(a || '').trim());
+    if (this.data.uploadingIndex >= 0) {
+      return wx.showToast({ title: '图片还在上传', icon: 'none' });
+    }
+    const texts = this.data.answers || [];
+    const images = this.data.answerImages || [];
+    const blank = texts.every((a, i) => !String(a || '').trim() && !String(images[i] || '').trim());
     if (blank) {
       const ok = await new Promise((resolve) => wx.showModal({
         title: '答案还是空的',
@@ -119,7 +199,8 @@ Page({
     try {
       const r = await callTeacher('submitAssignment', {
         assignmentId: this.id,
-        answers: this.data.answers
+        answers: this.data.answers,
+        answerImages: this.data.answerImages
       });
       if (!r.success) throw new Error(r.error || '提交失败');
       wx.showToast({ title: '已提交', icon: 'success' });

@@ -2,16 +2,10 @@
   <view class="teacher-hero">
     <view class="hero-kicker">SEND</view>
     <view class="hero-title">发给班级</view>
-    <view class="hero-sub">题目来自已保存的试卷。选发给哪个班，以及练习或作业。</view>
+    <view class="hero-sub">发卷就是发作业。选发给哪个班，学生作答提交后你再批改。</view>
   </view>
 
-  <view class="section-head"><text class="section-title">发给班级的方式</text></view>
-  <view class="chip-row">
-    <view class="chip {{kind === 'practice' ? 'on' : ''}}" data-kind="practice" bindtap="setKind">练习</view>
-    <view class="chip {{kind === 'homework' ? 'on' : ''}}" data-kind="homework" bindtap="setKind">作业</view>
-  </view>
-  <view class="hint" wx:if="{{kind === 'practice'}}">学生在「我的班级」查看题目，不用提交</view>
-  <view class="hint" wx:if="{{kind === 'homework'}}">学生需要作答提交，老师可在作业页打分</view>
+  <view class="hint">学生可以打字或上传图片作答，老师在作业页打分。</view>
 
   <view class="section-head"><text class="section-title">班级</text></view>
   <view class="chip-row">
@@ -21,18 +15,16 @@
 
   <view class="section-head"><text class="section-title">名称</text></view>
   <view class="white-card">
-    <input class="field" value="{{title}}" placeholder="{{kind === 'homework' ? '例如：周五作业' : '例如：周五练习'}}" maxlength="30" bindinput="onTitle" />
+    <input class="field" value="{{title}}" placeholder="例如：周五作业" maxlength="30" bindinput="onTitle" />
   </view>
 
-  <block wx:if="{{kind === 'homework'}}">
-    <view class="section-head"><text class="section-title">截止时间</text></view>
-    <view class="white-card row-card">
-      <picker mode="date" value="{{dueDate}}" bindchange="onDue">
-        <view class="field">{{dueDate || '可选，不设则不限制'}}</view>
-      </picker>
-      <text class="clear" wx:if="{{dueDate}}" catchtap="clearDue">清除</text>
-    </view>
-  </block>
+  <view class="section-head"><text class="section-title">截止时间</text></view>
+  <view class="white-card row-card">
+    <picker mode="date" value="{{dueDate}}" bindchange="onDue">
+      <view class="field">{{dueDate || '可选，不设则不限制'}}</view>
+    </picker>
+    <text class="clear" wx:if="{{dueDate}}" catchtap="clearDue">清除</text>
+  </view>
 
   <view class="section-head"><text class="section-title">本次题目</text><text class="section-note" wx:if="{{pickCount}}">{{pickCount}} 道</text></view>
   <view class="white-card" wx:for="{{cart}}" wx:key="id">

@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "帮孩子拍照",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eaf3ff",
+  "usingComponents": {
+    "parent-tabbar": "/components/parent-tabbar/parent-tabbar"
+  }
+}

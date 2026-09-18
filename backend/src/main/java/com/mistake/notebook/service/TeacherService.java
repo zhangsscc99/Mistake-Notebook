@@ -660,7 +660,9 @@ public class TeacherService {
             m.put("studentUsername", u.getUsername());
             m.put("avatarUrl", u.getAvatarUrl());
         });
-        m.put("answers", readAnyList(s.getAnswersJson()));
+        List<Object> packed = readAnyList(s.getAnswersJson());
+        m.put("answers", answerTexts(packed));
+        m.put("answerImages", answerImagesFrom(packed));
         m.put("itemScores", readAnyList(s.getItemScoresJson()));
         m.put("status", s.getStatus());
         m.put("score", s.getScore());
@@ -729,7 +731,10 @@ public class TeacherService {
             Map<String, Object> q = questions.get(i);
             Object ans = i < answers.size() ? answers.get(i) : "";
             sb.append("第").append(i + 1).append("题（满分").append(q.getOrDefault("score", 10)).append("）\n题目：").append(q.get("content"))
-                    .append("\n参考答案：").append(q.getOrDefault("answer", "")).append("\n学生作答：").append(ans == null ? "" : ans).append("\n\n");
+                    .append("\n参考答案：").append(q.getOrDefault("answer", "")).append("\n学生作答：").append(clipAnswerText(ans));
+            String img = clipAnswerImage(ans);
+            if (!img.isEmpty()) sb.append("\n学生作答图片：").append(img);
+            sb.append("\n\n");
         }
         String raw = aiAnswerService.complete(
                 "你是作业批改老师。逐题比较学生作答与参考答案，给出每题得分和简短点评。只输出 JSON：{\"items\":[{\"score\":整数,\"comment\":\"\"}],\"summary\":\"总体点评\"}",
@@ -812,6 +817,11 @@ public class TeacherService {
 
     @Transactional
     public Map<String, Object> submitHomework(long studentId, long id, List<Object> answers) {
+        return submitHomework(studentId, id, answers, List.of());
+    }
+
+    @Transactional
+    public Map<String, Object> submitHomework(long studentId, long id, List<Object> answers, List<Object> images) {
         Homework hw = homeworkRepository.findById(id).filter(h -> !Boolean.TRUE.equals(h.getIsDeleted()))
                 .orElseThrow(() -> new IllegalArgumentException("作业不存在"));
         assertCanSeeHomework(studentId, hw);
@@ -826,7 +836,10 @@ public class TeacherService {
             return n;
         });
         if ("GRADED".equals(s.getStatus())) throw new IllegalArgumentException("作业已批改，不能再修改");
-        s.setAnswersJson(writeJson(answers == null ? List.of() : answers));
+        int n = readList(hw.getQuestionsJson()).size();
+        if (n == 0 && hw.getQuestionCount() != null) n = hw.getQuestionCount();
+        if (n == 0) n = Math.max(answers == null ? 0 : answers.size(), images == null ? 0 : images.size());
+        s.setAnswersJson(writeJson(packAnswers(answers, images, n)));
         s.setStatus("SUBMITTED");
         s.setUpdatedAt(LocalDateTime.now());
         return submissionMap(homeworkSubmissionRepository.save(s));
@@ -1054,6 +1067,65 @@ public class TeacherService {
         } catch (Exception e) {
             return "[]";
         }
+    }
+
+    private String clipLen(String s, int n) {
+        if (s == null) return "";
+        return s.length() <= n ? s : s.substring(0, n);
+    }
+
+    private String clipAnswerText(Object v) {
+        if (v instanceof Map<?, ?> m) {
+            Object t = m.get("text");
+            if (t == null) t = m.get("answer");
+            if (t == null) t = m.get("value");
+            return clipLen(t == null ? "" : String.valueOf(t), 2000);
+        }
+        return clipLen(v == null ? "" : String.valueOf(v), 2000);
+    }
+
+    private String clipAnswerImage(Object v) {
+        if (v instanceof Map<?, ?> m) {
+            Object t = m.get("image");
+            if (t == null) t = m.get("imageFileID");
+            if (t == null) t = m.get("url");
+            return clipAnswerImage(t);
+        }
+        String s = v == null ? "" : String.valueOf(v).trim();
+        if (s.isEmpty()) return "";
+        if (s.startsWith("http://") || s.startsWith("https://") || s.startsWith("cloud://")) {
+            return clipLen(s, 600);
+        }
+        return "";
+    }
+
+    private List<Map<String, String>> packAnswers(List<Object> answers, List<Object> images, int n) {
+        List<Map<String, String>> out = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            Object a = answers != null && i < answers.size() ? answers.get(i) : "";
+            Object img = images != null && i < images.size() ? images.get(i) : "";
+            Map<String, String> row = new HashMap<>();
+            row.put("text", clipAnswerText(a));
+            String image = clipAnswerImage(img);
+            if (image.isEmpty()) image = clipAnswerImage(a);
+            row.put("image", image);
+            out.add(row);
+        }
+        return out;
+    }
+
+    private List<String> answerTexts(List<Object> raw) {
+        List<String> out = new ArrayList<>();
+        if (raw == null) return out;
+        for (Object v : raw) out.add(clipAnswerText(v));
+        return out;
+    }
+
+    private List<String> answerImagesFrom(List<Object> raw) {
+        List<String> out = new ArrayList<>();
+        if (raw == null) return out;
+        for (Object v : raw) out.add(clipAnswerImage(v));
+        return out;
     }
 
     private String trim(String s, int n) {

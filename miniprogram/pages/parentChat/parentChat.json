@@ -1,0 +1,10 @@
+{
+  "navigationBarTitleText": "学习助手",
+  "navigationBarBackgroundColor": "#eaf3ff",
+  "navigationBarTextStyle": "black",
+  "backgroundColor": "#eef3fb",
+  "disableScroll": true,
+  "usingComponents": {
+    "parent-tabbar": "/components/parent-tabbar/parent-tabbar"
+  }
+}

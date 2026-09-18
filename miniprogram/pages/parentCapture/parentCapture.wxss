@@ -1,0 +1,27 @@
+@import "../index/index.wxss";
+
+.index-page {
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
+
+.child-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 8rpx 32rpx 0;
+}
+
+.child-chip {
+  padding: 8rpx 20rpx;
+  border-radius: 999px;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #2459ff;
+  background: #fff;
+  box-shadow: 0 6rpx 16rpx rgba(11, 22, 51, 0.06);
+}
+
+.child-chip.on {
+  color: #fff;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+}

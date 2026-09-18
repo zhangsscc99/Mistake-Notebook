@@ -2,9 +2,11 @@
   <view class="teacher-hero">
     <view class="hero-kicker">MISTAKES</view>
     <view class="hero-title">孩子错题</view>
-    <view class="hero-sub">看看孩子这段时间整理了哪些错题。</view>
+    <view class="hero-sub">点进题目可看完整内容和 AI 解析。刚拍照保存的题会显示解析进度。</view>
     <view class="hero-stats">
       <view class="hero-stat"><text>{{total}}</text><label>道错题</label></view>
+      <view class="hero-divider"></view>
+      <view class="hero-stat"><text>{{pendingCount}}</text><label>解析中</label></view>
     </view>
   </view>
 
@@ -27,6 +29,19 @@
     </picker>
   </view>
 
+  <view class="pending-card" wx:if="{{pendingCount > 0}}">
+    <view class="pending-card-header">
+      <view class="pending-card-left">
+        <text class="pending-card-title">解析中</text>
+        <text class="pending-card-count">· {{pendingCount}} 道题</text>
+      </view>
+    </view>
+    <view class="pending-indeterminate-bar">
+      <view class="pending-indeterminate-fill"></view>
+    </view>
+    <text class="pending-card-hint">AI 正在后台生成答案和解析，完成后会自动更新。点题目可看详情。</text>
+  </view>
+
   <view class="section-head" wx:if="{{childId}}"><text class="section-title">学科</text></view>
   <view class="white-card" wx:if="{{byCategory.length}}">
     <view class="dist-row" wx:for="{{byCategory}}" wx:key="name">
@@ -37,13 +52,21 @@
   </view>
   <view class="empty-block" wx:elif="{{!loading && childId}}">这段时间还没有学科分布</view>
 
-  <view class="section-head" wx:if="{{childId}}"><text class="section-title">错题</text></view>
-  <view class="white-card" wx:for="{{questions}}" wx:key="id">
+  <view class="section-head" wx:if="{{childId}}">
+    <text class="section-title">错题</text>
+    <text class="section-note">点题目看详情</text>
+  </view>
+  <view class="white-card tap-card" wx:for="{{questions}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
     <view class="q-index">第 {{item.index}} 题 · {{item.day}}</view>
     <view class="q-content">{{item.preview}}</view>
     <view class="q-meta">
       <text class="badge">{{item.category}}</text>
-      <text class="img-link" wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}">查看原图</text>
+      <text class="status-badge {{item.failed ? 'failed' : (item.pending ? 'pending' : 'ready')}}">{{item.statusLabel}}</text>
+      <text class="img-link" wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}">原图</text>
+      <text class="q-arrow">›</text>
+    </view>
+    <view class="mini-bar" wx:if="{{item.pending}}">
+      <view class="mini-bar-fill"></view>
     </view>
   </view>
   <view class="empty-block" wx:if="{{!loading && childId && !questions.length}}">这段时间孩子没有整理错题</view>
@@ -51,4 +74,36 @@
   <button class="more-btn" wx:if="{{hasMore}}" loading="{{loadingMore}}" bindtap="loadMore">加载更多</button>
   <view class="loading-line" wx:if="{{loading}}">加载中…</view>
   <parent-tabbar active="mistakes"></parent-tabbar>
+</view>
+
+<view class="detail-mask" wx:if="{{showDetail}}" bindtap="closeDetail"></view>
+<view class="detail-modal" wx:if="{{showDetail}}">
+  <view class="detail-modal-header">
+    <text class="detail-modal-title">第 {{detail.index}} 题 · {{detail.statusLabel}}</text>
+    <text class="detail-modal-close" bindtap="closeDetail">×</text>
+  </view>
+  <scroll-view scroll-y class="detail-modal-body" enhanced show-scrollbar="{{false}}">
+    <image class="detail-img" src="{{detail.imageUrl}}" mode="widthFix"
+      wx:if="{{detail.imageUrl}}" bindtap="previewImage" data-url="{{detail.imageUrl}}"></image>
+
+    <view class="detail-section">
+      <text class="detail-section-title">题目内容</text>
+      <text class="detail-section-body">{{detail.content}}</text>
+    </view>
+
+    <view class="detail-section detail-section-ai">
+      <text class="detail-section-title">AI 答案</text>
+      <text class="detail-section-body {{detail.pending ? 'detail-placeholder' : ''}}">{{detail.answerText}}</text>
+    </view>
+
+    <view class="detail-section detail-section-ai">
+      <text class="detail-section-title">AI 解析</text>
+      <text class="detail-section-body {{detail.pending ? 'detail-placeholder' : ''}}">{{detail.analysisText}}</text>
+    </view>
+
+    <view class="detail-section" wx:if="{{detail.failed}}">
+      <button class="retry-btn" bindtap="retryDetail">重新解析</button>
+    </view>
+  </scroll-view>
+  <button class="detail-modal-confirm" bindtap="closeDetail">关闭</button>
 </view>

@@ -1,0 +1,108 @@
+<view class="index-page">
+  <view class="bg-blob bg-blob-blue"></view>
+  <view class="bg-blob bg-blob-pink"></view>
+  <view class="bg-blob bg-blob-purple"></view>
+  <view class="bg-blob bg-blob-peach"></view>
+
+  <view class="top-bar">
+    <view class="top-bar-left" bindtap="goMine">
+      <image
+        class="top-bar-avatar"
+        src="{{avatarFileID || '/images/default-avatar.png'}}"
+        mode="aspectFill"></image>
+      <text class="top-bar-greet">{{greeting}}</text>
+    </view>
+  </view>
+
+  <view class="child-row" wx:if="{{children.length}}">
+    <view
+      class="child-chip {{childId === item.studentId ? 'on' : ''}}"
+      wx:for="{{children}}"
+      wx:key="studentId"
+      data-id="{{item.studentId}}"
+      bindtap="selectChild">{{item.nickName}}</view>
+  </view>
+
+  <view class="main-section">
+    <view class="content-container">
+      <view class="product-guide" wx:if="{{imageCount === 0}}">
+        <view class="guide-header">
+          <view class="guide-title">帮孩子拍照</view>
+          <view class="guide-subtitle">识别后保存到{{childName || '孩子'}}的错题本，孩子打开就能看到</view>
+        </view>
+        <view class="guide-features">
+          <view class="feature-item">
+            <view class="feature-text">
+              <view class="feature-h4">拍照识别</view>
+              <view class="feature-p">支持一次多张。题目如果跨页，把两张照片一起上传，会自动合并</view>
+            </view>
+          </view>
+          <view class="feature-item">
+            <view class="feature-text">
+              <view class="feature-h4">进孩子错题本</view>
+              <view class="feature-p">不是家长自己的题库。保存后孩子在学生端分类里就能练、组卷</view>
+            </view>
+          </view>
+          <view class="feature-item">
+            <view class="feature-text">
+              <view class="feature-h4">组卷练习</view>
+              <view class="feature-p">到组卷页勾选孩子已解析完的错题，生成试卷后孩子也能导出</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="image-preview-area" wx:if="{{imageCount > 0}}">
+        <view class="preview-hint">按页序排列 · {{imageCount}}/10 张</view>
+        <view class="image-grid">
+          <view class="image-item" wx:for="{{images}}" wx:key="id">
+            <image class="preview-image" src="{{item.path}}" mode="aspectFill"></image>
+            <view class="image-overlay">
+              <view class="remove-icon" catchtap="removeImage" data-index="{{index}}">×</view>
+            </view>
+            <view class="page-order">
+              <text class="order-btn {{index === 0 ? 'disabled' : ''}}" catchtap="moveImageLeft" data-index="{{index}}">‹</text>
+              <text class="page-no">第{{index + 1}}页</text>
+              <text class="order-btn {{index === imageCount - 1 ? 'disabled' : ''}}" catchtap="moveImageRight" data-index="{{index}}">›</text>
+            </view>
+          </view>
+          <view class="image-item add-item" wx:if="{{canAddMore}}" bindtap="addMoreImages">
+            <text class="add-plus">+</text>
+            <text class="add-text">继续添加</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="action-area">
+        <view class="action-buttons" wx:if="{{childId}}">
+          <button class="action-btn action-btn-primary" bindtap="takePhoto">开始拍照</button>
+          <button class="action-btn action-btn-default" bindtap="selectFromGallery">从相册选择</button>
+        </view>
+        <button class="process-btn" wx:if="{{!childId}}" bindtap="goBind">先绑定孩子</button>
+        <button class="process-btn" wx:if="{{imageCount > 0}}"
+          loading="{{uploading}}" disabled="{{uploading}}" bindtap="submitQuestion">
+          {{uploading ? 'AI识别中...' : processLabel}}
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <view class="recent-section" wx:if="{{recentRecords.length > 0}}">
+    <view class="recent-divider">
+      <view class="divider-line"></view>
+      <text class="divider-text">最近帮孩子录入</text>
+      <view class="divider-line"></view>
+    </view>
+    <view class="recent-list">
+      <view class="recent-item" wx:for="{{recentRecords}}" wx:key="id" bindtap="viewRecord">
+        <view class="recent-info">
+          <text class="recent-title">{{item.title}}</text>
+          <text class="recent-time">{{item.timeText}}</text>
+        </view>
+        <text class="recent-arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <parent-tabbar active="capture"></parent-tabbar>
+</view>

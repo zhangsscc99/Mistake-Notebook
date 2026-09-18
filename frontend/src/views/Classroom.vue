@@ -4,7 +4,7 @@
 
     <div class="card">
       <h3>加入班级</h3>
-      <p class="hint">输入老师给的班级加入码。提交后需老师通过，才会进入班级、收到练习和作业。</p>
+      <p class="hint">输入老师给的班级加入码。提交后需老师通过，才会进入班级、收到作业。</p>
       <div class="row">
         <input v-model="code" maxlength="8" placeholder="邀请码" class="code-input" />
         <button class="primary slim" :disabled="binding" @click="bind">申请加入</button>

@@ -48,7 +48,11 @@
           <div v-for="(item, i) in gradeItems" :key="i" class="grade-q">
             <div class="q-index">第 {{ item.index }} 题</div>
             <div class="q-content">{{ item.content }}</div>
-            <div class="ans">{{ item.answer || '（空）' }}</div>
+            <div class="ans">{{ item.answer || (item.answerImage ? '' : '（空）') }}</div>
+            <div v-if="item.answerImage" class="ans-img" @click="preview(item.answerImage)">
+              <img :src="absUrl(item.answerImage)" alt="作答图片" />
+              <span>查看原图</span>
+            </div>
             <div class="mark-row">
               <button class="mark-chip" :class="{ 'on-right': item.result === 'right' }" @click="item.result = 'right'">对</button>
               <button class="mark-chip" :class="{ 'on-wrong': item.result === 'wrong' }" @click="item.result = 'wrong'">错</button>
@@ -69,9 +73,10 @@
 <script>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showConfirmDialog, showToast } from 'vant'
+import { showConfirmDialog, showImagePreview, showToast } from 'vant'
 import teacherAPI from '../../api/teacher'
 import { fmtDay } from '../../utils/teacherClass'
+import { API_BASE_URL } from '../../api/config'
 
 export default {
   name: 'TeacherHomeworkDetail',
@@ -88,6 +93,16 @@ export default {
     const grading = ref(false)
     const fail = (e) => showToast({ type: 'fail', message: e.response?.data?.message || '操作失败' })
     const fmt = fmtDay
+    const absUrl = (url) => {
+      if (!url) return ''
+      if (/^(https?:|cloud:)/i.test(url)) return url
+      return API_BASE_URL.replace(/\/$/, '') + url
+    }
+    const preview = (url) => {
+      const src = absUrl(url)
+      if (!src) return
+      showImagePreview({ images: [src] })
+    }
     const roster = computed(() => hw.value.roster || [])
     const visibleRoster = computed(() => {
       const kw = keyword.value.trim()
@@ -129,7 +144,8 @@ export default {
       gradeItems.value = qs.map((q, i) => ({
         index: i + 1,
         content: q.content,
-        answer: typeof answers[i] === 'object' ? (answers[i]?.value ?? '') : (answers[i] ?? ''),
+        answer: typeof answers[i] === 'object' ? (answers[i]?.text ?? answers[i]?.value ?? '') : (answers[i] ?? ''),
+        answerImage: (s.answerImages && s.answerImages[i]) || (typeof answers[i] === 'object' ? (answers[i]?.image || '') : ''),
         result: marks[i] === 'right' || marks[i] === 'wrong' ? marks[i] : ''
       }))
       gradeScore.value = s.score == null ? '' : String(s.score)
@@ -165,7 +181,7 @@ export default {
     onMounted(() => load().catch(fail))
     return {
       hw, keyword, roster, visibleRoster, gradeOpen, gradeStudent, gradeItems, gradeScore, gradeComment,
-      grading, markHint, fmt, openGrade, confirmGrade, recall
+      grading, markHint, fmt, absUrl, preview, openGrade, confirmGrade, recall
     }
   }
 }
@@ -207,6 +223,9 @@ export default {
 .sheet-body { flex: 1; overflow-y: auto; padding: 12px 16px 24px; }
 .grade-q { background: #f9fbff; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
 .ans { margin-top: 8px; color: #0b1633; font-size: 13px; }
+.ans-img { position: relative; height: 150px; margin-top: 8px; overflow: hidden; border-radius: 12px; background: rgba(36,89,255,0.08); cursor: pointer; }
+.ans-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ans-img span { position: absolute; right: 8px; bottom: 8px; padding: 4px 10px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 700; background: rgba(11,22,51,0.55); }
 .mark-row { display: flex; gap: 8px; margin-top: 10px; }
 .mark-chip { flex: 1; height: 36px; border: none; border-radius: 999px; background: #fff; font-weight: 700; }
 .mark-chip.on-right { background: rgba(22,163,74,0.15); color: #16a34a; }

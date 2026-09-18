@@ -15,5 +15,5 @@
       <text class="badge status-graded">已批 {{item.graded}}</text>
     </view>
   </view>
-  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>先去组卷生成试卷，打开后发给班级并选作业</text></view>
+  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>先去组卷生成试卷，打开后再发给班级</text></view>
 </view>

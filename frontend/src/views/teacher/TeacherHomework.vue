@@ -15,7 +15,7 @@
         <span v-if="hw.dueAt"> · 截止 {{ fmt(hw.dueAt) }}</span>
       </div>
     </div>
-    <div v-if="!visible.length" class="empty">还没有作业<span>先去组卷生成试卷，打开后发给班级并选作业</span></div>
+    <div v-if="!visible.length" class="empty">还没有作业<span>先去组卷生成试卷，打开后再发给班级</span></div>
     <TeacherTabBar />
   </div>
 </template>

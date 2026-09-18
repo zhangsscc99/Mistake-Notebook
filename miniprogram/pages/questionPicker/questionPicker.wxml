@@ -55,7 +55,7 @@
     </view>
 
     <button class="save-btn" loading="{{saving}}" disabled="{{saving || selectedCount === 0}}" bindtap="saveSelected">
-      保存到错题本 ({{selectedCount}})
+      {{saveLabel}} ({{selectedCount}})
     </button>
   </view>
 

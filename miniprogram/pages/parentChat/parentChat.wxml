@@ -1,8 +1,8 @@
 <view class="teacher-chat">
   <view class="chip-row">
-    <view class="chip {{selectedClass.id === item.id ? 'on' : ''}}" wx:for="{{classes}}" wx:key="id" data-id="{{item.id}}" bindtap="selectClass">{{item.name}}</view>
+    <view class="chip {{selectedChild.studentId === item.studentId ? 'on' : ''}}" wx:for="{{children}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="selectChild">{{item.nickName}}</view>
   </view>
-  <view class="chat-hint">根据班级错题，帮你看高频题、薄弱学科和组卷建议。</view>
+  <view class="chat-hint">根据孩子的错题和作业，帮您看薄弱学科、最近错在哪、今晚怎么复习。</view>
   <scroll-view class="msg-scroll" scroll-y enhanced show-scrollbar="{{false}}" scroll-top="{{scrollTop}}" scroll-with-animation>
     <view class="msg-list">
       <block wx:for="{{messages}}" wx:key="id">
@@ -11,7 +11,7 @@
             <view class="dot"></view>
             <view class="dot"></view>
             <view class="dot"></view>
-            <text class="typing-label">正在思考，请稍等</text>
+            <text class="typing-label">正在根据孩子的错题思考</text>
           </view>
         </view>
         <view wx:if="{{!item.typing}}" class="msg-row {{item.role === 'user' ? 'msg-row-user' : ''}}">
@@ -30,12 +30,12 @@
       <view class="dot"></view>
       <view class="dot"></view>
       <view class="dot"></view>
-      <text class="wait-text">正在思考，请稍等…</text>
+      <text class="wait-text">正在根据孩子的错题思考…</text>
     </view>
     <view class="input-row">
-      <input class="chat-input" value="{{inputValue}}" bindinput="onInput" confirm-type="send" bindconfirm="send" placeholder="问班级学情，例如：这周该练什么" disabled="{{sending}}" />
+      <input class="chat-input" value="{{inputValue}}" bindinput="onInput" confirm-type="send" bindconfirm="send" placeholder="问问孩子的学习情况" disabled="{{sending}}" />
       <button class="send-btn" disabled="{{sending}}" bindtap="send">{{sending ? '思考中' : '发送'}}</button>
     </view>
   </view>
-  <teacher-tabbar active="chat"></teacher-tabbar>
+  <parent-tabbar active="chat"></parent-tabbar>
 </view>

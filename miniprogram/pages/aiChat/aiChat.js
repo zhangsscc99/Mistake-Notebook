@@ -87,7 +87,7 @@ Page({
     messages: [],
     inputValue: '',
     sending: false,
-    scrollToId: '',
+    scrollTop: 0,
     inputBottom: 0,
     // 头像放在页面级，不塞进 messages 的每一项 ——
     // messages 在好几处被手工重建（:135/:159/:234/:237/:267），
@@ -156,7 +156,6 @@ Page({
       questionParas: parseQuestionParas(ctxDisplay),
       questionPreview: preview,
       contextVisible: false,
-      scrollToId: '',
       messages: [
         { id: 'm' + Date.now(), role: 'assistant', content: greeting, display: greeting }
       ]
@@ -265,9 +264,9 @@ Page({
   },
 
   scrollToBottom() {
-    const list = this.data.messages;
-    if (list.length === 0) return;
-    this.setData({ scrollToId: 'msg-' + list[list.length - 1].id });
+    this.setData({ scrollTop: 0 }, () => {
+      setTimeout(() => this.setData({ scrollTop: 99999 }), 50);
+    });
   },
 
   sendMessage() {
@@ -281,8 +280,7 @@ Page({
     const typingId = 't' + Date.now();
     messages.push({ id: typingId, role: 'assistant', content: '', display: '', typing: true });
 
-    this.setData({ messages, inputValue: '', sending: true });
-    this.scrollToBottom();
+    this.setData({ messages, inputValue: '', sending: true }, () => this.scrollToBottom());
 
     const apiMessages = this.getApiMessages();
     apiMessages.push({ role: 'user', content: text });
@@ -327,8 +325,7 @@ Page({
         ? { id: m.id, role: 'assistant', content: reply, display: formatLatex(reply) }
         : m
     ));
-    this.setData({ messages, sending: false });
-    this.scrollToBottom();
+    this.setData({ messages, sending: false }, () => this.scrollToBottom());
   },
 
   onShareAppMessage() {

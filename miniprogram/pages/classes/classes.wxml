@@ -2,25 +2,21 @@
   <view class="classes-header">
     <view class="header-kicker">MY CLASSES</view>
     <view class="header-title">我的班级</view>
-    <view class="header-sub">老师发给班级的练习和作业会显示在这里</view>
+    <view class="header-sub">老师发给班级的作业会显示在这里</view>
   </view>
 
-  <view class="section-label" wx:if="{{tasks.length}}">班级任务</view>
+  <view class="section-label" wx:if="{{tasks.length}}">班级作业</view>
   <view
     class="task-card"
     wx:for="{{tasks}}"
     wx:key="key"
     data-id="{{item.id}}"
-    data-type="{{item.type}}"
     bindtap="openTask">
-    <view class="task-top">
-      <text class="badge {{item.type === 'homework' ? 'hw' : 'practice'}}">{{item.badge}}</text>
-    </view>
     <view class="task-title">{{item.title}}</view>
     <view class="task-meta">{{item.meta}}</view>
     <view class="task-action">{{item.action}}</view>
   </view>
-  <view class="empty" wx:if="{{!loading && classes.length && !tasks.length}}">老师还没有发给班级任务<text>练习和作业都会出现在这里</text></view>
+  <view class="empty" wx:if="{{!loading && classes.length && !tasks.length}}">老师还没有发给班级作业<text>组卷后发给班级就会出现在这里</text></view>
 
   <view class="section-label" wx:if="{{classes.length}}">已加入</view>
   <view class="class-card" wx:for="{{classes}}" wx:key="id">

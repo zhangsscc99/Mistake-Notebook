@@ -77,6 +77,12 @@ Page({
     wx.showModal({ title: `第 ${q.index} 题`, content: q.content || '', showCancel: false });
   },
 
+  previewImage(e) {
+    const url = e.currentTarget.dataset.url;
+    if (!url) return;
+    wx.previewImage({ urls: [url], current: url });
+  },
+
   onSearch(e) {
     const keyword = e.detail.value || '';
     this.setData({
@@ -104,6 +110,7 @@ Page({
       index: q.index,
       content: q.content || '',
       answer: String((s.answers && s.answers[i]) || ''),
+      answerImage: String((s.answerImages && s.answerImages[i]) || ''),
       result: marks[i] === 'right' || marks[i] === 'wrong' ? marks[i] : ''
     }));
     this._scoreEdited = s.score != null;

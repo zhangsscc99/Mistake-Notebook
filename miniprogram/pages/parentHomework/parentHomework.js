@@ -51,6 +51,7 @@ Page({
           index: i + 1,
           imageUrl: q.imageUrl || '',
           answer: String((d.answers && d.answers[i]) || ''),
+          answerImage: String((d.answerImages && d.answerImages[i]) || ''),
           result,
           resultLabel: result === 'right' ? '对' : (result === 'wrong' ? '错' : '')
         };

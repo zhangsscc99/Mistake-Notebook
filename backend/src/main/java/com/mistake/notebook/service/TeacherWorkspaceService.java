@@ -786,7 +786,9 @@ public class TeacherWorkspaceService {
                 row.put("score", s.getScore());
                 row.put("comment", s.getFeedback() == null ? "" : s.getFeedback());
                 row.put("feedback", s.getFeedback());
-                row.put("answers", readAnyList(s.getAnswersJson()));
+                List<Object> raw = readAnyList(s.getAnswersJson());
+                row.put("answers", padAnswerTexts(raw, n));
+                row.put("answerImages", padAnswerImages(raw, n));
                 row.put("marks", normalizeMarks(readStringList(s.getMarksJson()), n));
                 row.put("submittedAt", s.getSubmittedAt());
                 row.put("aiFeedback", s.getAiFeedback());
@@ -795,6 +797,7 @@ public class TeacherWorkspaceService {
                 row.put("score", null);
                 row.put("comment", "");
                 row.put("answers", List.of());
+                row.put("answerImages", List.of());
                 row.put("marks", normalizeMarks(List.of(), n));
                 row.put("submissionId", "");
             }
@@ -1452,6 +1455,50 @@ public class TeacherWorkspaceService {
         } catch (Exception e) {
             return new ArrayList<>();
         }
+    }
+
+    private String clipLen(String s, int n) {
+        if (s == null) return "";
+        return s.length() <= n ? s : s.substring(0, n);
+    }
+
+    private String clipAnswerText(Object v) {
+        if (v instanceof Map<?, ?> m) {
+            Object t = m.get("text");
+            if (t == null) t = m.get("answer");
+            if (t == null) t = m.get("value");
+            return clipLen(t == null ? "" : String.valueOf(t), 2000);
+        }
+        return clipLen(v == null ? "" : String.valueOf(v), 2000);
+    }
+
+    private String clipAnswerImage(Object v) {
+        if (v instanceof Map<?, ?> m) {
+            Object t = m.get("image");
+            if (t == null) t = m.get("imageFileID");
+            if (t == null) t = m.get("url");
+            return clipAnswerImage(t);
+        }
+        String s = v == null ? "" : String.valueOf(v).trim();
+        if (s.isEmpty()) return "";
+        if (s.startsWith("http://") || s.startsWith("https://") || s.startsWith("cloud://")) {
+            return clipLen(s, 600);
+        }
+        return "";
+    }
+
+    private List<String> padAnswerTexts(List<Object> raw, int n) {
+        List<String> out = new ArrayList<>();
+        List<Object> src = raw == null ? List.of() : raw;
+        for (int i = 0; i < n; i++) out.add(i < src.size() ? clipAnswerText(src.get(i)) : "");
+        return out;
+    }
+
+    private List<String> padAnswerImages(List<Object> raw, int n) {
+        List<String> out = new ArrayList<>();
+        List<Object> src = raw == null ? List.of() : raw;
+        for (int i = 0; i < n; i++) out.add(i < src.size() ? clipAnswerImage(src.get(i)) : "");
+        return out;
     }
 
     private List<String> readStringList(String json) {

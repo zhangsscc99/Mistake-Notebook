@@ -98,6 +98,32 @@
   white-space: pre-wrap;
 }
 
+.ans-img-frame {
+  position: relative;
+  height: 300rpx;
+  margin-top: 12rpx;
+  overflow: hidden;
+  border-radius: 16rpx;
+  background: rgba(36, 89, 255, 0.08);
+}
+
+.q-image {
+  width: 100%;
+  height: 100%;
+}
+
+.img-preview {
+  position: absolute;
+  right: 12rpx;
+  bottom: 12rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  background: rgba(11, 22, 51, 0.55);
+}
+
 .score-row {
   display: flex;
   align-items: center;

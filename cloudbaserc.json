@@ -83,7 +83,7 @@
     },
     {
       "name": "parent",
-      "timeout": 20,
+      "timeout": 60,
       "memorySize": 256,
       "runtime": "Nodejs16.13"
     }

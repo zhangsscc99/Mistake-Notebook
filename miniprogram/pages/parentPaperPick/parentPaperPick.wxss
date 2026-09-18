@@ -1,0 +1,83 @@
+.teacher-shell.picking {
+  padding-bottom: calc(180rpx + env(safe-area-inset-bottom));
+}
+
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 0 24rpx 8rpx;
+}
+
+.hint-card {
+  margin: 0 24rpx 12rpx;
+  padding: 16rpx 22rpx;
+  background: rgba(36, 89, 255, 0.08);
+  color: #2459ff;
+  font-size: 22rpx;
+  font-weight: 700;
+  border-radius: 16rpx;
+}
+
+.q-content {
+  font-size: 26rpx;
+  color: #0b1633;
+  line-height: 1.55;
+}
+
+.q-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.check {
+  width: 40rpx;
+  height: 40rpx;
+  margin-right: 16rpx;
+  border-radius: 10rpx;
+  border: 2rpx solid rgba(36, 89, 255, 0.35);
+  text-align: center;
+  line-height: 36rpx;
+  color: #fff;
+  font-size: 22rpx;
+  flex-shrink: 0;
+}
+
+.check.on {
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  border-color: transparent;
+}
+
+.pick-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding: 16rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid rgba(11, 22, 51, 0.06);
+}
+
+.pick-dock-title {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #0b1633;
+}
+
+.pick-actions {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 12rpx;
+}
+
+.pick-actions .ghost-btn,
+.pick-actions .primary-btn {
+  flex: 1;
+  height: 68rpx;
+  line-height: 68rpx;
+  font-size: 24rpx;
+}

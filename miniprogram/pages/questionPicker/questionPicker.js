@@ -60,6 +60,7 @@ Page({
     periods: STAGES,
     selectedCount: 0,
     saving: false,
+    saveLabel: '保存到错题本',
     showPickerModal: false,
     tempCategory: '',
     tempCategoryId: '',
@@ -133,6 +134,10 @@ Page({
     });
 
     this.fetchCategories();
+    if (draft.mode === 'parent_child') {
+      wx.setNavigationBarTitle({ title: '保存到孩子错题本' });
+      this.setData({ saveLabel: '保存到孩子错题本' });
+    }
   },
 
   pickFromExistingCategories: function (categories, hint) {
@@ -165,6 +170,19 @@ Page({
   },
 
   fetchCategories: function () {
+    const draft = app.globalData.recognitionDraft || {};
+    if (draft.mode === 'parent_child' && draft.studentId) {
+      wx.cloud.callFunction({
+        name: 'parent',
+        data: { action: 'childCategories', studentId: draft.studentId },
+        success: (res) => {
+          const list = (res.result && res.result.success && res.result.data) || [];
+          this.applyCategoryList(list);
+        },
+        fail: () => this.applyCategoryList([])
+      });
+      return;
+    }
     wx.cloud.callFunction({
       name: 'category',
       data: { action: 'list' },
@@ -296,7 +314,8 @@ Page({
     this.setData({ saving: true });
     wx.showLoading({ title: '正在保存...', mask: true });
 
-    this.callQuestion('batchSave', {
+    const draft = app.globalData.recognitionDraft || {};
+    const payload = {
       questions: selectedQuestions.map((q) => ({
         text: q.text,
         type: q.type,
@@ -310,7 +329,16 @@ Page({
       categoryId: this.data.selectedCategoryId,
       difficulty: this.data.selectedDifficulty,
       imageUrl: this.data.fileID
-    }, 20000).then((saveRes) => {
+    };
+    const savePromise = (draft.mode === 'parent_child' && draft.studentId)
+      ? wx.cloud.callFunction({
+          name: 'parent',
+          config: { timeout: 60000 },
+          data: Object.assign({ action: 'saveChildQuestions', studentId: draft.studentId }, payload)
+        }).then((res) => res.result || {})
+      : this.callQuestion('batchSave', payload, 20000);
+
+    savePromise.then((saveRes) => {
       if (!saveRes.success) {
         throw new Error(saveRes.error || '保存失败');
       }
@@ -326,9 +354,11 @@ Page({
       this.setData({ saving: false });
       app.globalData.recognitionDraft = null;
       const count = saveRes.data.savedCount || selectedQuestions.length;
-      wx.showToast({ title: `已保存${count}道，AI解析中`, icon: 'none', duration: 2000 });
+      const parentMode = draft.mode === 'parent_child';
+      wx.showToast({ title: parentMode ? `已帮孩子保存${count}道，正在解析` : `已保存${count}道，AI解析中`, icon: 'none', duration: 2000 });
       setTimeout(() => {
-        wx.switchTab({ url: '/pages/categories/categories' });
+        if (parentMode) wx.reLaunch({ url: '/pages/parentMistakes/parentMistakes?analyzing=1' });
+        else wx.switchTab({ url: '/pages/categories/categories' });
       }, 800);
     }).catch((err) => {
       wx.hideLoading();

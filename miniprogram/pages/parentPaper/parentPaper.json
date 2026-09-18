@@ -1,8 +1,10 @@
 {
-  "navigationBarTitleText": "报告",
+  "navigationBarTitleText": "帮孩子组卷",
   "navigationBarBackgroundColor": "#eaf3ff",
   "navigationBarTextStyle": "black",
   "backgroundColor": "#eef3fb",
   "enablePullDownRefresh": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "parent-tabbar": "/components/parent-tabbar/parent-tabbar"
+  }
 }

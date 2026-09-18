@@ -1,0 +1,52 @@
+<view class="teacher-shell picking">
+  <view class="teacher-hero">
+    <view class="hero-kicker">PICK</view>
+    <view class="hero-title">帮{{childName || '孩子'}}组卷</view>
+    <view class="hero-sub">只能勾选已经解析完的错题。生成后孩子在学生端也能看到这份卷。</view>
+  </view>
+
+  <view class="chip-row" wx:if="{{children.length}}">
+    <view class="chip {{childId === item.studentId ? 'on' : ''}}" wx:for="{{children}}" wx:key="studentId" data-id="{{item.studentId}}" bindtap="selectChild">{{item.nickName}}</view>
+  </view>
+
+  <view class="chip-row" wx:if="{{categoryChips.length > 1}}">
+    <view class="chip {{category === item.value ? 'on' : ''}}" wx:for="{{categoryChips}}" wx:key="value" data-value="{{item.value}}" bindtap="selectCategory">{{item.name}} {{item.count}}</view>
+  </view>
+
+  <view class="filter-row">
+    <view class="chip" wx:if="{{!visibleAllSelected}}" bindtap="selectAllVisible">全选当前</view>
+    <view class="chip" wx:if="{{visibleAllSelected}}" bindtap="clearVisible">取消当前</view>
+  </view>
+
+  <view class="hint-card" wx:if="{{pendingCount}}">还有 {{pendingCount}} 道题正在解析，解析完成后才能组进试卷。</view>
+
+  <view class="section-head">
+    <text class="section-title">可组卷题目</text>
+    <text class="section-note">{{readyCount}} 道{{selectedCount ? ' · 已选 ' + selectedCount : ''}}</text>
+  </view>
+
+  <view class="white-card" wx:for="{{visibleQuestions}}" wx:key="id" data-id="{{item.id}}" bindtap="toggleQuestion">
+    <view class="row-card">
+      <view class="check {{selectedMap[item.id] ? 'on' : ''}}">{{selectedMap[item.id] ? '✓' : ''}}</view>
+      <view style="flex:1; min-width:0;">
+        <view class="q-content">{{item.preview}}</view>
+        <view class="q-meta">
+          <text class="badge">{{item.category || '未分类'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-block" wx:if="{{!loading && childId && !readyCount}}">还没有可组卷的错题<text>先去「拍照」帮孩子录入，等 AI 解析完成后再组卷</text></view>
+  <view class="empty-block" wx:if="{{!loading && !children.length}}">请先绑定孩子</view>
+  <button class="more-btn" wx:if="{{hasMore}}" loading="{{loadingMore}}" bindtap="loadMore">加载更多</button>
+  <view class="loading-line" wx:if="{{loading}}">加载错题…</view>
+
+  <view class="pick-dock">
+    <view class="pick-dock-title">已选 {{selectedCount}} 道 · 可组 {{readyCount}} 道</view>
+    <view class="pick-actions">
+      <button class="ghost-btn" bindtap="cancel">取消</button>
+      <button class="primary-btn" bindtap="confirm">确认组卷</button>
+    </view>
+  </view>
+</view>

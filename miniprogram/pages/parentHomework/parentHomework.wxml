@@ -20,7 +20,11 @@
       <image class="q-image" src="{{item.imageUrl}}" mode="aspectFill" binderror="clearImage" data-index="{{index}}"></image>
       <view class="img-preview" catchtap="previewImage" data-url="{{item.imageUrl}}">查看原图</view>
     </view>
-    <view class="answer locked">{{item.answer || '未作答'}}</view>
+    <view class="answer locked">{{item.answer || (item.answerImage ? '' : '未作答')}}</view>
+    <view class="img-frame" wx:if="{{item.answerImage}}">
+      <image class="q-image" src="{{item.answerImage}}" mode="aspectFill" bindtap="previewImage" data-url="{{item.answerImage}}"></image>
+      <view class="img-preview" catchtap="previewImage" data-url="{{item.answerImage}}">查看原图</view>
+    </view>
   </view>
   <view class="empty" wx:if="{{!loading && !questions.length}}">这份作业里没有可显示的题目</view>
 </view>

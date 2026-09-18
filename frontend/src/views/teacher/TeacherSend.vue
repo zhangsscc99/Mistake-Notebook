@@ -4,14 +4,9 @@
     <div class="hero">
       <div class="kicker">SEND</div>
       <h1>发给班级</h1>
-      <p>题目来自已保存的试卷。选发给哪个班，以及练习或作业。</p>
+      <p>发卷就是发作业。选发给哪个班，学生作答提交后你再批改。</p>
     </div>
-    <div class="section-head"><span>发给班级的方式</span></div>
-    <div class="chips">
-      <button class="chip" :class="{ on: kind === 'practice' }" @click="kind = 'practice'">练习</button>
-      <button class="chip" :class="{ on: kind === 'homework' }" @click="kind = 'homework'">作业</button>
-    </div>
-    <p class="hint">{{ kind === 'practice' ? '学生在「我的班级」查看题目，不用提交' : '学生需要作答提交，老师可在作业页打分' }}</p>
+    <p class="hint">学生可以打字或上传图片作答，老师在作业页打分。</p>
 
     <div class="section-head"><span>班级</span></div>
     <div class="chips">
@@ -19,15 +14,13 @@
     </div>
 
     <div class="section-head"><span>名称</span></div>
-    <div class="card"><input v-model="title" class="field" :placeholder="kind === 'homework' ? '例如：周五作业' : '例如：周五练习'" maxlength="30" /></div>
+    <div class="card"><input v-model="title" class="field" placeholder="例如：周五作业" maxlength="30" /></div>
 
-    <template v-if="kind === 'homework'">
-      <div class="section-head"><span>截止时间</span></div>
-      <div class="card row">
-        <input v-model="dueAt" type="date" class="field" />
-        <button v-if="dueAt" class="link" @click="dueAt = ''">清除</button>
-      </div>
-    </template>
+    <div class="section-head"><span>截止时间</span></div>
+    <div class="card row">
+      <input v-model="dueAt" type="date" class="field" />
+      <button v-if="dueAt" class="link" @click="dueAt = ''">清除</button>
+    </div>
 
     <div class="section-head"><span>本次题目</span><span class="note" v-if="cart.length">{{ cart.length }} 道</span></div>
     <div v-for="q in cart" :key="q.id" class="card">
@@ -55,7 +48,6 @@ export default {
     const router = useRouter()
     const classes = ref([])
     const selected = ref({})
-    const kind = ref(route.query.mode === 'homework' ? 'homework' : 'practice')
     const title = ref('')
     const dueAt = ref('')
     const cart = ref([])
@@ -84,23 +76,19 @@ export default {
     const submit = async () => {
       if (!selected.value.id) return showToast('请先选择班级')
       if (!paperId) return showToast('请打开一份试卷再发给班级')
-      const name = title.value.trim() || (kind.value === 'homework' ? '班级作业' : '班级错题练习')
+      const name = title.value.trim() || '班级作业'
       saving.value = true
       try {
-        if (kind.value === 'practice') {
-          await teacherAPI.publishNotebook({ classId: selected.value.id, title: name, paperId })
-        } else {
-          await teacherAPI.createHomework({ classId: selected.value.id, title: name, paperId, dueAt: dueAt.value })
-        }
+        await teacherAPI.createHomework({ classId: selected.value.id, title: name, paperId, dueAt: dueAt.value })
         setSelectedClassId(selected.value.id)
-        showToast({ type: 'success', message: '已发给班级' })
-        router.replace(kind.value === 'homework' ? '/teacher/homework' : '/teacher/paper')
+        showToast({ type: 'success', message: '作业已发给班级' })
+        router.replace('/teacher/homework')
       } catch (e) { fail(e) }
       finally { saving.value = false }
     }
 
     onMounted(() => boot().catch(fail))
-    return { classes, selected, kind, title, dueAt, cart, saving, submit }
+    return { classes, selected, title, dueAt, cart, saving, submit }
   }
 }
 </script>

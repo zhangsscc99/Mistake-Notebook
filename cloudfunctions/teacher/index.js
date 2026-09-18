@@ -164,6 +164,37 @@ function clipComment(text) {
   return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 200);
 }
 
+function clipAnswerText(v) {
+  if (v && typeof v === 'object') return String(v.text || v.answer || v.value || '').slice(0, 2000);
+  return String(v == null ? '' : v).slice(0, 2000);
+}
+
+function clipAnswerImage(v) {
+  if (v && typeof v === 'object') v = v.image || v.imageFileID || v.url || '';
+  const s = String(v || '').trim();
+  if (!s) return '';
+  if (s.indexOf('cloud://') === 0) return s.slice(0, 400);
+  if (s.indexOf('https://') === 0 || s.indexOf('http://') === 0) return s.slice(0, 600);
+  return '';
+}
+
+function padAnswers(raw, n) {
+  const src = Array.isArray(raw) ? raw : [];
+  const out = [];
+  for (let i = 0; i < n; i++) out.push(clipAnswerText(src[i]));
+  return out;
+}
+
+function padAnswerImages(raw, answers, n) {
+  const src = Array.isArray(raw) ? raw : [];
+  const ans = Array.isArray(answers) ? answers : [];
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    out.push(clipAnswerImage(src[i]) || clipAnswerImage(ans[i]));
+  }
+  return out;
+}
+
 async function ownedClasses(teacherId) {
   const r = await db.collection('classes').where({ teacherId, isDeleted: false }).orderBy('createdAt', 'desc').get();
   return r.data || [];
@@ -895,6 +926,7 @@ async function assignmentDetail(teacherId, event) {
   const subBy = {};
   subs.forEach((s) => { subBy[s.studentId] = s; });
   const order = { submitted: 0, graded: 1, missing: 2 };
+  const n = (a.questionIds || []).length;
   const roster = studentIds.map((sid) => {
     const s = subBy[sid];
     let statusKey = 'missing';
@@ -916,8 +948,9 @@ async function assignmentDetail(teacherId, event) {
       status,
       score: s && typeof s.score === 'number' ? s.score : null,
       comment: (s && s.comment) || '',
-      answers: (s && s.answers) || [],
-      marks: normalizeMarks(s && s.marks, (a.questionIds || []).length),
+      answers: padAnswers(s && s.answers, n),
+      answerImages: padAnswerImages(s && s.answerImages, s && s.answers, n),
+      marks: normalizeMarks(s && s.marks, n),
       submissionId: s ? s._id : '',
       submittedAt: (s && (s.submittedAt || s.createdAt)) || ''
     };
@@ -1402,6 +1435,8 @@ async function myAssignments() {
     const sub = (s.data || [])[0];
     return {
       ...a,
+      id: a._id,
+      questionCount: (a.questionIds || []).length,
       submissionStatus: (sub && sub.status) || 'pending',
       submissionScore: sub && sub.score == null ? null : sub && sub.score
     };
@@ -1422,9 +1457,10 @@ async function myAssignmentDetail(event) {
   const found = await db.collection('assignment_submissions').where({ assignmentId: id, studentId }).limit(1).get();
   const sub = (found.data || [])[0];
   const status = (sub && sub.status) || 'pending';
-  const saved = Array.isArray(sub && sub.answers) ? sub.answers : [];
-  const answers = questions.map((_, i) => String(saved[i] != null ? saved[i] : ''));
-  const marks = normalizeMarks(sub && sub.marks, questions.length);
+  const n = questions.length;
+  const answers = padAnswers(sub && sub.answers, n);
+  const answerImages = padAnswerImages(sub && sub.answerImages, sub && sub.answers, n);
+  const marks = normalizeMarks(sub && sub.marks, n);
   const overdue = isPastDue(a.dueAt);
   const graded = status === 'graded';
   return {
@@ -1440,6 +1476,7 @@ async function myAssignmentDetail(event) {
       submissionScore: sub && typeof sub.score === 'number' ? sub.score : null,
       comment: (sub && sub.comment) || '',
       answers,
+      answerImages,
       marks,
       submittedAt: (sub && (sub.submittedAt || sub.createdAt)) || '',
       overdue,
@@ -1463,10 +1500,14 @@ async function submitAssignment(event) {
   if (old && old.status === 'graded') return fail('已批改，不能再提交');
   if (isPastDue(a.dueAt)) return fail('已过截止时间');
   const now = new Date().toISOString();
+  const n = (a.questionIds || []).length;
+  const answers = padAnswers(event.answers, n);
+  const answerImages = padAnswerImages(event.answerImages, event.answers, n);
   const data = {
     assignmentId: id,
     studentId,
-    answers: Array.isArray(event.answers) ? event.answers : [],
+    answers,
+    answerImages,
     status: 'submitted',
     score: null,
     marks: [],

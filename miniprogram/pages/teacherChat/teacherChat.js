@@ -31,17 +31,24 @@ Page({
     suggestions: SUGGESTIONS,
     inputValue: '',
     sending: false,
-    scrollToId: '',
+    scrollTop: 0,
     nextId: 1
   },
 
   onLoad() { this.boot(); },
+
+  pinToEnd() {
+    this.setData({ scrollTop: 0 }, () => {
+      setTimeout(() => this.setData({ scrollTop: 99999 }), 50);
+    });
+  },
 
   async boot() {
     const dash = await callTeacher('dashboard');
     const classes = (dash.success && dash.data && dash.data.classes) || [];
     const selectedClass = classes[0] || {};
     this.setData({ classes, selectedClass });
+    if (this.data.sending || this.data.messages.some((m) => m.role === 'user')) return;
     await this.resetThread();
   },
 
@@ -52,11 +59,13 @@ Page({
       const st = await callTeacher('classStats', { classId: cls.id });
       if (st.success) stats = st.data || stats;
     }
+    if (this.data.sending || this.data.messages.some((m) => m.role === 'user')) return;
     this.setData({
       messages: [{ id: 0, role: 'assistant', content: greetingFor(cls, stats) }],
       nextId: 1,
-      scrollToId: 'msg-0'
+      sending: false
     });
+    this.pinToEnd();
   },
 
   selectClass(e) {
@@ -78,28 +87,32 @@ Page({
     const text = (this.data.inputValue || '').trim();
     if (!text || this.data.sending) return;
     const id = this.data.nextId;
-    const messages = this.data.messages.concat([{ id, role: 'user', content: text }]);
+    const typingId = id + 1;
+    const messages = this.data.messages.concat([
+      { id, role: 'user', content: text },
+      { id: typingId, role: 'assistant', content: '', typing: true }
+    ]);
     this.setData({
       messages,
       inputValue: '',
       sending: true,
-      nextId: id + 1,
-      scrollToId: 'msg-' + id
-    });
+      nextId: typingId + 1
+    }, () => this.pinToEnd());
     try {
       const payload = messages
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
+        .filter((m) => !m.typing && (m.role === 'user' || m.role === 'assistant'))
         .map((m) => ({ role: m.role, content: m.content }));
       const res = await callTeacher('chat', { classId: this.data.selectedClass.id, messages: payload }, 60000);
       if (!res.success) throw new Error(res.error || '回复失败');
-      const rid = this.data.nextId;
-      this.setData({
-        messages: this.data.messages.concat([{ id: rid, role: 'assistant', content: res.data.reply }]),
-        nextId: rid + 1,
-        scrollToId: 'msg-' + rid
-      });
+      const next = this.data.messages.map((m) => (
+        m.id === typingId ? { id: typingId, role: 'assistant', content: res.data.reply } : m
+      ));
+      this.setData({ messages: next }, () => this.pinToEnd());
     } catch (e) {
-      wx.showToast({ title: e.message || '发送失败', icon: 'none' });
+      const next = this.data.messages.map((m) => (
+        m.id === typingId ? { id: typingId, role: 'assistant', content: e.message || '发送失败，请稍后再问一次。' } : m
+      ));
+      this.setData({ messages: next }, () => this.pinToEnd());
     } finally {
       this.setData({ sending: false });
     }

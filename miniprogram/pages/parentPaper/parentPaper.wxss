@@ -1,0 +1,2 @@
+@import "../parent/parent.wxss";
+@import "../teacherPaper/teacherPaper.wxss";

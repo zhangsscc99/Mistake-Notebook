@@ -116,8 +116,10 @@ public class StudentClassController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> submit(@PathVariable Long id, @RequestBody Map<String, Object> body) {
         @SuppressWarnings("unchecked")
         List<Object> answers = body.get("answers") instanceof List<?> raw ? (List<Object>) raw : List.of();
+        @SuppressWarnings("unchecked")
+        List<Object> images = body.get("answerImages") instanceof List<?> raw ? (List<Object>) raw : List.of();
         return ResponseEntity.ok(ApiResponse.success("已提交",
-                teacherService.submitHomework(AuthContext.requireUserId(), id, answers)));
+                teacherService.submitHomework(AuthContext.requireUserId(), id, answers, images)));
     }
 
     // ── 家长报告（学生可见） ──

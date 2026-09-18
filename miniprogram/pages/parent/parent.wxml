@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">PARENT</view>
     <view class="hero-title">{{childName || '家长端'}}</view>
-    <view class="hero-sub">查看孩子的作业进度、分数和评语。</view>
+    <view class="hero-sub">查看作业，也可以帮孩子拍照整理错题。</view>
     <button class="ghost-btn hero-btn" bindtap="goBind">绑定孩子</button>
   </view>
 
@@ -29,6 +29,12 @@
     <view class="hw-action">{{item.action}}</view>
   </view>
   <view class="empty-block" wx:if="{{!loading && childId && !homework.length}}">这个孩子所在班级还没有作业</view>
+
+  <view class="section-head" wx:if="{{childId}}"><text class="section-title">也可以看</text></view>
+  <view class="white-card tap-card" wx:if="{{childId}}" bindtap="goReports">
+    <view class="hw-title">学情报告</view>
+    <view class="hw-action">老师发来的班级学情 ›</view>
+  </view>
   <view class="empty-block" wx:if="{{!loading && !children.length}}">还没有绑定孩子<text>向学生或老师要家长绑定码</text></view>
   <view class="loading-line" wx:if="{{loading}}">加载中…</view>
   <parent-tabbar active="home"></parent-tabbar>

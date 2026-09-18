@@ -6,17 +6,14 @@ Page({
     selectedClass: {},
     title: '',
     dueDate: '',
-    kind: 'practice',
     pickCount: 0,
     cart: [],
     submitting: false
   },
 
   onLoad(options) {
-    const kind = (options && options.mode) === 'homework' ? 'homework' : 'practice';
     this._preferClassId = (options && options.classId) || '';
     this._paperId = (options && options.paperId) || '';
-    this.setData({ kind });
     this.boot();
   },
 
@@ -59,12 +56,6 @@ Page({
     this.setData({ selectedClass: item });
   },
 
-  setKind(e) {
-    const kind = e.currentTarget.dataset.kind;
-    if (kind === this.data.kind) return;
-    this.setData({ kind });
-  },
-
   onTitle(e) { this.setData({ title: e.detail.value }); },
   onDue(e) { this.setData({ dueDate: e.detail.value }); },
   clearDue() { this.setData({ dueDate: '' }); },
@@ -79,32 +70,20 @@ Page({
     if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
     const paperId = this._paperId;
     if (!paperId) return wx.showToast({ title: '请打开一份试卷再发给班级', icon: 'none' });
-    const isHomework = this.data.kind === 'homework';
-    const title = (this.data.title || '').trim() || (isHomework ? '班级作业' : '班级练习');
+    const title = (this.data.title || '').trim() || '班级作业';
     this.setData({ submitting: true });
     try {
-      if (isHomework) {
-        const r = await callTeacher('createAssignment', {
-          classId,
-          title,
-          dueAt: this.data.dueDate || '',
-          paperId
-        });
-        if (!r.success) throw new Error(r.error || '发送失败');
-        wx.showToast({ title: '作业已发给班级', icon: 'success' });
-        setTimeout(() => {
-          wx.redirectTo({ url: '/pages/teacherAssignmentDetail/teacherAssignmentDetail?id=' + r.data.id });
-        }, 400);
-      } else {
-        const r = await callTeacher('publishNotebook', {
-          classId,
-          title,
-          paperId
-        });
-        if (!r.success) throw new Error(r.error || '发送失败');
-        wx.showToast({ title: '练习已发给班级', icon: 'success' });
-        setTimeout(() => wx.navigateBack(), 400);
-      }
+      const r = await callTeacher('createAssignment', {
+        classId,
+        title,
+        dueAt: this.data.dueDate || '',
+        paperId
+      });
+      if (!r.success) throw new Error(r.error || '发送失败');
+      wx.showToast({ title: '作业已发给班级', icon: 'success' });
+      setTimeout(() => {
+        wx.redirectTo({ url: '/pages/teacherAssignmentDetail/teacherAssignmentDetail?id=' + r.data.id });
+      }, 400);
     } catch (e) {
       wx.showToast({ title: e.message || '发送失败', icon: 'none' });
     } finally {

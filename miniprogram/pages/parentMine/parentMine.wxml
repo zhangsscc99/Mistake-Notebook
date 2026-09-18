@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">PARENT</view>
     <view class="hero-title">{{nickName || '家长'}}</view>
-    <view class="hero-sub">绑定孩子后，可以查看他们的作业和报告。</view>
+    <view class="hero-sub">可以帮孩子拍照整理错题、组卷，也可以问助手孩子的学情。</view>
   </view>
 
   <view class="section-head">

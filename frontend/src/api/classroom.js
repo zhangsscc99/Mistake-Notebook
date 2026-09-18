@@ -42,8 +42,8 @@ const classroomAPI = {
   homeworkDetail(id) {
     return unwrap(apiClient.get('/classroom/homework/' + id))
   },
-  submitHomework(id, answers) {
-    return unwrap(apiClient.post(`/classroom/homework/${id}/submit`, { answers }))
+  submitHomework(id, answers, answerImages = []) {
+    return unwrap(apiClient.post(`/classroom/homework/${id}/submit`, { answers, answerImages }))
   },
   parentReports() {
     return unwrap(apiClient.get('/classroom/parent-reports'))
