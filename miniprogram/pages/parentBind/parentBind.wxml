@@ -1,0 +1,12 @@
+<view class="teacher-shell bind-page">
+  <view class="teacher-hero">
+    <view class="hero-kicker">BIND</view>
+    <view class="hero-title">绑定孩子</view>
+    <view class="hero-sub">输入孩子或老师给的绑定码。</view>
+  </view>
+  <view class="white-card">
+    <view class="field-label">家长绑定码</view>
+    <input class="code-input" value="{{code}}" maxlength="8" placeholder="6 位绑定码" bindinput="onCode" />
+    <button class="primary-btn" loading="{{submitting}}" disabled="{{submitting}}" bindtap="submit">确认绑定</button>
+  </view>
+</view>

@@ -1,0 +1,26 @@
+<view class="assignment-page">
+  <view class="head">
+    <view class="kicker">只读</view>
+    <view class="title">{{title}}</view>
+    <view class="sub">{{meta}}</view>
+    <view class="status-pill {{status}}" wx:if="{{statusText}}">{{statusText}}</view>
+    <view class="score-line" wx:if="{{status === 'graded' && scoreText}}">{{scoreText}} 分</view>
+    <view class="comment-card" wx:if="{{status === 'graded' && comment}}">{{comment}}</view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载作业…</view>
+
+  <view class="q-card" wx:for="{{questions}}" wx:key="id">
+    <view class="q-index-row">
+      <view class="q-index">第 {{item.index}} 题</view>
+      <text class="result-badge {{item.result}}" wx:if="{{item.resultLabel}}">{{item.resultLabel}}</text>
+    </view>
+    <view class="q-content">{{item.content}}</view>
+    <view class="img-frame" wx:if="{{item.imageUrl}}">
+      <image class="q-image" src="{{item.imageUrl}}" mode="aspectFill" binderror="clearImage" data-index="{{index}}"></image>
+      <view class="img-preview" catchtap="previewImage" data-url="{{item.imageUrl}}">查看原图</view>
+    </view>
+    <view class="answer locked">{{item.answer || '未作答'}}</view>
+  </view>
+  <view class="empty" wx:if="{{!loading && !questions.length}}">这份作业里没有可显示的题目</view>
+</view>

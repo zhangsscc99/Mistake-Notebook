@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">TEACHER</view>
     <view class="hero-title">{{nickName || '教师'}}</view>
-    <view class="hero-sub">拍照录入进班级题库，不进个人错题本。组卷前请先到题目页选题。</view>
+    <view class="hero-sub">班级、题目和组卷都在这里。</view>
     <view class="hero-stats">
       <view class="hero-stat" data-focus="" bindtap="goClass"><text>{{classCount}}</text><label>班级</label></view>
       <view class="hero-divider"></view>
@@ -43,6 +43,6 @@
       <text class="cell-arrow">›</text>
     </view>
   </view>
-  <view class="empty-block"><text>本账号已绑定老师身份。退出登录不会改变身份；更换身份需要先注销账号。</text></view>
+  <view class="empty-block"><text>退出登录不会改变老师身份。更换身份需要先注销账号。</text></view>
   <teacher-tabbar active="mine"></teacher-tabbar>
 </view>

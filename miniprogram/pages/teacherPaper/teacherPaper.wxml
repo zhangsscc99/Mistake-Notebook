@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">PAPER</view>
     <view class="hero-title">班级组卷</view>
-    <view class="hero-sub">先到题目页勾选，带到这里看明细，再发给班级或存成题单。拍照只进题库，不会自动组卷</view>
+    <view class="hero-sub">勾选题目后，在这里发给班级或存成题单。</view>
     <view class="hero-stats">
       <view class="hero-stat" data-key="papers" bindtap="jumpStat"><text>{{papers.length}}</text><label>题单</label></view>
       <view class="hero-divider"></view>
@@ -50,10 +50,20 @@
     <text bindtap="goCapture">去拍照录入题库</text>
   </view>
 
+  <view class="date-row history-dates">
+    <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
+      <view class="date-cell">{{fromDate}}</view>
+    </picker>
+    <text class="date-sep">至</text>
+    <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
+      <view class="date-cell">{{toDate}}</view>
+    </picker>
+  </view>
+
   <view id="section-papers" class="section-head"><text class="section-title">题单草稿</text></view>
   <view class="white-card tap-card" wx:for="{{papers}}" wx:key="id" data-id="{{item.id}}" data-type="paper" bindtap="openSet">
     <view class="paper-title">{{item.title}}</view>
-    <view class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}} · 学生看不到 · 可再组卷</view>
+    <view class="paper-meta">{{item.questionCount}} 道题 · {{item.createdAt}} · 草稿</view>
   </view>
   <view class="empty-block" wx:if="{{!papers.length}}">还没有题单草稿<text>本次组卷点「存为题单」，之后可打开再发给班级</text></view>
 

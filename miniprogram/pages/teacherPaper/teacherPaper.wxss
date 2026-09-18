@@ -76,6 +76,11 @@
   color: #2459ff;
 }
 
+.history-dates {
+  margin-top: 12rpx;
+  margin-bottom: 8rpx;
+}
+
 .link-dot {
   color: rgba(11, 22, 51, 0.28);
 }

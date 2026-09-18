@@ -1,0 +1,54 @@
+<view class="teacher-shell">
+  <view class="teacher-hero">
+    <view class="hero-kicker">MISTAKES</view>
+    <view class="hero-title">孩子错题</view>
+    <view class="hero-sub">看看孩子这段时间整理了哪些错题。</view>
+    <view class="hero-stats">
+      <view class="hero-stat"><text>{{total}}</text><label>道错题</label></view>
+    </view>
+  </view>
+
+  <view class="chip-row" wx:if="{{children.length}}">
+    <view
+      class="picker-chip {{childId === item.studentId ? 'active' : ''}}"
+      wx:for="{{children}}"
+      wx:key="studentId"
+      data-id="{{item.studentId}}"
+      bindtap="selectChild">{{item.nickName}}</view>
+  </view>
+
+  <view class="date-row">
+    <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
+      <view class="date-cell">{{fromDate}}</view>
+    </picker>
+    <text class="date-sep">至</text>
+    <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
+      <view class="date-cell">{{toDate}}</view>
+    </picker>
+  </view>
+
+  <view class="section-head" wx:if="{{childId}}"><text class="section-title">学科</text></view>
+  <view class="white-card" wx:if="{{byCategory.length}}">
+    <view class="dist-row" wx:for="{{byCategory}}" wx:key="name">
+      <text class="dist-name">{{item.name}}</text>
+      <view class="dist-track"><view class="dist-fill" style="width: {{item.pct}}%;"></view></view>
+      <text class="dist-num">{{item.count}}</text>
+    </view>
+  </view>
+  <view class="empty-block" wx:elif="{{!loading && childId}}">这段时间还没有学科分布</view>
+
+  <view class="section-head" wx:if="{{childId}}"><text class="section-title">错题</text></view>
+  <view class="white-card" wx:for="{{questions}}" wx:key="id">
+    <view class="q-index">第 {{item.index}} 题 · {{item.day}}</view>
+    <view class="q-content">{{item.preview}}</view>
+    <view class="q-meta">
+      <text class="badge">{{item.category}}</text>
+      <text class="img-link" wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}">查看原图</text>
+    </view>
+  </view>
+  <view class="empty-block" wx:if="{{!loading && childId && !questions.length}}">这段时间孩子没有整理错题</view>
+  <view class="empty-block" wx:if="{{!loading && !children.length}}">请先绑定孩子</view>
+  <button class="more-btn" wx:if="{{hasMore}}" loading="{{loadingMore}}" bindtap="loadMore">加载更多</button>
+  <view class="loading-line" wx:if="{{loading}}">加载中…</view>
+  <parent-tabbar active="mistakes"></parent-tabbar>
+</view>

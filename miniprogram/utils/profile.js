@@ -24,7 +24,7 @@ function normalize(data) {
     nickName: d.nickName || '',
     avatarFileID: d.avatarFileID || '',
     stage: d.stage || '',
-    role: d.role === 'teacher' ? 'teacher' : (d.role === 'student' ? 'student' : ''),
+    role: d.role === 'teacher' ? 'teacher' : (d.role === 'student' ? 'student' : (d.role === 'parent' ? 'parent' : '')),
     hasProfile: !!(d.exists || d.hasProfile)
   };
 }
@@ -90,11 +90,14 @@ function getProfile(options) {
       // 每个 Tab 的 onShow 都会打 getProfile，一旦写进空档案，后续恢复登录也会失败。
       if (!profile.hasProfile) {
         const prev = getCachedProfile();
-        if (prev.hasProfile) return prev;
-        // 云端还没建档：返回全局的 openId 档，避免把本地已确认的档案清掉
+        if (prev.hasProfile && (!profile.openId || !prev.openId || prev.openId === profile.openId)) {
+          return prev;
+        }
         const app = getApp();
         const gd = app && app.globalData && app.globalData.profile;
-        if (gd && gd.hasProfile) return gd;
+        if (gd && gd.hasProfile && (!profile.openId || !gd.openId || gd.openId === profile.openId)) {
+          return gd;
+        }
       }
       writeCache(profile);
       return profile;
@@ -111,9 +114,12 @@ function getProfile(options) {
 
 // 资料页保存成功后就地更新缓存，省掉一次回拉
 function setCachedProfile(data) {
-  const merged = { ...getCachedProfile(), ...normalize(data) };
-  // normalize 会把 exists 映射成 hasProfile；这里 data 可能来自 updateProfile 的返回，
-  // 它带 exists:true，所以上面那行已经处理好了
+  const incoming = normalize(data);
+  const prev = getCachedProfile();
+  const switched = !!(incoming.openId && prev.openId && incoming.openId !== prev.openId);
+  const merged = switched
+    ? { ...EMPTY_PROFILE, ...incoming, hasProfile: incoming.hasProfile || !!incoming.openId }
+    : { ...prev, ...incoming };
   writeCache(merged);
   return merged;
 }

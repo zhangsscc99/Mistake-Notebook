@@ -1,4 +1,4 @@
-const { callTeacher, formatDay, shortText } = require('../../utils/teacher');
+const { callTeacher, formatDay, shortText, defaultDateRange } = require('../../utils/teacher');
 const { partitionPaperQuestions } = require('../../utils/paper.js');
 
 function readPick() {
@@ -36,7 +36,10 @@ Page({
     pickCount: 0,
     cart: [],
     cartLoading: false,
-    cartBelongsHere: true
+    cartBelongsHere: true,
+    fromDate: '',
+    toDate: '',
+    today: ''
   },
 
   onLoad() {
@@ -55,7 +58,14 @@ Page({
     const classes = (dash.success && dash.data && dash.data.classes) || [];
     const pick = readPick();
     const selectedClass = classes.find((c) => c.id === pick.classId) || classes[0] || {};
-    this.setData({ classes, selectedClass });
+    const range = defaultDateRange();
+    this.setData({
+      classes,
+      selectedClass,
+      fromDate: range.from,
+      toDate: range.to,
+      today: range.today
+    });
     await Promise.all([this.loadCart(), this.reload()]);
     this._ready = true;
   },
@@ -95,10 +105,11 @@ Page({
 
   async reload() {
     const classId = this.data.selectedClass.id;
+    const range = { from: this.data.fromDate, to: this.data.toDate };
     const [papers, notebooks, assignments] = await Promise.all([
-      callTeacher('listPapers', { classId }),
-      callTeacher('listNotebooks', { classId }),
-      callTeacher('teacherAssignments')
+      callTeacher('listPapers', { classId, from: range.from, to: range.to }),
+      callTeacher('listNotebooks', { classId, from: range.from, to: range.to }),
+      callTeacher('teacherAssignments', { from: range.from, to: range.to })
     ]);
     const list = (assignments.success && assignments.data) || [];
     this.setData({
@@ -117,6 +128,20 @@ Page({
     this.setData({ selectedClass: item });
     this.loadCart();
     this.reload();
+  },
+
+  onFromDate(e) {
+    let fromDate = e.detail.value;
+    let toDate = this.data.toDate;
+    if (fromDate > toDate) toDate = fromDate;
+    this.setData({ fromDate, toDate }, () => this.reload());
+  },
+
+  onToDate(e) {
+    let toDate = e.detail.value;
+    let fromDate = this.data.fromDate;
+    if (fromDate > toDate) fromDate = toDate;
+    this.setData({ fromDate, toDate }, () => this.reload());
   },
 
   goPick() {

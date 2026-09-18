@@ -6,6 +6,7 @@
       <view class="hero-kicker">{{className || '班级'}}</view>
       <view class="hero-title">{{student.nickName || '未设置昵称'}}</view>
       <view class="hero-sub">加入 {{joinedText}} · 最近活跃 {{activeText}}</view>
+      <view class="hero-sub" wx:if="{{parentCode}}" catchtap="copyParentCode">家长绑定码 {{parentCode}} · 点复制</view>
       <view class="hero-stats">
         <view class="hero-stat"><text>{{questionCount}}</text><label>错题</label></view>
         <view class="hero-divider"></view>

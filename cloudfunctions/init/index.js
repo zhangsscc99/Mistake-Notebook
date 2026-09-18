@@ -25,6 +25,7 @@ const COLLECTIONS = [
   'assignments',
   'assignment_submissions',
   'parent_reports',
+  'parent_bindings',
   'class_papers'
 ];
 

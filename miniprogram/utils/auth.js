@@ -1,6 +1,6 @@
 // 本地登录态。真正的身份在云函数里用微信 OPENID。
 // 本地 authSession 只是快捷标记；丢了要从云端 ensure 认回来，不能跳到登录页。
-const { getCachedProfile, setCachedProfile } = require('./profile');
+const { getCachedProfile, setCachedProfile, clearProfileCache } = require('./profile');
 
 const SESSION_KEY = 'authSession';
 const LOGOUT_KEY = 'authLoggedOut';
@@ -48,7 +48,7 @@ function isLoggedIn() {
 }
 
 function hasLockedRole(role) {
-  return role === 'teacher' || role === 'student';
+  return role === 'teacher' || role === 'student' || role === 'parent';
 }
 
 function setLoggedIn(openId, role) {
@@ -82,12 +82,24 @@ function isTeacherSession() {
   return getSessionRole() === 'teacher';
 }
 
+function isParentSession() {
+  return getSessionRole() === 'parent';
+}
+
 function enterByRole(role) {
   if (role === 'teacher') {
     wx.reLaunch({ url: '/pages/teacher/teacher' });
     return;
   }
-  wx.switchTab({ url: '/pages/index/index' });
+  if (role === 'parent') {
+    wx.reLaunch({ url: '/pages/parent/parent' });
+    return;
+  }
+  if (role === 'student') {
+    wx.switchTab({ url: '/pages/index/index' });
+    return;
+  }
+  goLogin({ force: true });
 }
 
 // 冷启动时 App.onShow 里 getCurrentPages() 经常还是空的，老师会被留在学生首页。
@@ -100,6 +112,26 @@ function bounceTeacherOffStudentShell() {
   if (route === 'pages/login/login') return false;
   if (route && !STUDENT_TAB_ROUTES[route] && route.indexOf('pages/') !== 0) return false;
   wx.reLaunch({ url: '/pages/teacher/teacher' });
+  return true;
+}
+
+function bounceParentOffOtherShells() {
+  if (getSessionRole() !== 'parent') return false;
+  const pages = getCurrentPages();
+  const route = (pages.length && pages[pages.length - 1] && pages[pages.length - 1].route) || '';
+  if (route.indexOf('pages/parent') === 0) return false;
+  if (route === 'pages/login/login') return false;
+  wx.reLaunch({ url: '/pages/parent/parent' });
+  return true;
+}
+
+// 学生 Tab 冷启动先于云端 ensure。没有锁定身份时必须去登录页选角色，
+// 不能把上一个微信的本地会话当成这个人已经是学生。
+function guardStudentShell() {
+  if (bounceTeacherOffStudentShell()) return true;
+  if (bounceParentOffOtherShells()) return true;
+  if (hasLockedRole(getSessionRole())) return false;
+  goLogin({ force: true });
   return true;
 }
 
@@ -161,6 +193,10 @@ function dismissLoginOverlay() {
     wx.reLaunch({ url: '/pages/teacher/teacher' });
     return true;
   }
+  if (isParentSession()) {
+    wx.reLaunch({ url: '/pages/parent/parent' });
+    return true;
+  }
   for (let i = pages.length - 2; i >= 0; i--) {
     const url = TAB_URLS[pages[i].route];
     if (url) {
@@ -177,6 +213,10 @@ function leaveLoginToTab() {
     wx.reLaunch({ url: '/pages/teacher/teacher' });
     return;
   }
+  if (isParentSession()) {
+    wx.reLaunch({ url: '/pages/parent/parent' });
+    return;
+  }
   const pages = getCurrentPages();
   for (let i = pages.length - 2; i >= 0; i--) {
     const url = TAB_URLS[pages[i].route];
@@ -189,17 +229,13 @@ function leaveLoginToTab() {
 }
 
 // 用 ensure 恢复登录：有档就读回来，没档就建档。不要用 get（exists=false 会被当成未登录）。
-// 云端还没有 student/teacher 时不算已登录，必须去登录页选定；本地旧会话不能冒充身份。
+// 云端还没有锁定身份时不算已登录，必须去登录页选定。
+// 本地缓存可能是上一个微信号留下的，openid 对不上就丢掉，不能冒充学生进首页。
 function restoreSessionFromCloud() {
   if (isOptedOut()) {
     return Promise.resolve({ loggedIn: false, restored: false, optedOut: true });
   }
   if (restoring) return restoring;
-
-  const cached = getCachedProfile();
-  if (cached && hasLockedRole(cached.role)) {
-    setLoggedIn(cached.openId, cached.role);
-  }
 
   restoring = new Promise((resolve, reject) => {
     wx.cloud.callFunction({
@@ -212,7 +248,22 @@ function restoreSessionFromCloud() {
   })
     .then((res) => {
       if (!res.success) throw new Error(res.error || '登录恢复失败');
-      const p = setCachedProfile(res.data);
+      const incoming = res.data || {};
+      const cloudOpenId = incoming.openId || '';
+      const cached = getCachedProfile();
+      const session = readSession();
+      const localOpenId = (session && session.openId) || cached.openId || '';
+      if (localOpenId && cloudOpenId && localOpenId !== cloudOpenId) {
+        clearProfileCache();
+        dropLocalSession();
+        try {
+          const app = getApp();
+          if (app && app.globalData) app.globalData.parentChildId = '';
+        } catch (e) {
+          // ignore
+        }
+      }
+      const p = setCachedProfile(incoming);
       if (!hasLockedRole(p.role)) {
         dropLocalSession();
         return { loggedIn: false, restored: true, needsRole: true, profile: p };
@@ -221,7 +272,7 @@ function restoreSessionFromCloud() {
       return { loggedIn: true, restored: true, profile: p };
     })
     .catch((err) => {
-      if (isLoggedIn()) {
+      if (isLoggedIn() && hasLockedRole(getSessionRole())) {
         return { loggedIn: true, restored: false, uncertain: true, error: err };
       }
       return { loggedIn: false, restored: false, uncertain: true, error: err };
@@ -246,8 +297,11 @@ module.exports = {
   getSessionRole,
   hasLockedRole,
   isTeacherSession,
+  isParentSession,
   enterByRole,
   bounceTeacherOffStudentShell,
+  bounceParentOffOtherShells,
+  guardStudentShell,
   clearSession,
   goLogin,
   restoreSessionFromCloud,

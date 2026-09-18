@@ -1,0 +1,42 @@
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin: 16rpx 24rpx 8rpx;
+}
+
+.picker-chip {
+  padding: 10rpx 22rpx;
+  border-radius: 999px;
+  background: #fff;
+  color: rgba(11, 22, 51, 0.62);
+  font-size: 24rpx;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2rpx rgba(11, 22, 51, 0.08);
+}
+
+.picker-chip.active {
+  color: #fff;
+  background: linear-gradient(135deg, #2459ff 0%, #52b7ff 100%);
+  box-shadow: 0 6px 16px rgba(31, 91, 255, 0.28);
+}
+
+.rep-title {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: #0b1633;
+}
+
+.rep-meta,
+.rep-weak {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.rep-go {
+  margin-top: 16rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #2459ff;
+}
