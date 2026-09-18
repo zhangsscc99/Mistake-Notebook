@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">QUESTIONS</view>
     <view class="hero-title">全班题目</view>
-    <view class="hero-sub">学生错题和班级题库都在这里。拍照录入进题库，不进学生错题</view>
+    <view class="hero-sub">学生错题和班级题库都在这里。</view>
     <view class="hero-stats">
       <view class="hero-stat" bindtap="showMistakes"><text>{{stats.total || 0}}</text><label>错题</label></view>
       <view class="hero-divider"></view>

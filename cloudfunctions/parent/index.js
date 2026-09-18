@@ -314,6 +314,8 @@ function clipStudentSlice(report, studentId) {
     title: report.title || '学习情况报告',
     className: report.className || '',
     createdAt: report.createdAt || '',
+    from: report.from || '',
+    to: report.to || '',
     studentCount: report.studentCount || 0,
     questionTotal: report.questionTotal || 0,
     assignmentCount: report.assignmentCount || 0,
@@ -396,11 +398,47 @@ async function childMistakes(event) {
   rows = rows.filter((q) => q.source !== 'teacher_bank');
   const hasMore = rows.length > page;
   rows = rows.slice(0, page);
+  let total = 0;
+  let byCategory = [];
+  if (skip === 0) {
+    let stats = [];
+    try {
+      const s = await db.collection('questions')
+        .where(cond)
+        .orderBy('createdAt', 'desc')
+        .limit(200)
+        .get();
+      stats = (s.data || []).filter((q) => q.source !== 'teacher_bank');
+    } catch (e) {
+      stats = [];
+    }
+    if (range && !stats.length) {
+      const all = (await db.collection('questions').where({ openid: studentId, isDeleted: false }).orderBy('createdAt', 'desc').limit(200).get()).data || [];
+      stats = all.filter((q) => {
+        if (q.source === 'teacher_bank') return false;
+        const t = Date.parse(q.createdAt || '');
+        return Number.isFinite(t) && t >= range.gteMs && t <= range.lteMs;
+      });
+    }
+    total = stats.length;
+    const catMap = {};
+    stats.forEach((q) => {
+      const cat = q.category || '未分类';
+      catMap[cat] = (catMap[cat] || 0) + 1;
+    });
+    byCategory = Object.keys(catMap).map((name) => ({
+      name,
+      count: catMap[name],
+      pct: total ? Math.round((catMap[name] * 100) / total) : 0
+    })).sort((a, b) => b.count - a.count);
+  }
   return {
     success: true,
     data: {
       skip,
       hasMore,
+      total,
+      byCategory,
       questions: rows.map((q) => ({
         id: q._id,
         content: q.content || q.recognizedText || '',

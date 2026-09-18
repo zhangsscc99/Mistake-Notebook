@@ -49,6 +49,15 @@ function defaultDateRange() {
   return { from: ymdOf(from), to: ymdOf(to), today: ymdOf(to) };
 }
 
+function weekDateRange() {
+  const to = new Date();
+  const from = new Date();
+  const day = from.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  from.setDate(from.getDate() - diff);
+  return { from: ymdOf(from), to: ymdOf(to), today: ymdOf(to) };
+}
+
 function decorateReport(raw) {
   const r = raw || {};
   const students = (r.students || []).map((s) => ({
@@ -61,23 +70,21 @@ function decorateReport(raw) {
     ...c,
     pct: c.pct || (catTotal ? Math.round((c.count * 100) / catTotal) : 0)
   }));
-  const hot = (r.hot || []).map((h, i) => ({
-    ...h,
-    key: i + '-' + (h.category || ''),
-    preview: shortText(h.content, 36)
-  }));
+  const fromText = formatDay(r.from) || '';
+  const toText = formatDay(r.to) || '';
+  const rangeText = fromText && toText ? (fromText + ' 至 ' + toText) : '';
   return {
     id: r.id || r._id || '',
     title: r.title || '学习情况报告',
     classId: r.classId || '',
     className: r.className || '',
     createdText: formatDay(r.createdAt) || '',
+    rangeText,
     studentCount: r.studentCount || students.length,
     questionTotal: r.questionTotal || 0,
     assignmentCount: r.assignmentCount || 0,
     classAverageText: r.classAverage == null ? '—' : (r.classAverage + '分'),
     byCategory,
-    hot,
     students
   };
 }
@@ -85,19 +92,12 @@ function decorateReport(raw) {
 function buildCopyText(report) {
   const lines = [
     `【${report.title}】`,
-    report.createdText,
+    report.rangeText ? ('统计区间 ' + report.rangeText) : report.createdText,
     `学生 ${report.studentCount} 人 · 错题 ${report.questionTotal} 道 · 作业 ${report.assignmentCount} 份 · 班级均分 ${report.classAverageText}`,
     ''
   ];
   if (report.byCategory.length) {
     lines.push('学科分布：' + report.byCategory.map((c) => `${c.name} ${c.count}`).join('、'));
-    lines.push('');
-  }
-  if (report.hot.length) {
-    lines.push('高频错题：');
-    report.hot.forEach((h, i) => {
-      lines.push(`${i + 1}. [${h.category}] ${h.preview}（${h.count}次 / ${h.studentCount}人）`);
-    });
     lines.push('');
   }
   lines.push('学生情况：');
@@ -117,6 +117,7 @@ module.exports = {
   isPastDue,
   ymdOf,
   defaultDateRange,
+  weekDateRange,
   decorateReport,
   buildCopyText
 };

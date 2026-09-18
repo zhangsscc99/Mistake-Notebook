@@ -2,8 +2,17 @@
   <view class="teacher-hero">
     <view class="hero-kicker">REPORT</view>
     <view class="hero-title">家长报告</view>
-    <view class="hero-sub">生成班级学情快照。点报告进入详情，可按日期查看全班错题。</view>
-    <button class="ghost-btn hero-btn" loading="{{generating}}" disabled="{{generating}}" bindtap="generate">生成最新报告</button>
+    <view class="hero-sub">选择时间段，生成班级学情给家长。</view>
+    <view class="date-row hero-dates">
+      <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
+        <view class="date-cell">{{fromDate}}</view>
+      </picker>
+      <text class="date-sep">至</text>
+      <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
+        <view class="date-cell">{{toDate}}</view>
+      </picker>
+    </view>
+    <button class="ghost-btn hero-btn" loading="{{generating}}" disabled="{{generating}}" bindtap="generate">生成报告</button>
   </view>
 
   <view class="chip-row">
@@ -14,8 +23,8 @@
   <view class="section-head"><text class="section-title">历史报告</text></view>
   <view class="white-card tap-card" wx:for="{{history}}" wx:key="id" data-id="{{item.id}}" bindtap="openHistory">
     <view class="his-title">{{item.title}}</view>
-    <view class="his-meta">{{item.createdText}} · {{item.studentCount}} 人 · 错题 {{item.questionTotal}}</view>
+    <view class="his-meta">{{item.historyMeta}}</view>
     <view class="his-go">查看详情 ›</view>
   </view>
-  <view class="empty-block" wx:if="{{!history.length}}">还没有生成过报告<text>点上方「生成最新报告」</text></view>
+  <view class="empty-block" wx:if="{{!history.length}}">还没有生成过报告<text>选好日期后点「生成报告」</text></view>
 </view>

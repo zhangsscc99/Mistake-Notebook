@@ -4,8 +4,8 @@
     <view class="mark">错</view>
     <view class="title">智卷错题通</view>
     <view class="subtitle" wx:if="{{invited}}">同学推荐你来一起整理错题</view>
-    <view class="subtitle" wx:elif="{{intentRole === 'teacher'}}">教师工作台与学生端分开，登录后只看班级学情</view>
-    <view class="subtitle" wx:elif="{{intentRole === 'parent'}}">绑定孩子后只看作业和报告，不能改错题</view>
+    <view class="subtitle" wx:elif="{{intentRole === 'teacher'}}">登录后进入班级工作台，查看学情</view>
+    <view class="subtitle" wx:elif="{{intentRole === 'parent'}}">绑定孩子后，查看作业和学情</view>
     <view class="subtitle" wx:else>用微信身份进入，每人一份自己的错题本</view>
   </view>
 
@@ -69,7 +69,7 @@
   </view>
 
   <view class="hints" wx:if="{{!checking}}">
-    <view class="hint">学生整理错题；老师建班看学情；家长绑定孩子后只看作业和报告</view>
-    <view class="hint">一个微信号只能绑定一种身份。退出登录不会改变身份，更换需先注销账号</view>
+    <view class="hint">学生整理错题，老师看班级学情，家长查看孩子情况</view>
+    <view class="hint">一个微信号只能选一种身份，退出登录不会改变</view>
   </view>
 </view>

@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">PARENT</view>
     <view class="hero-title">{{childName || '家长端'}}</view>
-    <view class="hero-sub">只看孩子的作业进度、分数和评语。不能改错题，也不能替孩子交作业。</view>
+    <view class="hero-sub">查看孩子的作业进度、分数和评语。</view>
     <button class="ghost-btn hero-btn" bindtap="goBind">绑定孩子</button>
   </view>
 

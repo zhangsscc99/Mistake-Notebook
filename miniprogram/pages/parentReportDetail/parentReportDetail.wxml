@@ -22,7 +22,7 @@
       <text class="dist-num">{{item.count}}</text>
     </view>
   </view>
-  <view class="empty-block" wx:elif="{{!loading}}">这份快照里还没有这个孩子的学科分布</view>
+  <view class="empty-block" wx:elif="{{!loading}}">这份报告还没有这个孩子的学科分布</view>
 
   <view class="section-head"><text class="section-title">班级对照</text></view>
   <view class="white-card">
@@ -33,28 +33,7 @@
       <view class="dist-track"><view class="dist-fill class" style="width: {{item.pct}}%;"></view></view>
       <text class="dist-num">{{item.count}}</text>
     </view>
-    <view class="class-empty" wx:if="{{!classCategories.length}}">这份快照还没有班级学科数据</view>
+    <view class="class-empty" wx:if="{{!classCategories.length}}">这份报告还没有班级学科数据</view>
   </view>
-
-  <view class="section-head"><text class="section-title">孩子的错题</text></view>
-  <view class="date-row">
-    <picker mode="date" value="{{fromDate}}" start="2020-01-01" end="{{today}}" bindchange="onFromDate">
-      <view class="date-cell">{{fromDate}}</view>
-    </picker>
-    <text class="date-sep">至</text>
-    <picker mode="date" value="{{toDate}}" start="{{fromDate}}" end="{{today}}" bindchange="onToDate">
-      <view class="date-cell">{{toDate}}</view>
-    </picker>
-  </view>
-  <view class="white-card" wx:for="{{questions}}" wx:key="id">
-    <view class="q-index">第 {{item.index}} 题 · {{item.day}}</view>
-    <view class="q-content">{{item.preview}}</view>
-    <view class="q-meta">
-      <text class="badge">{{item.category}}</text>
-      <text class="img-link" wx:if="{{item.imageUrl}}" catchtap="previewImage" data-url="{{item.imageUrl}}">查看原图</text>
-    </view>
-  </view>
-  <view class="empty-block" wx:if="{{!loading && !questions.length}}">这个孩子这段时间没有错题</view>
-  <button class="more-btn" wx:if="{{hasMore}}" loading="{{loadingMore}}" bindtap="loadMore">加载更多</button>
   <view class="loading-line" wx:if="{{loading}}">加载中…</view>
 </view>

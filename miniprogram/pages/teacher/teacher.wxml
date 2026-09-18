@@ -89,7 +89,7 @@
       </view>
       <view class="tool-card" bindtap="openReport">
         <view class="tool-title">家长报告</view>
-        <view class="tool-desc">班级学情快照</view>
+        <view class="tool-desc">发给家长的学情</view>
       </view>
     </view>
   </block>

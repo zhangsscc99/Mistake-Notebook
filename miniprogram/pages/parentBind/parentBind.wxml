@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">BIND</view>
     <view class="hero-title">绑定孩子</view>
-    <view class="hero-sub">向学生或老师要家长绑定码。学生必须已经加入班级。</view>
+    <view class="hero-sub">输入孩子或老师给的绑定码。</view>
   </view>
   <view class="white-card">
     <view class="field-label">家长绑定码</view>

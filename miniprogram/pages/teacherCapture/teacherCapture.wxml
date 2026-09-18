@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">CAPTURE</view>
     <view class="hero-title">拍照录入</view>
-    <view class="hero-sub">拍试卷或从相册选图，识别后存进这个班的题库。不会进入个人错题本</view>
+    <view class="hero-sub">拍试卷或从相册选图，识别后存进这个班的题库。</view>
   </view>
 
   <view class="section-head"><text class="section-title">班级</text></view>

@@ -1,15 +1,20 @@
-const { callTeacher, formatDay } = require('../../utils/teacher');
+const { callTeacher, formatDay, weekDateRange } = require('../../utils/teacher');
 
 Page({
   data: {
     classes: [],
     selectedClass: {},
     generating: false,
-    history: []
+    history: [],
+    fromDate: '',
+    toDate: '',
+    today: ''
   },
 
   onLoad(options) {
     this._preferClassId = (options && options.classId) || '';
+    const range = weekDateRange();
+    this.setData({ fromDate: range.from, toDate: range.to, today: range.today });
     this.boot();
   },
   onShow() {
@@ -34,10 +39,17 @@ Page({
       return;
     }
     const r = await callTeacher('listParentReports', { classId });
-    const history = ((r.success && r.data) || []).map((p) => ({
-      ...p,
-      createdText: formatDay(p.createdAt)
-    }));
+    const history = ((r.success && r.data) || []).map((p) => {
+      const createdText = formatDay(p.createdAt);
+      const fromText = formatDay(p.from);
+      const toText = formatDay(p.to);
+      const rangeText = fromText && toText ? (fromText + ' 至 ' + toText) : '';
+      return {
+        ...p,
+        createdText,
+        historyMeta: (rangeText || createdText) + ' · ' + (p.studentCount || 0) + ' 人 · 错题 ' + (p.questionTotal || 0)
+      };
+    });
     this.setData({ history });
   },
 
@@ -48,13 +60,31 @@ Page({
     this.loadHistory();
   },
 
+  onFromDate(e) {
+    let fromDate = e.detail.value;
+    let toDate = this.data.toDate;
+    if (fromDate > toDate) toDate = fromDate;
+    this.setData({ fromDate, toDate });
+  },
+
+  onToDate(e) {
+    let toDate = e.detail.value;
+    let fromDate = this.data.fromDate;
+    if (fromDate > toDate) fromDate = toDate;
+    this.setData({ fromDate, toDate });
+  },
+
   async generate() {
     const classId = this.data.selectedClass.id;
     if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
     if (this.data.generating) return;
     this.setData({ generating: true });
     try {
-      const r = await callTeacher('parentReport', { classId }, 20000);
+      const r = await callTeacher('parentReport', {
+        classId,
+        from: this.data.fromDate,
+        to: this.data.toDate
+      }, 20000);
       if (!r.success) throw new Error(r.error || '生成失败');
       const id = (r.data && (r.data.id || r.data._id)) || '';
       await this.loadHistory();

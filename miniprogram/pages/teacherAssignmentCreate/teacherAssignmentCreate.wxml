@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">SEND</view>
     <view class="hero-title">发给班级</view>
-    <view class="hero-sub">题目已在组卷页选好。这里只选发给班级的方式：练习看题，作业作答批改</view>
+    <view class="hero-sub">题目已选好，这里选择发给班级的方式。</view>
   </view>
 
   <view class="section-head"><text class="section-title">发给班级的方式</text></view>

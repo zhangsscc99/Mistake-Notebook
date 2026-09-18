@@ -24,6 +24,7 @@
     "pages/parent/parent",
     "pages/parentBind/parentBind",
     "pages/parentHomework/parentHomework",
+    "pages/parentMistakes/parentMistakes",
     "pages/parentReports/parentReports",
     "pages/parentReportDetail/parentReportDetail",
     "pages/parentMine/parentMine",

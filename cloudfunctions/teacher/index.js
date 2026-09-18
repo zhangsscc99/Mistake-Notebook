@@ -33,9 +33,32 @@ function createdAtRange(from, to) {
     b = t;
   }
   return {
+    fromDay: a,
+    toDay: b,
     gte: new Date(a + 'T00:00:00+08:00').toISOString(),
     lte: new Date(b + 'T23:59:59.999+08:00').toISOString()
   };
+}
+
+function shanghaiYmd(offsetDays) {
+  const t = Date.now() + 8 * 3600 * 1000 + (Number(offsetDays) || 0) * 86400000;
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+function reportWindow(from, to) {
+  let range = createdAtRange(from, to);
+  if (range) return range;
+  const today = shanghaiYmd(0);
+  const utcDay = new Date(Date.now() + 8 * 3600 * 1000).getUTCDay();
+  const sinceMonday = utcDay === 0 ? 6 : utcDay - 1;
+  return createdAtRange(shanghaiYmd(-sinceMonday), today);
+}
+
+function isoInRange(iso, range) {
+  if (!range) return true;
+  const t = Date.parse(iso || '');
+  if (!Number.isFinite(t)) return false;
+  return t >= Date.parse(range.gte) && t <= Date.parse(range.lte);
 }
 
 function isTeacherPaperReady(q) {
@@ -993,10 +1016,12 @@ async function recallNotebook(teacherId, event) {
 async function parentReport(teacherId, event) {
   const classId = String(event.classId || '');
   const cls = await assertOwnedClass(teacherId, classId);
+  const window = reportWindow(event.from, event.to);
   const members = await approvedMembers(classId);
   const ids = members.map((m) => m.studentId);
   const users = ids.length ? ((await db.collection('users').where({ _id: _.in(ids) }).get()).data || []) : [];
-  const assignments = (await db.collection('assignments').where({ classId, isDeleted: false }).get()).data || [];
+  let assignments = (await db.collection('assignments').where({ classId, isDeleted: false }).get()).data || [];
+  assignments = assignments.filter((a) => isoInRange(a.createdAt, window));
   const assignmentIds = assignments.map((a) => a._id);
   const submissions = [];
   for (let i = 0; i < assignmentIds.length; i += 20) {
@@ -1004,11 +1029,10 @@ async function parentReport(teacherId, event) {
     const s = await db.collection('assignment_submissions').where({ assignmentId: _.in(part) }).get();
     submissions.push(...(s.data || []));
   }
-  const qrows = await questionsByOpenIds(ids, 200);
+  const qrows = await fetchClassQuestionRows(ids, window, 200);
   const qCount = {};
   const catBy = {};
   const catMap = {};
-  const hotMap = {};
   qrows.forEach((q) => {
     const sid = q.openid || '';
     const cat = q.category || '未分类';
@@ -1016,10 +1040,6 @@ async function parentReport(teacherId, event) {
     if (!catBy[sid]) catBy[sid] = {};
     catBy[sid][cat] = (catBy[sid][cat] || 0) + 1;
     catMap[cat] = (catMap[cat] || 0) + 1;
-    const key = contentKey(q.content) || q._id;
-    if (!hotMap[key]) hotMap[key] = { content: q.content || '', category: cat, count: 0, students: {} };
-    hotMap[key].count += 1;
-    if (sid) hotMap[key].students[sid] = true;
   });
   const rows = ids.map((id) => {
     const u = users.find((x) => x._id === id) || {};
@@ -1043,7 +1063,9 @@ async function parentReport(teacherId, event) {
     teacherId,
     classId,
     className: cls.name,
-    title: `${cls.name} 学习情况报告`,
+    title: `${cls.name} ${window.fromDay} 至 ${window.toDay} 学情`,
+    from: window.fromDay,
+    to: window.toDay,
     createdAt: now,
     studentCount: ids.length,
     questionTotal: qrows.length,
@@ -1054,13 +1076,6 @@ async function parentReport(teacherId, event) {
       count: catMap[name],
       pct: qrows.length ? Math.round((catMap[name] * 100) / qrows.length) : 0
     })).sort((a, b) => b.count - a.count).slice(0, 8),
-    hot: Object.keys(hotMap).map((k) => ({
-      content: hotMap[k].content,
-      category: hotMap[k].category,
-      count: hotMap[k].count,
-      studentCount: Object.keys(hotMap[k].students).length,
-      studentIds: Object.keys(hotMap[k].students)
-    })).sort((a, b) => b.count - a.count || b.studentCount - a.studentCount).slice(0, 5),
     students: rows
   };
   const saved = await db.collection('parent_reports').add({ data: report });
@@ -1084,6 +1099,8 @@ async function listParentReports(teacherId, event) {
         classId: p.classId,
         className: p.className,
         createdAt: p.createdAt,
+        from: p.from || '',
+        to: p.to || '',
         studentCount: p.studentCount || (p.students || []).length,
         assignmentCount: p.assignmentCount || 0,
         questionTotal: p.questionTotal || 0

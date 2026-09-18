@@ -2,7 +2,7 @@
   <view class="teacher-hero">
     <view class="hero-kicker">HOMEWORK</view>
     <view class="hero-title">作业批改</view>
-    <view class="hero-sub">学生提交后在这里按题判对错并打分。要发给班级请去组卷发送试卷</view>
+    <view class="hero-sub">学生提交后，在这里按题判对错并打分。</view>
     <button class="ghost-btn hero-btn" bindtap="goPaper">发送试卷</button>
   </view>
 
