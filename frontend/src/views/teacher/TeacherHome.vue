@@ -82,11 +82,14 @@
 
     <div class="section-head"><span class="section-title">教学工具</span></div>
     <div class="tool-grid">
+      <div class="tool" @click="$router.push('/teacher/capture')">
+        <b>拍照识别</b><span>拍试卷进老师题库</span>
+      </div>
       <div class="tool" @click="$router.push('/teacher/questions')">
-        <b>全班题目</b><span>学生错题与班级题库</span>
+        <b>全班题目</b><span>学生错题与老师题库</span>
       </div>
       <div class="tool" @click="$router.push('/teacher/paper')">
-        <b>班级组卷</b><span>选题后发给班级或存为题单</span>
+        <b>班级组卷</b><span>选题后生成试卷，再发给班级</span>
       </div>
       <div class="tool" @click="$router.push('/teacher/homework')">
         <b>作业批改</b><span>查看提交与打分</span>

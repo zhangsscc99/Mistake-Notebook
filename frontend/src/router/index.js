@@ -47,6 +47,8 @@ const TeacherAnalytics = () => import(/* webpackChunkName: "teacher-analytics" *
 const TeacherParentReport = () => import(/* webpackChunkName: "teacher-parent-report" */ '../views/teacher/TeacherParentReport.vue')
 const TeacherQuestions = () => import(/* webpackChunkName: "teacher-questions" */ '../views/teacher/TeacherQuestions.vue')
 const TeacherCapture = () => import(/* webpackChunkName: "teacher-capture" */ '../views/teacher/TeacherCapture.vue')
+const TeacherBankPicker = () => import(/* webpackChunkName: "teacher-bank-picker" */ '../views/teacher/TeacherBankPicker.vue')
+const TeacherSetDetail = () => import(/* webpackChunkName: "teacher-set-detail" */ '../views/teacher/TeacherSetDetail.vue')
 const TeacherAssistant = () => import(/* webpackChunkName: "teacher-assistant" */ '../views/teacher/TeacherAssistant.vue')
 const TeacherPaperHub = () => import(/* webpackChunkName: "teacher-paper" */ '../views/teacher/TeacherPaperHub.vue')
 const TeacherSend = () => import(/* webpackChunkName: "teacher-send" */ '../views/teacher/TeacherSend.vue')
@@ -93,7 +95,9 @@ const routes = [
 
   { path: '/teacher', name: 'TeacherHome', component: TeacherHome, meta: { title: '班级工作台', teacher: true } },
   { path: '/teacher/questions', name: 'TeacherQuestions', component: TeacherQuestions, meta: { title: '全班题目', teacher: true } },
-  { path: '/teacher/capture', name: 'TeacherCapture', component: TeacherCapture, meta: { title: '拍照录入', teacher: true } },
+  { path: '/teacher/capture', name: 'TeacherCapture', component: TeacherCapture, meta: { title: '拍照识别', teacher: true } },
+  { path: '/teacher/bank-picker', name: 'TeacherBankPicker', component: TeacherBankPicker, meta: { title: '勾选题库', teacher: true } },
+  { path: '/teacher/sets/:type/:id', name: 'TeacherSetDetail', component: TeacherSetDetail, meta: { title: '试卷详情', teacher: true } },
   { path: '/teacher/assistant', name: 'TeacherAssistant', component: TeacherAssistant, meta: { title: '班级助手', teacher: true } },
   { path: '/teacher/paper', name: 'TeacherPaperHub', component: TeacherPaperHub, meta: { title: '班级组卷', teacher: true } },
   { path: '/teacher/send', name: 'TeacherSend', component: TeacherSend, meta: { title: '发给班级', teacher: true } },

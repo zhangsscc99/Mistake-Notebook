@@ -163,6 +163,7 @@ Page({
   },
 
   openQuestions() { wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions' }); },
+  openCapture() { wx.reLaunch({ url: '/pages/teacherCapture/teacherCapture' }); },
   openPaper() { wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' }); },
   openAssignments() { wx.navigateTo({ url: '/pages/teacherAssignments/teacherAssignments' }); },
   openReport() {

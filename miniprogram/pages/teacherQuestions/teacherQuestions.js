@@ -1,5 +1,5 @@
 const { callTeacher } = require('../../utils/teacher');
-const { partitionPaperQuestions } = require('../../utils/paper.js');
+const { partitionPaperQuestions, promptPaperTitle } = require('../../utils/paper.js');
 
 function decorateQuestions(questions, hot) {
   const byId = {};
@@ -9,9 +9,13 @@ function decorateQuestions(questions, hot) {
     });
   });
   return (questions || []).map((q) => {
-    const h = byId[q.id];
+    const id = String(q.id || q._id || '');
+    const h = byId[id] || byId[q.id];
     return {
       ...q,
+      id,
+      aiAnswer: q.aiAnswer || q.answer || '',
+      aiAnalysis: q.aiAnalysis || q.analysis || '',
       isHot: !!h,
       hotCount: h ? h.count : 0,
       hotStudents: h ? h.studentCount : 0
@@ -82,6 +86,8 @@ Page({
     const picking = !!(options && options.pick === '1');
     const sourceFilter = options && options.bank === '1' ? 'bank' : 'mistakes';
     this._preferClassId = (options && options.classId) || '';
+    this._paperId = (options && options.paperId) || '';
+    this._fromPaper = (options && options.from) === 'paper' || !!this._paperId;
     this.setData({ picking, sourceFilter });
     this.boot();
   },
@@ -148,18 +154,25 @@ Page({
     const classId = this.data.selectedClass.id;
     this.setData({ loading: true });
     try {
+      const bankP = callTeacher('listBank');
       if (!classId) {
+        const bank = await bankP;
+        const bankQuestions = ((bank.success && bank.data) || []).map((q) => ({
+          ...q,
+          isHot: false,
+          hotCount: 0,
+          hotStudents: 0
+        }));
         this.syncView({
           mistakeQuestions: [],
-          bankQuestions: [],
-          questions: [],
+          bankQuestions,
+          questions: bankQuestions,
           students: [],
           compactStudentFilter: false,
           studentLabel: '全班',
           stats: { total: 0, hot: [], studentCount: 0, byCategory: [] },
           hotCount: 0,
-          bankCount: 0,
-          categoryChips: [{ name: '全部', value: '', count: 0 }]
+          bankCount: bankQuestions.length
         });
         return;
       }
@@ -167,7 +180,7 @@ Page({
         callTeacher('teacherQuestions', { classId }),
         callTeacher('classStats', { classId }),
         callTeacher('students', { classId }),
-        callTeacher('listBank', { classId })
+        bankP
       ]);
       const stats = (st.success && st.data) || { total: 0, hot: [], studentCount: 0, byCategory: [] };
       const mistakeQuestions = decorateQuestions((qs.success && qs.data && qs.data.questions) || [], stats.hot);
@@ -205,8 +218,7 @@ Page({
       category: '',
       studentId: '',
       keyword: '',
-      onlyHot: false,
-      sourceFilter: 'mistakes'
+      onlyHot: false
     }, () => this.reload());
   },
 
@@ -221,9 +233,7 @@ Page({
   },
 
   goCapture() {
-    const classId = this.data.selectedClass.id;
-    if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
-    wx.navigateTo({ url: '/pages/teacherCapture/teacherCapture?classId=' + classId });
+    wx.reLaunch({ url: '/pages/teacherCapture/teacherCapture' });
   },
 
   selectCategory(e) {
@@ -277,7 +287,17 @@ Page({
   },
 
   startPick() { this.syncView({ picking: true }); },
-  cancelPick() { this.syncView({ picking: false, selectedMap: {}, selectedCount: 0 }); },
+  cancelPick() {
+    if (this._paperId) {
+      wx.navigateBack({ fail: () => wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' }) });
+      return;
+    }
+    if (this._fromPaper) {
+      wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' });
+      return;
+    }
+    this.syncView({ picking: false, selectedMap: {}, selectedCount: 0 });
+  },
 
   selectAllVisible() {
     const map = Object.assign({}, this.data.selectedMap);
@@ -298,7 +318,7 @@ Page({
       if (!q) return;
       if (this.data.sourceFilter === 'bank') {
         wx.showModal({
-          title: q.category || '班级题库',
+          title: q.category || '老师题库',
           content: q.content || '',
           confirmText: '删除',
           confirmColor: '#e11d48',
@@ -340,7 +360,7 @@ Page({
     const ids = Object.keys(this.data.selectedMap);
     if (!ids.length) return wx.showToast({ title: '请先选题', icon: 'none' });
     const pool = (this.data.mistakeQuestions || []).concat(this.data.bankQuestions || []);
-    const picked = pool.filter((q) => this.data.selectedMap[q.id]);
+    const picked = pool.filter((q) => this.data.selectedMap[String(q.id)]);
     const { ready, blocked } = partitionPaperQuestions(picked, true);
     if (!ready.length) {
       wx.showToast({ title: blocked.length ? '未解析完成的题目不能加入组卷' : '请先选题', icon: 'none' });
@@ -349,10 +369,53 @@ Page({
     if (blocked.length) {
       wx.showToast({ title: `已跳过${blocked.length}道未解析题`, icon: 'none' });
     }
-    getApp().globalData.teacherPick = {
-      classId: this.data.selectedClass.id,
-      questionIds: ready.map((q) => q.id)
+    const questionIds = ready.map((q) => q.id);
+    const paperId = this._paperId;
+    const goDone = (toast) => {
+      if (paperId) {
+        wx.navigateBack({
+          success: () => wx.showToast({ title: toast, icon: 'success' }),
+          fail: () => wx.redirectTo({
+            url: '/pages/teacherSetDetail/teacherSetDetail?type=paper&id=' + paperId,
+            success: () => wx.showToast({ title: toast, icon: 'success' })
+          })
+        });
+      } else {
+        wx.reLaunch({
+          url: '/pages/teacherPaper/teacherPaper',
+          success: () => wx.showToast({ title: toast, icon: 'success' })
+        });
+      }
     };
-    wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper?fromPick=1' });
+    if (paperId) {
+      wx.showLoading({ title: '保存中...', mask: true });
+      callTeacher('updatePaper', { id: paperId, questionIds })
+        .then((r) => {
+          wx.hideLoading();
+          if (!r.success) return wx.showToast({ title: r.error || '保存失败', icon: 'none' });
+          goDone('已加入试卷');
+        })
+        .catch(() => {
+          wx.hideLoading();
+          wx.showToast({ title: '保存失败', icon: 'none' });
+        });
+      return;
+    }
+    const defaultTitle = '练习卷';
+    promptPaperTitle(defaultTitle)
+      .then((title) => {
+        wx.showLoading({ title: '保存中...', mask: true });
+        return callTeacher('savePaper', { title, questionIds });
+      })
+      .then((r) => {
+        wx.hideLoading();
+        if (!r.success) return wx.showToast({ title: r.error || '保存失败', icon: 'none' });
+        goDone('试卷保存成功');
+      })
+      .catch((err) => {
+        wx.hideLoading();
+        if (err && (err.message === 'cancelled' || err.message === 'empty_title')) return;
+        wx.showToast({ title: '保存失败', icon: 'none' });
+      });
   }
 });

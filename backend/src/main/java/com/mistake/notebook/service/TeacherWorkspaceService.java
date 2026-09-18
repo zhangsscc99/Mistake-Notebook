@@ -348,9 +348,9 @@ public class TeacherWorkspaceService {
         return d;
     }
 
-    public List<Map<String, Object>> listBank(long teacherId, long classId) {
-        ownedClass(teacherId, classId);
-        return questionRepository.findByUserIdAndSourceAndClassIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId, BANK, classId)
+    public List<Map<String, Object>> listBank(long teacherId, Long classId) {
+        requireTeacher(teacherId);
+        return questionRepository.findByUserIdAndSourceAndIsDeletedFalseOrderByCreatedAtDesc(teacherId, BANK)
                 .stream().map(q -> {
                     Map<String, Object> m = questionMap(q);
                     m.put("nickName", "老师录入");
@@ -360,8 +360,7 @@ public class TeacherWorkspaceService {
 
     @Transactional
     public Map<String, Object> saveBankQuestions(long teacherId, Map<String, Object> body) {
-        long classId = asLong(body.get("classId"));
-        ownedClass(teacherId, classId);
+        requireTeacher(teacherId);
         Object raw = body.get("questions");
         if (!(raw instanceof List<?> items) || items.isEmpty()) throw new IllegalArgumentException("请选择题目");
         String category = String.valueOf(body.getOrDefault("category", "")).trim();
@@ -377,7 +376,7 @@ public class TeacherWorkspaceService {
             if (content.isBlank()) continue;
             Question q = new Question();
             q.setUserId(teacherId);
-            q.setClassId(classId);
+            q.setClassId(null);
             q.setSource(BANK);
             q.setContent(content);
             q.setImageUrl(firstText(mm.get("imageUrl"), body.get("imageUrl")));
@@ -513,6 +512,13 @@ public class TeacherWorkspaceService {
         String title = String.valueOf(body.getOrDefault("title", "班级错题练习")).trim();
         if (title.isEmpty()) title = "班级错题练习";
         List<Long> ids = asIdList(body.get("questionIds"));
+        if (ids.isEmpty() && body.get("paperId") != null) {
+            long paperId = asLong(body.get("paperId"));
+            TeacherPaper p = teacherPaperRepository.findByIdAndTeacherId(paperId, teacherId)
+                    .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
+                    .orElseThrow(() -> new IllegalArgumentException("无权使用该试卷"));
+            ids = parseIdCsv(p.getQuestionIds());
+        }
         if (ids.isEmpty()) throw new IllegalArgumentException("请选择题目");
         List<Map<String, Object>> questions = snapshotQuestions(ids);
         ClassNotebook nb = new ClassNotebook();
@@ -538,8 +544,7 @@ public class TeacherWorkspaceService {
 
     @Transactional
     public Map<String, Object> savePaper(long teacherId, Map<String, Object> body) {
-        long classId = asLong(body.get("classId"));
-        ownedClass(teacherId, classId);
+        requireTeacher(teacherId);
         String title = String.valueOf(body.getOrDefault("title", "班级试卷")).trim();
         if (title.isEmpty()) title = "班级试卷";
         List<Long> ids = asIdList(body.get("questionIds"));
@@ -555,7 +560,7 @@ public class TeacherWorkspaceService {
         }
         TeacherPaper p = new TeacherPaper();
         p.setTeacherId(teacherId);
-        p.setClassId(classId);
+        p.setClassId(null);
         p.setTitle(title.substring(0, Math.min(120, title.length())));
         p.setQuestionIds(ids.stream().map(String::valueOf).collect(Collectors.joining(",")));
         p.setQuestionCount(ids.size());
@@ -572,12 +577,40 @@ public class TeacherWorkspaceService {
         return d;
     }
 
+    @Transactional
+    public Map<String, Object> updatePaper(long teacherId, long paperId, Map<String, Object> body) {
+        TeacherPaper p = teacherPaperRepository.findByIdAndTeacherId(paperId, teacherId)
+                .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
+                .orElseThrow(() -> new IllegalArgumentException("无权修改该试卷"));
+        List<Long> incoming = asIdList(body.get("questionIds"));
+        if (incoming.isEmpty()) throw new IllegalArgumentException("请选择题目");
+        List<Long> merged = new ArrayList<>(parseIdCsv(p.getQuestionIds()));
+        for (Long id : incoming) {
+            if (!merged.contains(id)) merged.add(id);
+        }
+        List<Question> picked = questionRepository.findByIdInAndIsDeletedFalse(merged);
+        Map<Long, Question> byId = picked.stream().collect(Collectors.toMap(Question::getId, q -> q, (a, b) -> a));
+        for (Long id : merged) {
+            Question q = byId.get(id);
+            if (q == null) throw new IllegalArgumentException("题目不存在");
+            if (!PaperReadiness.forTeacherPaper(q)) {
+                throw new IllegalArgumentException("未解析完成的题目不能加入组卷");
+            }
+        }
+        p.setQuestionIds(merged.stream().map(String::valueOf).collect(Collectors.joining(",")));
+        p.setQuestionCount(merged.size());
+        teacherPaperRepository.save(p);
+        Map<String, Object> d = new HashMap<>();
+        d.put("id", p.getId());
+        d.put("title", p.getTitle());
+        d.put("questionCount", p.getQuestionCount());
+        d.put("createdAt", p.getCreatedAt());
+        return d;
+    }
+
     public List<Map<String, Object>> listPapers(long teacherId, Long classId) {
         requireTeacher(teacherId);
-        List<TeacherPaper> list = classId == null || classId == 0
-                ? teacherPaperRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId)
-                : teacherPaperRepository.findByTeacherIdAndClassIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId, classId);
-        if (classId != null && classId != 0) ownedClass(teacherId, classId);
+        List<TeacherPaper> list = teacherPaperRepository.findByTeacherIdAndIsDeletedFalseOrderByCreatedAtDesc(teacherId);
         return list.stream().map(this::paperMap).toList();
     }
 
@@ -649,9 +682,6 @@ public class TeacherWorkspaceService {
             TeacherPaper p = teacherPaperRepository.findByIdAndTeacherId(paperId, teacherId)
                     .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
                     .orElseThrow(() -> new IllegalArgumentException("无权使用该试卷"));
-            if (p.getClassId() != null && !p.getClassId().equals(classId)) {
-                throw new IllegalArgumentException("试卷不属于该班级");
-            }
             ids = parseIdCsv(p.getQuestionIds());
         }
         if (ids.isEmpty()) throw new IllegalArgumentException("请选择题目");
@@ -856,7 +886,7 @@ public class TeacherWorkspaceService {
     public void recallPaper(long teacherId, long id) {
         TeacherPaper p = teacherPaperRepository.findByIdAndTeacherId(id, teacherId)
                 .filter(x -> !Boolean.TRUE.equals(x.getIsDeleted()))
-                .orElseThrow(() -> new IllegalArgumentException("无权删除该题单"));
+                .orElseThrow(() -> new IllegalArgumentException("无权删除该试卷"));
         p.setIsDeleted(true);
         teacherPaperRepository.save(p);
     }

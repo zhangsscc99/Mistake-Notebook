@@ -1,6 +1,7 @@
 const app = getApp();
 const { callTeacher } = require('../../utils/teacher');
 const { ensureCloudSession, isAccessTokenError } = require('../../utils/cloud.js');
+const { getProfile, getCachedProfile, greetingPrefix } = require('../../utils/profile.js');
 
 const MAX_IMAGES = 10;
 const WECHAT_PICK_MAX = 9;
@@ -16,28 +17,73 @@ function syncImages(images) {
   };
 }
 
+function buildGreeting(nickName) {
+  const prefix = greetingPrefix();
+  const name = (nickName || '').trim();
+  return name ? prefix + '，' + name : prefix;
+}
+
+function formatTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diff = now - date;
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+  return Math.floor(diff / 86400000) + '天前';
+}
+
+function buildRecentTitle(question) {
+  const categoryName = question.category || '未分类';
+  const plain = (question.content || '').replace(/\s+/g, ' ').trim();
+  if (!plain) return categoryName + '题';
+  const short = plain.length > 22 ? plain.slice(0, 22) + '...' : plain;
+  return categoryName + '题 - ' + short;
+}
+
 Page({
   data: Object.assign({
-    classes: [],
-    selectedClass: {},
-    uploading: false
+    uploading: false,
+    recentRecords: [],
+    avatarFileID: '',
+    nickName: '',
+    greeting: ''
   }, syncImages([])),
 
-  onLoad(options) {
-    this._preferClassId = (options && options.classId) || '';
-    this.boot();
+  onShow() {
+    this.loadProfile();
+    this.loadRecentRecords();
   },
 
-  async boot() {
-    const dash = await callTeacher('dashboard');
-    const classes = (dash.success && dash.data && dash.data.classes) || [];
-    const selectedClass = classes.find((c) => c.id === this._preferClassId) || classes[0] || {};
-    this.setData({ classes, selectedClass });
+  goMine() {
+    wx.reLaunch({ url: '/pages/teacherMine/teacherMine' });
   },
 
-  selectClass(e) {
-    const item = this.data.classes.find((c) => c.id === e.currentTarget.dataset.id);
-    if (item) this.setData({ selectedClass: item });
+  loadProfile() {
+    const apply = (p) => this.setData({
+      avatarFileID: (p && p.avatarFileID) || '',
+      nickName: (p && p.nickName) || '',
+      greeting: buildGreeting(p && p.nickName)
+    });
+    apply(getCachedProfile());
+    getProfile().then(apply).catch(() => {});
+  },
+
+  loadRecentRecords() {
+    callTeacher('listBank').then((r) => {
+      if (!r.success || !Array.isArray(r.data)) return;
+      const records = r.data.slice(0, 10).map((q) => ({
+        id: q.id || q._id,
+        title: buildRecentTitle(q),
+        timeText: formatTime(q.createdAt)
+      }));
+      this.setData({ recentRecords: records });
+    }).catch(() => {});
+  },
+
+  viewRecord() {
+    wx.reLaunch({ url: '/pages/teacherQuestions/teacherQuestions?bank=1' });
   },
 
   takePhoto() { this._chooseImageWithSource(['camera']); },
@@ -79,7 +125,7 @@ Page({
     }
   },
 
-  async _appendImages(files) {
+  _appendImages(files) {
     const room = MAX_IMAGES - this.data.images.length;
     if (room <= 0) {
       wx.showToast({ title: '一次最多10张', icon: 'none' });
@@ -119,15 +165,7 @@ Page({
     this.setData(syncImages(images));
   },
 
-  resetImage() {
-    this.setData(Object.assign({ uploading: false }, syncImages([])));
-  },
-
   submitQuestion() {
-    if (!this.data.selectedClass.id) {
-      wx.showToast({ title: '请先选择班级', icon: 'none' });
-      return;
-    }
     if (!this.data.images.length) {
       wx.showToast({ title: '请先选择图片', icon: 'none' });
       return;
@@ -216,7 +254,6 @@ Page({
       wx.hideLoading();
       this.setData(Object.assign({ uploading: false }, syncImages([])));
       app.globalData.recognitionDraft = {
-        classId: this.data.selectedClass.id,
         mode: 'teacher_bank',
         tempFilePath: localPages[0],
         fileID: fileIDs[0],

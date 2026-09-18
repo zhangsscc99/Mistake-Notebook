@@ -1,85 +1,171 @@
-.paper-title {
+.create-section {
+  padding: 8rpx 24rpx 4rpx;
+}
+
+.create-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 88rpx !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  border-radius: 28rpx !important;
+  background: linear-gradient(135deg, #2459ff, #52b7ff) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 10px 24px rgba(31, 91, 255, 0.30) !important;
+  box-sizing: border-box !important;
+}
+
+.create-btn-text {
   font-size: 30rpx;
-  font-weight: 800;
-  color: #0b1633;
+  font-weight: 700;
+  line-height: 1;
+  color: #ffffff;
 }
 
-.paper-meta {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: rgba(11, 22, 51, 0.5);
+.create-btn::after {
+  border: none !important;
 }
 
-.cart-card {
+.paper-card {
   display: flex;
-  align-items: flex-start;
-  gap: 16rpx;
+  position: relative;
+  margin: 0 24rpx 20rpx;
+  background: #ffffff;
+  border: 1px solid rgba(11, 22, 51, 0.06);
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(11, 22, 51, 0.06);
+  overflow: hidden;
 }
 
-.cart-index {
+.paper-card:active {
+  opacity: 0.92;
+}
+
+.paper-left-accent {
+  width: 10rpx;
   flex-shrink: 0;
-  min-width: 40rpx;
-  height: 40rpx;
-  padding: 0 8rpx;
-  border-radius: 12rpx 4rpx 12rpx 4rpx;
-  background: linear-gradient(140deg, #2459ff, #52b7ff);
-  color: #fff;
-  font-size: 22rpx;
-  font-weight: 800;
-  line-height: 40rpx;
-  text-align: center;
+  background: linear-gradient(180deg, #2459ff 0%, #52b7ff 50%, #b6a6ff 100%);
 }
 
-.cart-body {
+.paper-body {
+  flex: 1;
+  padding: 28rpx 24rpx 24rpx 28rpx;
+  min-width: 0;
+}
+
+.paper-header-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.paper-icon-circle {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(135deg, #2459ff, #52b7ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 6rpx 14rpx rgba(31, 91, 255, 0.28);
+}
+
+.paper-icon-text {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.paper-info {
   flex: 1;
   min-width: 0;
 }
 
-.q-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 12rpx;
+.paper-title-text {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #0b1633;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.cart-remove {
-  flex-shrink: 0;
-  margin-top: 4rpx;
-  color: #e11d48;
+.paper-meta-text {
+  display: block;
+  margin-top: 6rpx;
   font-size: 22rpx;
+  color: rgba(11, 22, 51, 0.5);
+}
+
+.paper-arrow {
+  font-size: 32rpx;
+  color: rgba(11, 22, 51, 0.28);
+  flex-shrink: 0;
+}
+
+.paper-stats-row {
+  display: flex;
+  gap: 12rpx;
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  font-size: 20rpx;
   font-weight: 700;
+  color: #2459ff;
+  background: rgba(36, 89, 255, 0.08);
+  border-radius: 999px;
+  padding: 6rpx 16rpx;
   white-space: nowrap;
 }
 
-.checkout-actions {
+.empty-state {
   display: flex;
-  gap: 12rpx;
-  margin: 8rpx 24rpx 8rpx;
-}
-
-.checkout-actions .ghost-btn,
-.checkout-actions .primary-btn {
-  flex: 1;
-  height: 72rpx;
-  line-height: 72rpx;
-  font-size: 26rpx;
-}
-
-.link-row {
-  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  margin: 8rpx 24rpx 24rpx;
-  font-size: 24rpx;
+  padding: 80rpx 48rpx 40rpx;
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 34rpx;
   font-weight: 700;
-  color: #2459ff;
+  color: #0b1633;
 }
 
-.link-dot {
-  color: rgba(11, 22, 51, 0.28);
+.empty-desc-text {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: rgba(11, 22, 51, 0.5);
+  line-height: 1.6;
 }
 
-.tap-card {
-  padding-right: 48rpx;
+.empty-action-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-top: 40rpx;
+  width: 360rpx !important;
+  height: 88rpx !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  font-size: 30rpx !important;
+  font-weight: 700 !important;
+  border-radius: 28rpx !important;
+  background: linear-gradient(135deg, #2459ff, #52b7ff) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 10px 24px rgba(31, 91, 255, 0.30) !important;
+  box-sizing: border-box !important;
+}
+
+.empty-action-btn::after {
+  border: none !important;
 }

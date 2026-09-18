@@ -16,6 +16,20 @@ function fail(error) {
   return { success: false, error };
 }
 
+function asId(v) {
+  if (v == null || v === '') return '';
+  if (typeof v === 'string' || typeof v === 'number') return String(v);
+  if (typeof v === 'object') {
+    if (v.$oid) return String(v.$oid);
+    if (typeof v.toHexString === 'function') return v.toHexString();
+    try {
+      const s = typeof v.toString === 'function' ? v.toString() : '';
+      if (s && s !== '[object Object]') return s;
+    } catch (e) {}
+  }
+  return String(v);
+}
+
 function isTeacherPaperReady(q) {
   if (!q) return false;
   const source = String(q.source || '').toLowerCase();
@@ -45,7 +59,7 @@ async function requireTeacher() {
 }
 function normalizeClass(c) {
   return {
-    id: c._id,
+    id: asId(c._id),
     name: c.name,
     grade: c.grade || '',
     joinCode: c.joinCode,
@@ -54,19 +68,23 @@ function normalizeClass(c) {
   };
 }
 function mapQuestion(q) {
+  const aiAnswer = String(q.aiAnswer || q.answer || '').trim();
+  const aiAnalysis = String(q.aiAnalysis || q.analysis || '').trim();
   return {
-    id: q._id,
+    id: asId(q._id || q.id),
     content: q.content || '',
     category: q.category || '',
     difficulty: q.difficulty || 'MEDIUM',
     imageUrl: q.imageUrl || '',
     openid: q.openid || '',
     aiStatus: q.aiStatus || '',
-    aiAnswer: q.aiAnswer || '',
-    aiAnalysis: q.aiAnalysis || '',
+    aiAnswer,
+    aiAnalysis,
+    answer: aiAnswer,
+    analysis: aiAnalysis,
     createdAt: q.createdAt || '',
     source: q.source || '',
-    classId: q.classId || ''
+    classId: asId(q.classId)
   };
 }
 function contentKey(text) {
@@ -256,6 +274,7 @@ exports.main = async (event) => {
       classStats,
       publishNotebook,
       savePaper,
+      updatePaper,
       listPapers,
       listNotebooks,
       paperDetail,
@@ -502,7 +521,7 @@ async function classStats(teacherId, event) {
       };
     }
     hotMap[key].count += 1;
-    hotMap[key].questionIds.push(q._id);
+    hotMap[key].questionIds.push(asId(q._id));
     if (q.openid) hotMap[key].students[q.openid] = true;
   });
   const byCategory = Object.keys(catMap).map((name) => ({ name, count: catMap[name] })).sort((a, b) => b.count - a.count);
@@ -533,8 +552,6 @@ async function classStats(teacherId, event) {
 const BANK_DIFFICULTY = { '简单': 'EASY', '中等': 'MEDIUM', '困难': 'HARD', EASY: 'EASY', MEDIUM: 'MEDIUM', HARD: 'HARD' };
 
 async function saveBankQuestions(teacherId, event) {
-  const classId = String(event.classId || '');
-  await assertOwnedClass(teacherId, classId);
   const items = Array.isArray(event.questions) ? event.questions : [];
   if (!items.length) return fail('请选择题目');
   const category = String(event.category || '').trim() || '未分类';
@@ -548,7 +565,7 @@ async function saveBankQuestions(teacherId, event) {
       data: {
         openid: teacherId,
         teacherId,
-        classId,
+        classId: '',
         source: 'teacher_bank',
         content,
         imageUrl: item.imageUrl || event.imageUrl || '',
@@ -571,15 +588,13 @@ async function saveBankQuestions(teacherId, event) {
   return { success: true, data: { ids, savedCount: ids.length } };
 }
 
-async function listBank(teacherId, event) {
-  const classId = String(event.classId || '');
-  await assertOwnedClass(teacherId, classId);
+async function listBank(teacherId) {
   const r = await db.collection('questions')
     .where({ openid: teacherId, isDeleted: false })
     .orderBy('createdAt', 'desc')
     .limit(100)
     .get();
-  const rows = (r.data || []).filter((q) => q.source === 'teacher_bank' && q.classId === classId);
+  const rows = (r.data || []).filter((q) => q.source === 'teacher_bank');
   return {
     success: true,
     data: rows.map((q) => ({
@@ -607,10 +622,41 @@ async function deleteBankQuestion(teacherId, event) {
   return { success: true };
 }
 
+async function resolvePaperQuestionIds(teacherId, event) {
+  let ids = Array.isArray(event.questionIds) ? event.questionIds.filter(Boolean).map(String) : [];
+  if (!ids.length && event.paperId) {
+    const p = (await db.collection('class_papers').doc(String(event.paperId)).get()).data;
+    if (!p || p.teacherId !== teacherId || p.isDeleted) return { error: '无权使用该试卷' };
+    ids = (p.questionIds || []).map(String);
+  }
+  return { ids };
+}
+
+async function assertReadyQuestionIds(ids) {
+  const list = (ids || []).filter(Boolean).map(String);
+  if (!list.length) return fail('请选择题目');
+  const found = [];
+  for (let i = 0; i < list.length; i += 20) {
+    const chunk = list.slice(i, i + 20);
+    const res = await db.collection('questions').where({ _id: _.in(chunk), isDeleted: false }).get();
+    found.push(...(res.data || []));
+  }
+  const byId = {};
+  found.forEach((q) => { byId[String(q._id)] = q; });
+  for (const id of list) {
+    const doc = byId[id];
+    if (!doc) return fail('题目不存在');
+    if (!isTeacherPaperReady(doc)) return fail('未解析完成的题目不能加入组卷');
+  }
+  return { success: true, ids: list };
+}
+
 async function publishNotebook(teacherId, event) {
   const classId = String(event.classId || '');
   const title = String(event.title || '班级错题练习').trim();
-  const ids = Array.isArray(event.questionIds) ? event.questionIds.filter(Boolean) : [];
+  const resolved = await resolvePaperQuestionIds(teacherId, event);
+  if (resolved.error) return fail(resolved.error);
+  const ids = resolved.ids;
   if (!ids.length) return fail('请选择题目');
   await assertOwnedClass(teacherId, classId);
   const now = new Date().toISOString();
@@ -621,29 +667,16 @@ async function publishNotebook(teacherId, event) {
 }
 
 async function savePaper(teacherId, event) {
-  const classId = String(event.classId || '');
   const title = String(event.title || '班级试卷').trim();
-  const ids = Array.isArray(event.questionIds) ? event.questionIds.filter(Boolean) : [];
-  if (!ids.length) return fail('请选择题目');
-  await assertOwnedClass(teacherId, classId);
-  const found = [];
-  for (let i = 0; i < ids.length; i += 20) {
-    const chunk = ids.slice(i, i + 20).map(String);
-    const res = await db.collection('questions').where({ _id: _.in(chunk), isDeleted: false }).get();
-    found.push(...(res.data || []));
-  }
-  const byId = {};
-  found.forEach((q) => { byId[String(q._id)] = q; });
-  for (const id of ids) {
-    const doc = byId[String(id)];
-    if (!doc) return fail('题目不存在');
-    if (!isTeacherPaperReady(doc)) return fail('未解析完成的题目不能加入组卷');
-  }
+  if (!title) return fail('请输入试卷名称');
+  const ready = await assertReadyQuestionIds(event.questionIds);
+  if (!ready.success) return ready;
+  const ids = ready.ids;
   const now = new Date().toISOString();
   const r = await db.collection('class_papers').add({
     data: {
       teacherId,
-      classId,
+      classId: '',
       title,
       questionIds: ids,
       duration: Number(event.duration) || 90,
@@ -655,14 +688,31 @@ async function savePaper(teacherId, event) {
   return { success: true, data: { id: r._id, title, questionCount: ids.length, createdAt: now } };
 }
 
+async function updatePaper(teacherId, event) {
+  const id = String(event.id || event.paperId || '');
+  if (!id) return fail('缺少试卷');
+  const p = (await db.collection('class_papers').doc(id).get()).data;
+  if (!p || p.teacherId !== teacherId || p.isDeleted) return fail('无权修改该试卷');
+  const incoming = await assertReadyQuestionIds(event.questionIds);
+  if (!incoming.success) return incoming;
+  const existing = (p.questionIds || []).map(String);
+  const merged = existing.slice();
+  incoming.ids.forEach((qid) => {
+    if (merged.indexOf(qid) < 0) merged.push(qid);
+  });
+  const now = new Date().toISOString();
+  await db.collection('class_papers').doc(id).update({
+    data: { questionIds: merged, updatedAt: now }
+  });
+  return { success: true, data: { id, title: p.title, questionCount: merged.length } };
+}
+
 async function listPapers(teacherId, event) {
-  const classId = event.classId ? String(event.classId) : '';
-  const where = { teacherId, isDeleted: false };
-  if (classId) {
-    await assertOwnedClass(teacherId, classId);
-    where.classId = classId;
-  }
-  const r = await db.collection('class_papers').where(where).orderBy('createdAt', 'desc').limit(50).get();
+  const r = await db.collection('class_papers')
+    .where({ teacherId, isDeleted: false })
+    .orderBy('createdAt', 'desc')
+    .limit(50)
+    .get();
   return {
     success: true,
     data: (r.data || []).map((p) => ({
@@ -748,7 +798,6 @@ async function createAssignment(teacherId, event) {
   if (!ids.length && event.paperId) {
     const p = (await db.collection('class_papers').doc(String(event.paperId)).get()).data;
     if (!p || p.teacherId !== teacherId || p.isDeleted) return fail('无权使用该试卷');
-    if (p.classId && p.classId !== classId) return fail('试卷不属于该班级');
     ids = p.questionIds || [];
   }
   if (!ids.length) return fail('请选择题目');
@@ -925,9 +974,9 @@ async function recallAssignment(teacherId, event) {
 
 async function recallPaper(teacherId, event) {
   const id = String(event.id || event.paperId || '');
-  if (!id) return fail('缺少题单');
+  if (!id) return fail('缺少试卷');
   const p = (await db.collection('class_papers').doc(id).get()).data;
-  if (!p || p.teacherId !== teacherId || p.isDeleted) return fail('无权删除该题单');
+  if (!p || p.teacherId !== teacherId || p.isDeleted) return fail('无权删除该试卷');
   await db.collection('class_papers').doc(id).update({
     data: { isDeleted: true, updatedAt: new Date().toISOString() }
   });

@@ -142,7 +142,7 @@ public class TeacherController {
     }
 
     @GetMapping("/bank")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> bank(@RequestParam Long classId) {
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> bank(@RequestParam(required = false) Long classId) {
         return ResponseEntity.ok(ApiResponse.success(workspace.listBank(AuthContext.requireUserId(), classId)));
     }
 
@@ -173,7 +173,7 @@ public class TeacherController {
 
     @PostMapping("/papers")
     public ResponseEntity<ApiResponse<Map<String, Object>>> savePaper(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(ApiResponse.success("已存为题单", workspace.savePaper(AuthContext.requireUserId(), body)));
+        return ResponseEntity.ok(ApiResponse.success("试卷已保存", workspace.savePaper(AuthContext.requireUserId(), body)));
     }
 
     @GetMapping("/papers/{id}")
@@ -181,10 +181,15 @@ public class TeacherController {
         return ResponseEntity.ok(ApiResponse.success(workspace.paperDetail(AuthContext.requireUserId(), id)));
     }
 
+    @PostMapping("/papers/{id}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> updatePaper(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(ApiResponse.success("试卷已更新", workspace.updatePaper(AuthContext.requireUserId(), id, body)));
+    }
+
     @PostMapping("/papers/{id}/recall")
     public ResponseEntity<ApiResponse<Void>> recallPaper(@PathVariable Long id) {
         workspace.recallPaper(AuthContext.requireUserId(), id);
-        return ResponseEntity.ok(ApiResponse.success("已删除题单", null));
+        return ResponseEntity.ok(ApiResponse.success("已删除试卷", null));
     }
 
     @GetMapping("/class-notebooks")

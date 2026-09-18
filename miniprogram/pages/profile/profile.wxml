@@ -149,11 +149,11 @@
           <text class="form-label">昵称</text>
           <input
             class="nick-input"
-            type="nickname"
+            type="text"
             name="nickName"
             value="{{nickName}}"
             maxlength="20"
-            placeholder="点击键盘上方昵称条可快速填入"
+            placeholder="选填，方便同学认出你"
             placeholder-class="nick-placeholder"
             bindinput="onNickInput"
             bindblur="onNickBlur" />
@@ -177,7 +177,7 @@
         </view>
       </form>
     </view>
-    <view class="section-hint">头像、昵称与学段保存在云端，换手机也不会丢</view>
+    <view class="section-hint">头像从相册或拍照上传，昵称自己填写。不会读取微信头像或微信昵称。换手机也不会丢</view>
   </view>
 
   <!-- 快捷入口 -->
@@ -238,7 +238,7 @@
         <text class="cell-arrow">›</text>
       </view>
     </view>
-    <view class="section-hint">退出登录只离开本机会话，身份不会改变。注销会删除你名下的资料与学习记录，之后可重新选择学生或老师。</view>
+    <view class="section-hint">退出登录后可重新选择学生或老师，错题和班级数据都会保留。注销会删除你名下的资料与学习记录。</view>
   </view>
 
   <!-- 关于 -->

@@ -19,7 +19,7 @@ const FAILED_LABELS = {
   categories: '分类',
   classMembers: '班级成员',
   classMembersByClass: '班级成员',
-  classPapers: '班级题单',
+  classPapers: '班级试卷',
   classNotebooks: '班级练习',
   parentReports: '家长报告',
   assignments: '作业',

@@ -3,49 +3,22 @@
   <view class="hero">
     <view class="mark">错</view>
     <view class="title">智卷错题通</view>
-    <view class="subtitle">{{invited ? '同学推荐你来一起整理错题' : (intentRole === 'teacher' ? '教师工作台与学生端分开，登录后只看班级学情' : '用微信身份进入，每人一份自己的错题本')}}</view>
+    <view class="subtitle">{{invited ? '同学推荐你来一起整理错题' : (intentRole === 'teacher' ? '教师工作台与学生端分开，登录后只看班级学情' : '用微信账号区分身份，每人一份自己的错题本')}}</view>
   </view>
 
   <view class="card" wx:if="{{checking}}">
     <view class="card-title">正在进入…</view>
-    <view class="card-desc">正在确认你的微信账号</view>
+    <view class="card-desc">正在确认你的账号</view>
   </view>
 
   <view class="card" wx:else>
-    <view class="card-title">{{returning ? '欢迎回来' : '创建账号'}}</view>
-    <view class="card-desc" wx:if="{{roleLocked}}">本微信已绑定{{intentRole === 'teacher' ? '老师' : '学生'}}身份，退出登录不会改变</view>
-    <view class="card-desc" wx:elif="{{returning}}">已识别到你的微信。请选择身份，选定后不能更改</view>
-    <view class="card-desc" wx:else>第一次使用会自动注册。请选择学生或老师，一个微信只能绑定一种身份</view>
+    <view class="card-title">{{returning ? '欢迎回来' : '选择身份'}}</view>
+    <view class="card-desc" wx:if="{{returning}}">请选择这次要以学生还是老师进入。退出登录后可再切换，数据都会保留</view>
+    <view class="card-desc" wx:else>第一次使用会自动注册。请选择学生或老师，退出后可再切换</view>
 
-    <view class="role-row" wx:if="{{!roleLocked}}">
+    <view class="role-row">
       <view class="role-chip {{intentRole === 'student' ? 'on' : ''}}" data-role="student" bindtap="selectRole">学生</view>
       <view class="role-chip {{intentRole === 'teacher' ? 'on' : ''}}" data-role="teacher" bindtap="selectRole">老师</view>
-    </view>
-    <view class="role-locked" wx:else>
-      <view class="role-locked-badge">{{intentRole === 'teacher' ? '老师' : '学生'}}</view>
-      <view class="role-locked-hint">更换身份需要先注销账号</view>
-    </view>
-
-    <button class="avatar-btn" bindtap="onPickAvatar">
-      <image
-        class="avatar-img"
-        src="{{avatarTempPath || avatarFileID || '/images/default-avatar.png'}}"
-        mode="aspectFill"></image>
-      <view class="avatar-badge">+</view>
-    </button>
-
-    <view class="nick-row">
-      <text class="nick-label">昵称</text>
-      <input
-        class="nick-input"
-        type="text"
-        placeholder="匿名用户"
-        maxlength="20"
-        value="{{nickName}}"
-        bindinput="onNickInput"
-        bindblur="onNickBlur"
-        bindnicknamereview="onNickReview"
-      />
     </view>
 
     <button
@@ -53,12 +26,13 @@
       loading="{{submitting}}"
       disabled="{{submitting}}"
       bindtap="onLogin">
-      <text class="login-btn-label">{{submitting ? '正在进入…' : (intentRole === 'teacher' ? (returning ? '进入教师工作台' : '教师登录') : (returning ? '进入错题本' : '微信一键登录'))}}</text>
+      <text class="login-btn-label">{{submitting ? '正在进入…' : (intentRole === 'teacher' ? '进入教师工作台' : '进入错题本')}}</text>
     </button>
   </view>
 
   <view class="hints" wx:if="{{!checking}}">
-    <view class="hint">学生整理自己的错题；老师建班后查看加入班级的学生错题</view>
-    <view class="hint">一个微信号只能绑定一种身份。退出登录不会改变身份，更换需先注销账号</view>
+    <view class="hint">登录只用来区分账号，不会读取微信头像、微信昵称或手机号</view>
+    <view class="hint">头像和昵称可在「我的」里自行设置。学生整理错题，老师建班后查看班级学情</view>
+    <view class="hint">退出登录后可重新选择学生或老师。注销才会删除云端数据</view>
   </view>
 </view>

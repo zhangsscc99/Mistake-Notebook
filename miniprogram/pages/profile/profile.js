@@ -323,13 +323,9 @@ Page({
     }
   },
 
-  // 走 form 提交：type="nickname" 的输入框在点键盘上方昵称条填入时 bindinput 不保证触发，
-  // 而 form 提交读的是输入框当前值，最可靠
   onSaveProfile: function (e) {
     if (this.data.saving) return;
 
-    // type="nickname" 在部分基础库里不进 form 的 detail.value，
-    // 点键盘昵称条时 bindinput 也不保证触发。三路兜底，取到再 trim。
     const fromForm = ((e.detail.value && e.detail.value.nickName) || '').trim();
     const fromLive = (this.data.nickName || '').trim();
     const fromDraft = (this._nickDraft || '').trim();
@@ -441,7 +437,7 @@ Page({
   onLogout: function () {
     wx.showModal({
       title: '退出登录',
-      content: '退出后不会删除云端数据，身份也不会改变。下次用微信登录仍是同一个账号。',
+      content: '退出后不会删除云端数据。下次登录可重新选择学生或老师。',
       confirmText: '退出',
       success: (res) => {
         if (!res.confirm) return;

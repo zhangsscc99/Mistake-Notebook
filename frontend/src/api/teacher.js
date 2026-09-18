@@ -68,7 +68,7 @@ const teacherAPI = {
     return unwrap(apiClient.get('/teacher/class-stats', { params: { classId } }))
   },
   bank(classId) {
-    return unwrap(apiClient.get('/teacher/bank', { params: { classId } }))
+    return unwrap(apiClient.get('/teacher/bank', classId ? { params: { classId } } : {}))
   },
   saveBank(payload) {
     return unwrap(apiClient.post('/teacher/bank', payload))
@@ -81,13 +81,16 @@ const teacherAPI = {
   },
 
   papers(classId) {
-    return unwrap(apiClient.get('/teacher/papers', { params: { classId } }))
+    return unwrap(apiClient.get('/teacher/papers', classId ? { params: { classId } } : {}))
   },
   savePaper(payload) {
     return unwrap(apiClient.post('/teacher/papers', payload))
   },
   paper(id) {
     return unwrap(apiClient.get('/teacher/papers/' + id))
+  },
+  updatePaper(id, payload) {
+    return unwrap(apiClient.post(`/teacher/papers/${id}`, payload))
   },
   recallPaper(id) {
     return unwrap(apiClient.post(`/teacher/papers/${id}/recall`))

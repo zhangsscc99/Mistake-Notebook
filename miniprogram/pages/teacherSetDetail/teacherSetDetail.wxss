@@ -24,24 +24,19 @@
 
 .submit-wrap {
   margin: 24rpx;
-}
-
-.q-index {
-  font-size: 22rpx;
-  font-weight: 800;
-  color: #2459ff;
-}
-
-.q-content {
-  margin-top: 10rpx;
-  font-size: 28rpx;
-  line-height: 1.55;
-  color: #0b1633;
-}
-
-.q-meta {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-  margin-top: 12rpx;
+  flex-direction: column;
+  gap: 16rpx;
 }
+
+.submit-wrap .ghost-btn,
+.submit-wrap .primary-btn,
+.submit-wrap .danger-btn {
+  width: 100%;
+}
+
+.submit-wrap .ghost-btn {
+  height: 80rpx;
+  line-height: 80rpx;
+}
+

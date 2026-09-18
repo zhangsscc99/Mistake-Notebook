@@ -1,6 +1,6 @@
 <view class="picker-page">
   <view class="tips-bar">
-    <text class="tips-text">已自动全选，可点取消不需要的题。保存后只进入这个班的题库，不会自动带到组卷</text>
+    <text class="tips-text">已自动全选，可点取消不需要的题。保存后进入老师题库，不进学生错题本，也不会自动带到组卷</text>
   </view>
 
   <scroll-view class="page-tabs" scroll-x wx:if="{{pageCount > 1}}">
@@ -53,7 +53,7 @@
       <text class="modify-btn" bindtap="openCategoryPicker">修改 ›</text>
     </view>
     <button class="save-btn" loading="{{saving}}" disabled="{{saving || selectedCount === 0}}" bindtap="saveSelected">
-      存入班级题库 ({{selectedCount}})
+      存入老师题库 ({{selectedCount}})
     </button>
   </view>
 

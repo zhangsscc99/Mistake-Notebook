@@ -538,8 +538,6 @@
   border-radius: 999rpx;
   font-size: 28rpx;
   color: #0b1633;
-  /* 必须左对齐。placeholder 是一整句说明（「点击键盘上方昵称条可快速填入」），
-     右对齐会把它贴到药丸右缘、左边空出一大片，整行看起来像没对齐 */
   text-align: left;
 }
 

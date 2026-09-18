@@ -239,7 +239,7 @@ function normalize(record, openId) {
     avatarFileID: r.avatarFileID || '',
     stage: r.stage || '',
     // 教师身份只认库里的 role。客户端不能通过 updateProfile 改这个字段。
-    // 空字符串表示还没选定；选定后 setRole 拒绝再改，只有注销删档才能重选。
+    // 空字符串表示还没选定；退出登录后再进可走 setRole 换成另一种身份。
     role: lockedRoleOf(r),
     roleSetAt: r.roleSetAt || '',
     // 钱包字段。老用户档里没有这些键，一律退化成 0/'' —— 不要在这里补写库，
@@ -273,13 +273,8 @@ function lockedRoleOf(record) {
   return '';
 }
 
-function roleLabel(role) {
-  return role === 'teacher' ? '老师' : '学生';
-}
-
-// 登录页第一次选定学生/老师时写入。只改调用者自己的档。
-// 已有 student/teacher 后拒绝改成另一个身份；相同身份幂等成功。
-// 退出登录不能换身份。更换只能走 deleteAccount 把 users 档删掉后再选。
+// 登录页选定学生/老师时写入。只改调用者自己的档。
+// 相同身份幂等成功；退出后再登录可以换成另一种身份，错题和班级数据都保留。
 async function setRole(openId, event) {
   const requested = event.role === 'teacher' ? 'teacher' : (event.role === 'student' ? 'student' : '');
   if (!requested) {
@@ -288,18 +283,10 @@ async function setRole(openId, event) {
 
   const now = new Date().toISOString();
   const current = await readUserDoc(openId);
-  const locked = lockedRoleOf(current);
+  const currentRole = lockedRoleOf(current);
 
-  if (locked) {
-    if (locked === requested) {
-      return { success: true, data: normalize(current, openId) };
-    }
-    return {
-      success: false,
-      error: 'ROLE_LOCKED',
-      message: `该微信已绑定${roleLabel(locked)}身份，不能更改。如需更换请先注销账号。`,
-      data: normalize(current, openId)
-    };
+  if (currentRole === requested) {
+    return { success: true, data: normalize(current, openId) };
   }
 
   const patch = { role: requested, roleSetAt: now, updatedAt: now };

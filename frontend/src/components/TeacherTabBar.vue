@@ -1,6 +1,7 @@
 <template>
   <van-tabbar route class="app-tabbar" safe-area-inset-bottom>
     <van-tabbar-item icon="wap-home-o" to="/teacher">班级</van-tabbar-item>
+    <van-tabbar-item icon="camera-o" to="/teacher/capture">拍照</van-tabbar-item>
     <van-tabbar-item icon="apps-o" to="/teacher/questions">题目</van-tabbar-item>
     <van-tabbar-item icon="chat-o" to="/teacher/assistant">助手</van-tabbar-item>
     <van-tabbar-item icon="edit" to="/teacher/paper">组卷</van-tabbar-item>

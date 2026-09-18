@@ -3,7 +3,7 @@
     <div class="hero">
       <div class="kicker">TEACHER</div>
       <h1>{{ profile.nickName || '教师' }}</h1>
-      <p>拍照录入进班级题库，不进个人错题本。组卷前请先到题目页选题。</p>
+      <p>拍照识别进老师题库，不进学生错题本。组卷页组建试卷后，打开再发给任意班级。</p>
       <div class="hero-stats">
         <div class="hero-stat" @click="$router.push('/teacher')"><b>{{ dash.classCount }}</b><span>班级</span></div>
         <div class="hero-stat" @click="$router.push('/teacher')"><b>{{ dash.studentCount || 0 }}</b><span>学生</span></div>
@@ -16,6 +16,7 @@
       <button @click="$router.push('/teacher/homework')">作业批改 <span>›</span></button>
       <button @click="$router.push('/teacher/paper')">班级组卷 <span>›</span></button>
       <button @click="$router.push('/teacher/report')">家长报告 <span>›</span></button>
+      <button @click="$router.push('/teacher/capture')">拍照识别 <span>›</span></button>
       <button @click="$router.push('/teacher/questions')">全班题目 <span>›</span></button>
       <button @click="$router.push('/teacher/class-notebooks')">班级错题本 <span>›</span></button>
       <button @click="$router.push('/teacher/analytics')">教学效果分析 <span>›</span></button>
@@ -30,7 +31,7 @@
       <button @click="logout">退出登录 <span>›</span></button>
       <button class="danger" @click="deleteAccount">注销账号 <span>›</span></button>
     </div>
-    <p class="foot">本账号已绑定老师身份。退出登录不会改变身份；更换身份需要先注销账号。</p>
+    <p class="foot">退出登录后可重新选择学生或老师。班级和学生错题数据都会保留；注销才会删除云端数据。</p>
     <TeacherTabBar />
   </div>
 </template>
@@ -59,7 +60,7 @@ export default {
       } catch { /* ignore */ }
     })
     const logout = async () => {
-      await showConfirmDialog({ title: '退出登录', message: '确定退出当前教师账号？' })
+      await showConfirmDialog({ title: '退出登录', message: '退出后不会删除云端数据。下次登录可重新选择学生或老师。' })
       clearSession()
       router.replace('/login')
     }

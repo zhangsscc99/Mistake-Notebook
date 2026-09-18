@@ -160,12 +160,29 @@ public class UserAccountService {
     }
 
     public Map<String, Object> login(String username, String password) {
+        return login(username, password, null);
+    }
+
+    @Transactional
+    public Map<String, Object> login(String username, String password, String role) {
         User user = userRepository.findByUsername(username == null ? "" : username.trim())
                 .orElseThrow(() -> new IllegalArgumentException("账号或密码不对"));
         if (!hash(user.getPasswordSalt(), password == null ? "" : password).equals(user.getPasswordHash())) {
             throw new IllegalArgumentException("账号或密码不对");
         }
         user = ensureRole(user);
+        if (role != null && !role.isBlank()) {
+            boolean teacher = "TEACHER".equalsIgnoreCase(role.trim());
+            String next = teacher ? "TEACHER" : "STUDENT";
+            if (!next.equals(user.getRole())) {
+                user.setRole(next);
+                if (teacher && (user.getInviteCode() == null || user.getInviteCode().isBlank())) {
+                    user.setInviteCode(newInviteCode());
+                }
+                user.setUpdatedAt(LocalDateTime.now());
+                user = userRepository.save(user);
+            }
+        }
         if (!"TEACHER".equals(user.getRole())) {
             categorySeedService.seedForUser(user.getId());
         }

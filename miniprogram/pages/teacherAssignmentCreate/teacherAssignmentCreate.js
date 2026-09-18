@@ -1,14 +1,5 @@
 const { callTeacher, shortText } = require('../../utils/teacher');
 
-function readPick() {
-  return getApp().globalData.teacherPick || {};
-}
-
-function pickIds() {
-  const ids = readPick().questionIds;
-  return Array.isArray(ids) ? ids : [];
-}
-
 Page({
   data: {
     classes: [],
@@ -23,8 +14,8 @@ Page({
 
   onLoad(options) {
     const kind = (options && options.mode) === 'homework' ? 'homework' : 'practice';
-    const pick = readPick();
-    this._preferClassId = (options && options.classId) || pick.classId || '';
+    this._preferClassId = (options && options.classId) || '';
+    this._paperId = (options && options.paperId) || '';
     this.setData({ kind });
     this.boot();
   },
@@ -34,29 +25,32 @@ Page({
     const classes = (dash.success && dash.data && dash.data.classes) || [];
     const selectedClass = classes.find((c) => c.id === this._preferClassId) || classes[0] || {};
     this.setData({ classes, selectedClass });
-    await this.loadCart();
+    await this.loadPaper();
   },
 
-  async loadCart() {
-    const ids = pickIds();
-    if (!ids.length) {
+  async loadPaper() {
+    const paperId = this._paperId;
+    if (!paperId) {
       this.setData({ cart: [], pickCount: 0 });
       return;
     }
-    const r = await callTeacher('listPickedQuestions', { questionIds: ids });
+    const r = await callTeacher('paperDetail', { id: paperId });
     if (!r.success) {
-      this.setData({ pickCount: ids.length });
-      wx.showToast({ title: r.error || '题目加载失败', icon: 'none' });
+      wx.showToast({ title: r.error || '试卷加载失败', icon: 'none' });
+      this.setData({ cart: [], pickCount: 0 });
       return;
     }
-    const cart = (r.data || []).map((q, i) => ({
+    const d = r.data || {};
+    const cart = (d.questions || []).map((q, i) => ({
       id: q.id,
       index: i + 1,
       content: shortText(q.content, 42),
       category: q.category || '未分类',
       sourceLabel: q.source === 'teacher_bank' ? '题库' : '错题'
     }));
-    this.setData({ cart, pickCount: cart.length });
+    const patch = { cart, pickCount: cart.length };
+    if (!this.data.title && d.title) patch.title = d.title;
+    this.setData(patch);
   },
 
   selectClass(e) {
@@ -75,20 +69,16 @@ Page({
   onDue(e) { this.setData({ dueDate: e.detail.value }); },
   clearDue() { this.setData({ dueDate: '' }); },
 
-  goPick() {
-    const classId = this.data.selectedClass.id || '';
-    wx.reLaunch({
-      url: '/pages/teacherQuestions/teacherQuestions?pick=1' + (classId ? '&classId=' + classId : '')
-    });
+  goPaper() {
+    wx.reLaunch({ url: '/pages/teacherPaper/teacherPaper' });
   },
 
   async submit() {
     if (this.data.submitting) return;
     const classId = this.data.selectedClass.id;
     if (!classId) return wx.showToast({ title: '请先选择班级', icon: 'none' });
-    const pick = readPick();
-    const questionIds = pickIds();
-    if (!questionIds.length) return wx.showToast({ title: '请先去组卷选题', icon: 'none' });
+    const paperId = this._paperId;
+    if (!paperId) return wx.showToast({ title: '请打开一份试卷再发给班级', icon: 'none' });
     const isHomework = this.data.kind === 'homework';
     const title = (this.data.title || '').trim() || (isHomework ? '班级作业' : '班级练习');
     this.setData({ submitting: true });
@@ -98,11 +88,9 @@ Page({
           classId,
           title,
           dueAt: this.data.dueDate || '',
-          questionIds,
-          paperId: pick.paperId || ''
+          paperId
         });
         if (!r.success) throw new Error(r.error || '发送失败');
-        getApp().globalData.teacherPick = null;
         wx.showToast({ title: '作业已发给班级', icon: 'success' });
         setTimeout(() => {
           wx.redirectTo({ url: '/pages/teacherAssignmentDetail/teacherAssignmentDetail?id=' + r.data.id });
@@ -111,10 +99,9 @@ Page({
         const r = await callTeacher('publishNotebook', {
           classId,
           title,
-          questionIds
+          paperId
         });
         if (!r.success) throw new Error(r.error || '发送失败');
-        getApp().globalData.teacherPick = null;
         wx.showToast({ title: '练习已发给班级', icon: 'success' });
         setTimeout(() => wx.navigateBack(), 400);
       }

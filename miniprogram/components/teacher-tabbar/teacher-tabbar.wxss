@@ -26,7 +26,7 @@
 }
 
 .tab-text {
-  font-size: 20rpx;
+  font-size: 18rpx;
   color: rgba(11, 22, 51, 0.55);
 }
 

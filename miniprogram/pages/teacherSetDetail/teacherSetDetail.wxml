@@ -15,10 +15,15 @@
       <text class="badge" wx:if="{{item.nickName}}">{{item.nickName}}</text>
     </view>
   </view>
-  <view class="empty-block" wx:if="{{!loading && !questions.length}}">这份题单里没有可显示的题目<text>题目可能已被学生删除</text></view>
+  <view class="empty-block" wx:if="{{!loading && !questions.length}}">这份试卷里没有可显示的题目<text>题目可能已被删除</text></view>
 
-  <view class="submit-wrap" wx:if="{{!loading}}">
-    <button class="primary-btn" wx:if="{{questions.length}}" bindtap="useThisSet">用这套题组卷</button>
-    <button class="danger-btn" bindtap="recall">{{type === 'paper' ? '删除题单' : '撤回练习'}}</button>
+  <view class="submit-wrap" wx:if="{{!loading && type === 'paper'}}">
+    <button class="primary-btn" wx:if="{{questions.length}}" bindtap="sendToClass">发给班级</button>
+    <button class="ghost-btn" wx:if="{{questions.length}}" bindtap="addMore">继续加题</button>
+    <button class="ghost-btn" wx:if="{{questions.length}}" bindtap="exportPdf">导出 PDF</button>
+    <button class="danger-btn" bindtap="recall">删除试卷</button>
+  </view>
+  <view class="submit-wrap" wx:if="{{!loading && type !== 'paper'}}">
+    <button class="danger-btn" bindtap="recall">撤回练习</button>
   </view>
 </view>

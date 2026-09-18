@@ -4,7 +4,7 @@
     <div class="hero">
       <div class="kicker">SEND</div>
       <h1>发给班级</h1>
-      <p>题目已在组卷页选好。这里只选发给班级的方式：练习看题，作业作答批改</p>
+      <p>题目来自已保存的试卷。选发给哪个班，以及练习或作业。</p>
     </div>
     <div class="section-head"><span>发给班级的方式</span></div>
     <div class="chips">
@@ -34,7 +34,7 @@
       <b>{{ q.index }}. {{ q.content }}</b>
       <span class="meta">{{ q.sourceLabel }} · {{ q.category }}</span>
     </div>
-    <div v-if="!cart.length" class="empty">还没有组卷选题<span class="go" @click="$router.push('/teacher/questions?pick=1')">去题目页勾选，再带到组卷</span></div>
+    <div v-if="!cart.length" class="empty">还没有试卷题目<span class="go" @click="$router.push('/teacher/paper')">去组卷页组建试卷</span></div>
     <div v-if="cart.length" class="footer">
       <button class="primary" :disabled="saving" @click="submit">{{ saving ? '发送中…' : '发给班级' }}</button>
     </div>
@@ -46,7 +46,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import teacherAPI from '../../api/teacher'
-import { pickIds, readPick, setSelectedClassId, shortText, writePick } from '../../utils/teacherClass'
+import { setSelectedClassId, shortText } from '../../utils/teacherClass'
 
 export default {
   name: 'TeacherSend',
@@ -60,39 +60,38 @@ export default {
     const dueAt = ref('')
     const cart = ref([])
     const saving = ref(false)
+    const paperId = String(route.query.paperId || '')
     const fail = (e) => showToast({ type: 'fail', message: e.response?.data?.message || '发送失败' })
 
     const boot = async () => {
       const res = await teacherAPI.dashboard()
       classes.value = (res.data && res.data.classes) || []
-      const want = Number(route.query.classId || readPick().classId || 0)
+      const want = Number(route.query.classId || 0)
       selected.value = classes.value.find((c) => c.id === want) || classes.value[0] || {}
-      const ids = pickIds()
-      if (ids.length) {
-        const r = await teacherAPI.picked(ids)
-        cart.value = (r.data || []).map((q, i) => ({
-          id: q.id,
-          index: i + 1,
-          content: shortText(q.content, 60),
-          category: q.category || '未分类',
-          sourceLabel: q.source === 'teacher_bank' ? '题库' : '错题'
-        }))
-      }
+      if (!paperId) return
+      const r = await teacherAPI.paper(paperId)
+      const d = r.data || {}
+      if (d.title && !title.value) title.value = d.title
+      cart.value = (d.questions || []).map((q, i) => ({
+        id: q.id,
+        index: i + 1,
+        content: shortText(q.content, 60),
+        category: q.category || '未分类',
+        sourceLabel: q.source === 'teacher_bank' ? '题库' : '错题'
+      }))
     }
 
     const submit = async () => {
       if (!selected.value.id) return showToast('请先选择班级')
-      const ids = pickIds()
-      if (!ids.length) return showToast('请先选题')
+      if (!paperId) return showToast('请打开一份试卷再发给班级')
       const name = title.value.trim() || (kind.value === 'homework' ? '班级作业' : '班级错题练习')
       saving.value = true
       try {
         if (kind.value === 'practice') {
-          await teacherAPI.publishNotebook({ classId: selected.value.id, title: name, questionIds: ids })
+          await teacherAPI.publishNotebook({ classId: selected.value.id, title: name, paperId })
         } else {
-          await teacherAPI.createHomework({ classId: selected.value.id, title: name, questionIds: ids, dueAt: dueAt.value })
+          await teacherAPI.createHomework({ classId: selected.value.id, title: name, paperId, dueAt: dueAt.value })
         }
-        writePick(null)
         setSelectedClassId(selected.value.id)
         showToast({ type: 'success', message: '已发给班级' })
         router.replace(kind.value === 'homework' ? '/teacher/homework' : '/teacher/paper')

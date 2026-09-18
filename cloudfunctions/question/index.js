@@ -12,6 +12,14 @@ function mapQuestionList(records) {
   return (records || []).map(normalizeQuestion);
 }
 
+function isTeacherBank(q) {
+  return String((q && q.source) || '') === 'teacher_bank';
+}
+
+function mapStudentQuestions(records) {
+  return mapQuestionList((records || []).filter((q) => !isTeacherBank(q)));
+}
+
 // 身份只从云端上下文取。错题 / 分类按 openid 隔离，不再是全站共用池。
 function getCallerOpenId() {
   const wxContext = cloud.getWXContext();
@@ -251,7 +259,7 @@ async function listQuestions(event) {
     .orderBy('createdAt', 'desc')
     .get();
 
-  return { success: true, data: mapQuestionList(result.data) };
+  return { success: true, data: mapStudentQuestions(result.data) };
 }
 
 async function pageQuestions(event) {
@@ -288,7 +296,7 @@ async function pageQuestions(event) {
   return {
     success: true,
     data: {
-      records: mapQuestionList(result.data),
+      records: mapStudentQuestions(result.data),
       total: totalResult.total,
       page,
       size,
@@ -314,7 +322,7 @@ async function batchGetQuestions(event) {
     })
     .get();
 
-  return { success: true, data: mapQuestionList(result.data) };
+  return { success: true, data: mapStudentQuestions(result.data) };
 }
 
 async function updateQuestion(event) {
@@ -496,7 +504,7 @@ async function listPendingQuestions() {
     .orderBy('createdAt', 'desc')
     .get();
 
-  return { success: true, data: mapQuestionList(result.data) };
+  return { success: true, data: mapStudentQuestions(result.data) };
 }
 
 async function retryQuestion(event) {

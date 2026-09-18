@@ -569,6 +569,23 @@ public class UploadController {
             }
             segment.put("bounds", bounds);
 
+            List<Map<String, Object>> pageSpans = new ArrayList<>();
+            List<Integer> pages = question.getPages();
+            if (pages != null && !pages.isEmpty()) {
+                for (Integer page : pages) {
+                    Map<String, Object> span = new HashMap<>();
+                    span.put("pageIndex", page == null ? 0 : page);
+                    span.put("bounds", bounds);
+                    pageSpans.add(span);
+                }
+            } else {
+                Map<String, Object> span = new HashMap<>();
+                span.put("pageIndex", question.getPageIndex());
+                span.put("bounds", bounds);
+                pageSpans.add(span);
+            }
+            segment.put("pageSpans", pageSpans);
+
             segments.add(segment);
         }
 

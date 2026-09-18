@@ -75,13 +75,17 @@
 
     <view class="section-head"><text class="section-title">教学工具</text></view>
     <view class="tool-grid">
+      <view class="tool-card" bindtap="openCapture">
+        <view class="tool-title">拍照识别</view>
+        <view class="tool-desc">拍试卷进老师题库</view>
+      </view>
       <view class="tool-card" bindtap="openQuestions">
         <view class="tool-title">全班题目</view>
-        <view class="tool-desc">学生错题与班级题库</view>
+        <view class="tool-desc">学生错题与老师题库</view>
       </view>
       <view class="tool-card" bindtap="openPaper">
         <view class="tool-title">班级组卷</view>
-        <view class="tool-desc">选题后发给班级或存为题单</view>
+        <view class="tool-desc">选题后生成试卷，再发给班级</view>
       </view>
       <view class="tool-card" bindtap="openAssignments">
         <view class="tool-title">作业批改</view>

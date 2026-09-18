@@ -31,7 +31,6 @@ function pickCategory(hint) {
 
 Page({
   data: {
-    classId: '',
     imagePath: '',
     fileID: '',
     pages: [],
@@ -52,7 +51,7 @@ Page({
 
   onLoad() {
     const draft = app.globalData.recognitionDraft;
-    if (!draft || draft.mode !== 'teacher_bank' || !draft.segments || !draft.segments.length || !draft.classId) {
+    if (!draft || draft.mode !== 'teacher_bank' || !draft.segments || !draft.segments.length) {
       wx.showToast({ title: '无识别结果', icon: 'none' });
       setTimeout(() => wx.navigateBack(), 800);
       return;
@@ -97,7 +96,6 @@ Page({
 
     const selectedCategory = pickCategory((questions[0] && questions[0].subject) || '');
     this.setData({
-      classId: draft.classId,
       imagePath: (pages[0] && pages[0].tempFilePath) || draft.tempFilePath || '',
       fileID: (pages[0] && pages[0].fileID) || draft.fileID || '',
       pages,
@@ -173,15 +171,10 @@ Page({
       wx.showToast({ title: '请至少选择一道题', icon: 'none' });
       return;
     }
-    if (!this.data.classId) {
-      wx.showToast({ title: '缺少班级', icon: 'none' });
-      return;
-    }
     this.setData({ saving: true });
     wx.showLoading({ title: '正在保存...', mask: true });
     try {
       const r = await callTeacher('saveBankQuestions', {
-        classId: this.data.classId,
         category: this.data.selectedCategory,
         difficulty: this.data.selectedDifficulty,
         imageUrl: this.data.fileID,
@@ -199,14 +192,13 @@ Page({
       app.globalData.recognitionDraft = null;
       wx.hideLoading();
       this.setData({ saving: false });
-      const classId = this.data.classId;
       wx.showModal({
-        title: '已存入题库',
-        content: '题目已进入这个班的题库，不会自动带进组卷。需要组卷时再到题目页勾选。',
+        title: '已存入老师题库',
+        content: '题目已保存在老师账号下，不会进入学生错题本，也不会自动带进组卷。需要组卷时再到题目页勾选。',
         confirmText: '去选题',
         cancelText: '完成',
         success: (res) => {
-          const bankUrl = '/pages/teacherQuestions/teacherQuestions?bank=1&classId=' + classId;
+          const bankUrl = '/pages/teacherQuestions/teacherQuestions?bank=1';
           if (res.confirm) {
             wx.reLaunch({ url: bankUrl + '&pick=1' });
           } else {

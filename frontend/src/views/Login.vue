@@ -9,7 +9,7 @@
     <div class="card">
       <div class="card-title">{{ mode === 'login' ? '欢迎回来' : '创建账号' }}</div>
       <div class="card-desc">
-        {{ mode === 'login' ? '用你的账号密码进入原来的错题本' : '第一次使用会创建账号，之后换设备也能找回' }}
+        {{ mode === 'login' ? '用账号密码进入。可选学生或老师，退出后再登可切换，数据都会保留' : '第一次使用会创建账号，之后换设备也能找回' }}
       </div>
 
       <label class="field">
@@ -24,7 +24,7 @@
         <span>昵称</span>
         <input v-model="nickName" maxlength="20" placeholder="匿名用户" />
       </label>
-      <div v-if="mode === 'register'" class="field">
+      <div class="field">
         <span>身份</span>
         <div class="role-row">
           <button class="role" :class="{ on: role === 'STUDENT' }" @click="role = 'STUDENT'">
@@ -39,13 +39,13 @@
       </div>
 
       <button class="login-btn" :disabled="submitting" @click="submit">
-        {{ submitting ? '正在进入…' : (mode === 'login' ? '进入错题本' : '创建并登录') }}
+        {{ submitting ? '正在进入…' : (mode === 'login' ? (role === 'TEACHER' ? '进入教师工作台' : '进入错题本') : '创建并登录') }}
       </button>
       <button class="switch-btn" @click="mode = mode === 'login' ? 'register' : 'login'">
         {{ mode === 'login' ? '没有账号？去创建' : '已有账号？去登录' }}
       </button>
     </div>
-    <p class="hint">网页端没有微信一键登录，功能和隔离规则与小程序一致。</p>
+    <p class="hint">退出登录后可重新选择学生或老师。注销才会删除云端数据。</p>
     <button class="cases-link" @click="$router.push('/orgs')">查看机构版（演示案例 + 真实入驻）</button>
   </div>
 </template>
@@ -55,7 +55,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import userAPI from '../api/user'
-import { setSession } from '../utils/auth'
+import { setSession, getLastRole } from '../utils/auth'
 
 export default {
   name: 'LoginPage',
@@ -65,7 +65,7 @@ export default {
     const username = ref('')
     const password = ref('')
     const nickName = ref('匿名用户')
-    const role = ref('STUDENT')
+    const role = ref(getLastRole())
     const submitting = ref(false)
 
     const submit = async () => {

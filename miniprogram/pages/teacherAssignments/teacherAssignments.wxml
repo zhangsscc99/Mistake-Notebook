@@ -2,8 +2,8 @@
   <view class="teacher-hero">
     <view class="hero-kicker">HOMEWORK</view>
     <view class="hero-title">作业批改</view>
-    <view class="hero-sub">学生提交后在这里按题判对错并打分。要发给班级请去组卷发送试卷</view>
-    <button class="ghost-btn hero-btn" bindtap="goPaper">发送试卷</button>
+    <view class="hero-sub">学生提交后在这里按题判对错并打分。先组卷生成试卷，打开后再发给班级。</view>
+    <button class="ghost-btn hero-btn" bindtap="goPaper">去组卷</button>
   </view>
 
   <view class="white-card tap-card" wx:for="{{assignments}}" wx:key="id" data-id="{{item.id}}" bindtap="openDetail">
@@ -15,5 +15,5 @@
       <text class="badge status-graded">已批 {{item.graded}}</text>
     </view>
   </view>
-  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>点上方「发送试卷」去组卷，发给班级时选作业</text></view>
+  <view class="empty-block" wx:if="{{!assignments.length}}">还没有作业<text>先去组卷生成试卷，打开后发给班级并选作业</text></view>
 </view>

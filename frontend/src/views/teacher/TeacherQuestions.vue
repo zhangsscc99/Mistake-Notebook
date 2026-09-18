@@ -3,7 +3,7 @@
     <div class="hero">
       <div class="kicker">QUESTIONS</div>
       <h1>全班题目</h1>
-      <p>学生错题和班级题库都在这里。拍照录入进题库，不进学生错题</p>
+      <p>学生错题按班级看。拍照识别进老师题库，不进学生错题</p>
       <div class="hero-stats">
         <div class="hero-stat" @click="sourceFilter = 'mistakes'"><b>{{ stats.total || 0 }}</b><span>错题</span></div>
         <div class="hero-stat"><b>{{ stats.studentCount || 0 }}</b><span>学生</span></div>
@@ -13,11 +13,11 @@
     </div>
 
     <div class="chips">
-      <button v-for="c in classes" :key="c.id" class="chip" :class="{ on: selected.id === c.id }" @click="selectClass(c)">{{ c.name }}</button>
-    </div>
-    <div class="chips">
       <button class="chip" :class="{ on: sourceFilter === 'mistakes' }" @click="sourceFilter = 'mistakes'">学生错题</button>
-      <button class="chip" :class="{ on: sourceFilter === 'bank' }" @click="sourceFilter = 'bank'">班级题库</button>
+      <button class="chip" :class="{ on: sourceFilter === 'bank' }" @click="sourceFilter = 'bank'">老师题库</button>
+    </div>
+    <div v-if="sourceFilter === 'mistakes'" class="chips">
+      <button v-for="c in classes" :key="c.id" class="chip" :class="{ on: selected.id === c.id }" @click="selectClass(c)">{{ c.name }}</button>
     </div>
     <div class="search">
       <input v-model="keyword" placeholder="搜索题干" />
@@ -55,18 +55,27 @@
         </div>
       </div>
     </div>
-    <div v-if="!loading && !visible.length && sourceFilter === 'bank'" class="empty">还没有老师录入的题<span>点上方「拍照录入」，识别后会进这个班的题库</span></div>
+    <div v-if="!loading && !visible.length && sourceFilter === 'bank'" class="empty">还没有老师录入的题<span>点底部「拍照」识别，题目会进入老师题库</span></div>
     <div v-if="!loading && !visible.length && sourceFilter !== 'bank'" class="empty">没有符合条件的学生错题<span>换个分类、学生或搜索词试试</span></div>
 
     <div v-if="picking" class="dock">
       <div>已选 {{ selectedCount }} 道 · 当前显示 {{ visible.length }} 道</div>
       <div class="dock-actions">
         <button class="ghost" @click="cancelPick">取消</button>
-        <button class="primary slim" @click="confirmPick">带到组卷</button>
+        <button class="primary slim" @click="confirmPick">确认组卷</button>
       </div>
     </div>
 
     <TeacherTabBar />
+
+    <van-popup v-model:show="showTitle" round position="center" :style="{ width: '86%', padding: '20px' }">
+      <b>保存试卷</b>
+      <input v-model="paperTitle" class="title-input" placeholder="例如：周五错题练习卷" maxlength="30" />
+      <div class="popup-actions">
+        <button class="ghost" @click="showTitle = false">取消</button>
+        <button class="primary slim" @click="confirmSave">保存</button>
+      </div>
+    </van-popup>
   </div>
 </template>
 
@@ -76,7 +85,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import teacherAPI from '../../api/teacher'
 import TeacherTabBar from '../../components/TeacherTabBar.vue'
-import { getSelectedClassId, setSelectedClassId, readPick, writePick } from '../../utils/teacherClass'
+import { getSelectedClassId, setSelectedClassId } from '../../utils/teacherClass'
 import { partitionPaperQuestions } from '../../utils/questionFormat'
 
 export default {
@@ -91,7 +100,7 @@ export default {
     const bank = ref([])
     const students = ref([])
     const stats = ref({})
-    const sourceFilter = ref('mistakes')
+    const sourceFilter = ref(route.query.bank === '1' ? 'bank' : 'mistakes')
     const keyword = ref('')
     const category = ref('')
     const studentId = ref(0)
@@ -99,6 +108,9 @@ export default {
     const picking = ref(route.query.pick === '1')
     const selectedMap = reactive({})
     const loading = ref(false)
+    const showTitle = ref(false)
+    const paperTitle = ref('')
+    const pendingIds = ref([])
     const fail = (e) => showToast({ type: 'fail', message: e.response?.data?.message || '加载失败' })
 
     const hotIndex = computed(() => {
@@ -152,7 +164,7 @@ export default {
       try {
         const [q, b, st, stu] = await Promise.all([
           teacherAPI.classQuestions(cls.id),
-          teacherAPI.bank(cls.id),
+          teacherAPI.bank(),
           teacherAPI.classStats(cls.id),
           teacherAPI.classStudents(cls.id)
         ])
@@ -170,15 +182,16 @@ export default {
       const want = Number(route.query.classId || getSelectedClassId() || 0)
       const cls = classes.value.find((c) => c.id === want) || classes.value[0]
       if (cls) await loadClass(cls)
-      const pick = readPick()
-      ;(pick.questionIds || []).forEach((id) => { selectedMap[id] = true })
+      else {
+        try {
+          const b = await teacherAPI.bank()
+          bank.value = b.data || []
+        } catch (e) { fail(e) }
+      }
     }
 
     const selectClass = (c) => loadClass(c)
-    const goCapture = () => {
-      if (!selected.value.id) return showToast('请先选择班级')
-      router.push({ path: '/teacher/capture', query: { classId: selected.value.id } })
-    }
+    const goCapture = () => router.push('/teacher/capture')
     const onTap = (q) => {
       if (!picking.value) return
       selectedMap[q.id] = !selectedMap[q.id]
@@ -187,20 +200,54 @@ export default {
       const on = !visibleAllSelected.value
       visible.value.forEach((q) => { selectedMap[q.id] = on })
     }
-    const cancelPick = () => { picking.value = false }
-    const confirmPick = () => {
+    const fromPaper = () => route.query.from === 'paper' || !!route.query.paperId
+    const cancelPick = () => {
+      if (route.query.paperId) {
+        router.back()
+        return
+      }
+      if (fromPaper()) {
+        router.push('/teacher/paper')
+        return
+      }
+      picking.value = false
+    }
+    const readyQuestionIds = () => {
       const pool = [...mistakes.value, ...bank.value]
       const picked = pool.filter((q) => selectedMap[q.id])
       const { ready, blocked } = partitionPaperQuestions(picked, { teacher: true })
       if (!ready.length) {
         showToast(blocked.length ? '未解析完成的题目不能加入组卷' : '请先选题')
+        return []
+      }
+      if (blocked.length) showToast(`已跳过 ${blocked.length} 道未解析完成的题`)
+      return ready.map((q) => q.id)
+    }
+    const confirmPick = async () => {
+      const ids = readyQuestionIds()
+      if (!ids.length) return
+      const paperId = route.query.paperId
+      if (paperId) {
+        try {
+          await teacherAPI.updatePaper(paperId, { questionIds: ids })
+          showToast({ type: 'success', message: '已加入试卷' })
+          router.back()
+        } catch (e) { fail(e) }
         return
       }
-      if (blocked.length) {
-        showToast(`已跳过 ${blocked.length} 道未解析完成的题`)
-      }
-      writePick({ classId: selected.value.id, questionIds: ready.map((q) => q.id) })
-      router.push('/teacher/paper')
+      pendingIds.value = ids
+      paperTitle.value = '练习卷'
+      showTitle.value = true
+    }
+    const confirmSave = async () => {
+      const title = paperTitle.value.trim()
+      if (!title) return showToast('请输入试卷名称')
+      try {
+        await teacherAPI.savePaper({ title, questionIds: pendingIds.value })
+        showTitle.value = false
+        showToast({ type: 'success', message: '试卷保存成功' })
+        router.replace('/teacher/paper')
+      } catch (e) { fail(e) }
     }
 
     watch(sourceFilter, () => { category.value = ''; studentId.value = 0; onlyHot.value = false })
@@ -208,7 +255,7 @@ export default {
     return {
       classes, selected, bank, students, stats, sourceFilter, keyword, category, studentId, onlyHot,
       picking, selectedMap, loading, categoryChips, visible, selectedCount, visibleAllSelected,
-      selectClass, goCapture, onTap, toggleVisible, cancelPick, confirmPick
+      showTitle, paperTitle, selectClass, goCapture, onTap, toggleVisible, cancelPick, confirmPick, confirmSave
     }
   }
 }
@@ -250,4 +297,6 @@ export default {
 .dock-actions { display: flex; gap: 8px; margin-top: 10px; }
 .ghost { border: none; background: #eef3fb; color: #2459ff; border-radius: 999px; padding: 8px 14px; font-weight: 700; }
 .primary.slim { border: none; margin-left: auto; border-radius: 999px; padding: 0 18px; height: 36px; color: #fff; font-weight: 700; background: linear-gradient(135deg,#2459ff,#52b7ff); }
+.title-input { width: 100%; height: 42px; border: none; background: #f4f7fb; border-radius: 12px; padding: 0 12px; margin-top: 12px; }
+.popup-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 </style>

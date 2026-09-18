@@ -31,7 +31,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> login(@RequestBody Map<String, String> body) {
         Map<String, Object> data = userAccountService.login(
                 body.getOrDefault("username", ""),
-                body.getOrDefault("password", "")
+                body.getOrDefault("password", ""),
+                body.get("role")
         );
         return ResponseEntity.ok(ApiResponse.success("欢迎回来", data));
     }

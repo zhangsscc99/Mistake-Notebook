@@ -87,7 +87,7 @@ public class SchemaFixer implements CommandLineRunner {
                 CREATE TABLE IF NOT EXISTS `teacher_papers` (
                   `id` BIGINT NOT NULL AUTO_INCREMENT,
                   `teacher_id` BIGINT NOT NULL,
-                  `class_id` BIGINT NOT NULL,
+                  `class_id` BIGINT NULL,
                   `title` VARCHAR(120) NOT NULL,
                   `question_ids` TEXT,
                   `question_count` INT DEFAULT 0,
@@ -99,6 +99,11 @@ public class SchemaFixer implements CommandLineRunner {
                   KEY `idx_teacher_papers_class` (`class_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
+        try {
+            jdbcTemplate.execute("ALTER TABLE `teacher_papers` MODIFY COLUMN `class_id` BIGINT NULL");
+        } catch (Exception e) {
+            log.warn("teacher_papers.class_id 改为可空失败（可忽略）：{}", e.getMessage());
+        }
         ensureTable("checkin_posts", """
                 CREATE TABLE IF NOT EXISTS `checkin_posts` (
                   `id` BIGINT NOT NULL AUTO_INCREMENT,
