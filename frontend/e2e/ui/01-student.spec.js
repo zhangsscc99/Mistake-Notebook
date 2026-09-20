@@ -10,6 +10,9 @@ test.describe('Student UI surfaces', () => {
     await expect(page).toHaveURL(/\/orgs/)
     await expect(page.getByRole('heading', { name: '演示案例 + 真实入驻机构' })).toBeVisible()
     await expect(page.getByRole('heading', { name: /启明/ }).first()).toBeVisible()
+    await page.locator('.van-nav-bar__left').click()
+    await expect(page).toHaveURL(/\/login/)
+    await expect(page.getByText('进入错题本')).toBeVisible()
   })
 
   test('register from UI then see six student tabs, no homepage community button', async ({ page, request }) => {

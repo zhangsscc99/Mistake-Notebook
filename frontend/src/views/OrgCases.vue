@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <van-nav-bar title="机构版" left-arrow @click-left="goBack" />
+    <van-nav-bar title="机构版" left-arrow @click-left="goBack" fixed placeholder />
     <div class="intro">
       <div class="kicker">INSTITUTION</div>
       <h1>演示案例 + 真实入驻机构</h1>
@@ -24,16 +24,25 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import orgAPI from '../api/org'
-import { isLoggedIn } from '../utils/auth'
+import { isLoggedIn, isTeacher } from '../utils/auth'
 
 export default {
   name: 'OrgCases',
   setup() {
     const router = useRouter()
     const orgs = ref([])
+    const fallback = () => {
+      if (isLoggedIn() && isTeacher()) return '/teacher/mine'
+      if (isLoggedIn()) return '/profile'
+      return '/login'
+    }
     const goBack = () => {
-      if (window.history.length > 1) router.back()
-      else router.push(isLoggedIn() ? '/profile' : '/login')
+      const back = window.history.state && window.history.state.back
+      if (typeof back === 'string' && back && !back.startsWith('/orgs')) {
+        router.back()
+        return
+      }
+      router.replace(fallback())
     }
     onMounted(async () => {
       try {

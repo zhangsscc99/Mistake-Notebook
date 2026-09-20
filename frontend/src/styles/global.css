@@ -446,3 +446,9 @@ textarea:disabled,
 .van-tabbar-item * {
   transform: none !important;
 }
+
+.van-nav-bar__left,
+.van-nav-bar__right {
+  z-index: 10 !important;
+  pointer-events: auto !important;
+}

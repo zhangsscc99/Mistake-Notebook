@@ -51,4 +51,15 @@ test.describe('Org publish and join (headless)', () => {
     await openAs(page, student.token, student.profile, '/classroom')
     await expect(page.getByText('已通过').first()).toBeVisible()
   })
+
+  test('teacher can leave org directory back to mine', async ({ page, request }) => {
+    const teacher = await register(request, { role: 'TEACHER', nickName: '返回机构老师' })
+    await openAs(page, teacher.token, teacher.profile, '/teacher/mine')
+    await page.getByRole('button', { name: '机构目录' }).click()
+    await expect(page).toHaveURL(/\/orgs$/)
+    await expect(page.getByRole('heading', { name: '演示案例 + 真实入驻机构' })).toBeVisible()
+    await page.locator('.van-nav-bar__left').click()
+    await expect(page).toHaveURL(/\/teacher\/mine/)
+    await expect(page.getByRole('button', { name: '机构目录' })).toBeVisible()
+  })
 })

@@ -1,6 +1,6 @@
 <template>
   <div class="page" :style="pageStyle">
-    <van-nav-bar :title="org.shortName || '机构案例'" left-arrow @click-left="$router.push('/orgs')" />
+    <van-nav-bar :title="org.shortName || '机构案例'" left-arrow @click-left="goBack" fixed placeholder />
     <div class="hero" :style="heroStyle">
       <img v-if="org.logoUrl" class="logo" :src="org.logoUrl" alt="" />
       <div v-else class="mark">{{ org.mark }}</div>
@@ -84,7 +84,7 @@
 
 <script>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import orgAPI from '../api/org'
 
@@ -92,7 +92,16 @@ export default {
   name: 'OrgCaseDetail',
   setup() {
     const route = useRoute()
+    const router = useRouter()
     const org = ref({})
+    const goBack = () => {
+      const back = window.history.state && window.history.state.back
+      if (typeof back === 'string' && back && back !== route.fullPath) {
+        router.back()
+        return
+      }
+      router.replace('/orgs')
+    }
     const primary = computed(() => org.value.theme?.primary || '#2459ff')
     const accent = computed(() => org.value.theme?.accent || '#52b7ff')
     const pageStyle = computed(() => ({
@@ -117,7 +126,7 @@ export default {
         showToast({ type: 'fail', message: e.response?.data?.message || '案例不存在' })
       }
     })
-    return { org, pageStyle, heroStyle, diff, rate }
+    return { org, pageStyle, heroStyle, diff, rate, goBack }
   }
 }
 </script>
