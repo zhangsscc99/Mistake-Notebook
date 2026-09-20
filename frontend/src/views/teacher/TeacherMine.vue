@@ -20,7 +20,6 @@
       <button @click="$router.push('/teacher/questions')">全班题目 <span>›</span></button>
       <button @click="$router.push('/teacher/class-notebooks')">班级错题本 <span>›</span></button>
       <button @click="$router.push('/teacher/analytics')">教学效果分析 <span>›</span></button>
-      <button @click="$router.push('/profile')">资料与密码 <span>›</span></button>
       <button @click="$router.push('/teacher/org')">我的机构主页 <span>›</span></button>
       <button @click="$router.push('/orgs')">机构目录 <span>›</span></button>
       <button @click="$router.push('/community')">学习社区 <span>›</span></button>

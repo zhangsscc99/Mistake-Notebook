@@ -33,13 +33,14 @@ test.describe('Teacher UI surfaces', () => {
     await page.getByText('我的', { exact: true }).click()
     await expect(page).toHaveURL(/\/teacher\/mine/)
     await expect(page.getByText('我的机构主页')).toBeVisible()
+    await expect(page.getByText('资料与密码')).toHaveCount(0)
   })
 
   test('teacher org, analytics, homework, notebooks pages open', async ({ page, request }) => {
     const teacher = await register(request, { role: 'TEACHER', nickName: '页面老师' })
     await injectSession(page, teacher.token, teacher.profile)
     const routes = [
-      ['/teacher/org', '机构'],
+      ['/teacher/org', '保存草稿'],
       ['/teacher/analytics', '教学'],
       ['/teacher/homework', '作业'],
       ['/teacher/class-notebooks', '错题本'],

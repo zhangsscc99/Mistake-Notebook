@@ -4,7 +4,7 @@
     <div class="hero">
       <div class="kicker">INSTITUTION</div>
       <h1>{{ form.exists ? '编辑机构主页' : '开通机构主页' }}</h1>
-      <p>机构资料由你来管。打开「公开发布」后会出现在机构目录；把加入码发给学生，通过申请后才会进机构。</p>
+      <p>先「保存草稿」写资料，确认后再点「发布」，才会出现在机构目录。把加入码发给学生，通过申请后才会进机构。</p>
     </div>
 
     <label class="logo">
@@ -28,19 +28,15 @@
       <input v-model="form.headline" maxlength="200" placeholder="例如：作业回收率 98%" />
       <label>详细说明</label>
       <textarea v-model="form.pitch" maxlength="1200" placeholder="你们怎么用班级题库、作业和家长报告"></textarea>
-      <div class="colors">
-        <label>主色 <input type="color" v-model="form.primary" /></label>
-        <label>辅色 <input type="color" v-model="form.accent" /></label>
-      </div>
       <label>引用语（选填）</label>
       <textarea v-model="form.quote" maxlength="400" placeholder="老师或校长的一句话"></textarea>
       <label>引用来源</label>
       <input v-model="form.quoteBy" maxlength="80" placeholder="高一备课组长" />
-      <label class="switch-row">
-        <span>公开发布到机构目录</span>
-        <input type="checkbox" v-model="form.published" />
-      </label>
-      <button class="primary" :disabled="saving" @click="save">{{ saving ? '保存中…' : (form.published ? '保存并公开' : '保存') }}</button>
+      <p class="status">{{ form.published ? '当前已公开，会出现在机构目录' : '当前是草稿，不会出现在机构目录' }}</p>
+      <div class="actions">
+        <button class="ghost" :disabled="!!saving" @click="save(false)">{{ saving === 'draft' ? '保存中…' : '保存草稿' }}</button>
+        <button class="primary" :disabled="!!saving" @click="save(true)">{{ saving === 'publish' ? '发布中…' : '发布' }}</button>
+      </div>
       <button v-if="form.exists && form.published && form.slug" class="ghost" @click="$router.push('/orgs/' + form.slug)">查看公开页</button>
     </div>
 
@@ -85,7 +81,7 @@ import { API_BASE_URL, uploadClient } from '../../api/config'
 export default {
   name: 'TeacherOrg',
   setup() {
-    const saving = ref(false)
+    const saving = ref('')
     const pending = ref([])
     const members = ref([])
     const form = reactive({
@@ -100,8 +96,6 @@ export default {
       headline: '',
       pitch: '',
       logoUrl: '',
-      primary: '#2459ff',
-      accent: '#52b7ff',
       quote: '',
       quoteBy: ''
     })
@@ -119,8 +113,6 @@ export default {
       form.headline = d.headline || ''
       form.pitch = d.pitch || ''
       form.logoUrl = d.logoUrl || ''
-      form.primary = d.theme?.primary || '#2459ff'
-      form.accent = d.theme?.accent || '#52b7ff'
       form.quote = d.quote || ''
       form.quoteBy = d.quoteBy || ''
       pending.value = d.pending || []
@@ -144,8 +136,8 @@ export default {
       }
     }
 
-    const save = async () => {
-      saving.value = true
+    const save = async (published) => {
+      saving.value = published ? 'publish' : 'draft'
       try {
         const res = await orgAPI.saveMine({
           name: form.name,
@@ -156,18 +148,21 @@ export default {
           headline: form.headline,
           pitch: form.pitch,
           logoUrl: form.logoUrl,
-          primary: form.primary,
-          accent: form.accent,
+          primary: '#2459ff',
+          accent: '#52b7ff',
           quote: form.quote,
           quoteBy: form.quoteBy,
-          published: form.published
+          published
         })
         apply(res.data || {})
-        showToast({ type: 'success', message: form.published ? '机构主页已公开' : '已保存，尚未公开' })
+        showToast({
+          type: 'success',
+          message: published ? '机构主页已公开' : '已保存草稿'
+        })
       } catch (err) {
         showToast({ type: 'fail', message: err.response?.data?.message || '保存失败' })
       } finally {
-        saving.value = false
+        saving.value = ''
       }
     }
 
@@ -242,9 +237,9 @@ input, textarea {
   padding: 10px 12px; font-size: 14px; color: #0b1633;
 }
 textarea { min-height: 72px; resize: none; }
-.colors { display: flex; gap: 16px; margin: 8px 0; }
-.colors label { display: flex; align-items: center; gap: 8px; }
-.colors input[type=color] { width: 42px; height: 32px; padding: 0; border: none; background: none; }
+.status { margin: 14px 0 0; font-size: 13px; color: #2459ff; font-weight: 700; }
+.actions { display: flex; gap: 10px; margin-top: 12px; }
+.actions .primary, .actions .ghost { margin-top: 0; flex: 1; }
 .primary, .ghost {
   margin-top: 12px; width: 100%; height: 42px; border: none; border-radius: 999px; font-weight: 700;
 }
@@ -253,11 +248,6 @@ textarea { min-height: 72px; resize: none; }
 .ghost { background: rgba(36,89,255,0.12); color: #2459ff; }
 .primary.slim, .ghost.slim { width: auto; height: 34px; padding: 0 14px; margin-top: 0; }
 .hint { margin: 0 0 10px; font-size: 12px; color: rgba(11,22,51,0.5); line-height: 1.5; }
-.switch-row {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin: 14px 0 4px; font-size: 14px; color: #0b1633;
-}
-.switch-row input { width: 18px; height: 18px; }
 .code {
   width: 100%; height: 48px; border: none; border-radius: 12px; font-weight: 800;
   letter-spacing: 4px; color: #2459ff; background: rgba(36,89,255,0.08);

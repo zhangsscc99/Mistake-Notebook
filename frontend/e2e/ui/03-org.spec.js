@@ -21,16 +21,15 @@ test.describe('Org publish and join (headless)', () => {
     await page.getByPlaceholder('例如：启明数理学院').fill('无头测试学堂')
     await page.getByPlaceholder('qiming-sz').fill(slug)
     await page.getByPlaceholder('深圳').fill('成都')
-    await page.getByRole('button', { name: '保存' }).click()
-    await expect(page.getByText('已保存，尚未公开')).toBeVisible()
+    await page.getByRole('button', { name: '保存草稿' }).click()
+    await expect(page.getByText('已保存草稿')).toBeVisible()
     const joinCode = (await page.locator('button.code').innerText()).trim()
     expect(joinCode.length).toBeGreaterThanOrEqual(6)
 
     const hidden = await request.get(`http://127.0.0.1:8080/api/orgs/${slug}`)
     expect(hidden.status()).toBe(400)
 
-    await page.getByLabel('公开发布到机构目录').check()
-    await page.getByRole('button', { name: '保存并公开' }).click()
+    await page.getByRole('button', { name: '发布' }).click()
     await expect(page.getByText('机构主页已公开')).toBeVisible()
     await expect(page.getByRole('button', { name: '查看公开页' })).toBeVisible()
 
