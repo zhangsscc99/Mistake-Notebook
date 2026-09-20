@@ -129,7 +129,6 @@ textarea { min-height: 88px; resize: none; }
 }
 @media (hover: hover) and (pointer: fine) {
   article.post:hover {
-    z-index: 2;
     transform: translateY(-4px);
     border-color: rgba(36, 89, 255, 0.32);
     box-shadow: 0 16px 32px rgba(31, 91, 255, 0.16);
