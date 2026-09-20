@@ -364,11 +364,11 @@ textarea:disabled,
 }
 
 @media (hover: hover) and (pointer: fine) {
-  button:not(:disabled):not([disabled]):hover,
+  button:not(:disabled):not([disabled]):not(.van-nav-bar__left):not(.van-nav-bar__right):hover,
   input[type="button"]:not(:disabled):hover,
   input[type="submit"]:not(:disabled):hover,
-  a:hover,
-  [role="button"]:hover,
+  a:not(.van-tabbar-item):hover,
+  [role="button"]:not(.van-tabbar-item):not(.van-nav-bar__left):not(.van-nav-bar__right):hover,
   .van-button:not(.van-button--disabled):hover,
   .van-cell--clickable:hover,
   .van-grid-item:hover,
@@ -381,8 +381,7 @@ textarea:disabled,
   .entry:hover,
   .row-card:hover,
   .item-main:hover,
-  .nav-action:hover,
-  .is-clickable:hover {
+  .is-clickable:not(.van-tabbar-item):hover {
     position: relative;
     z-index: 2;
     transform: translateY(-4px);
@@ -392,10 +391,16 @@ textarea:disabled,
       0 6px 12px rgba(11, 22, 51, 0.06);
   }
 
+  /* 顶/底导航禁止位移：子元素 transform/position 会让 backdrop-filter 整栏消失 */
   .van-tabbar-item:hover,
   .van-tabbar-item.is-clickable:hover,
+  .van-tabbar-item *:hover,
+  .van-nav-bar *:hover,
   .van-nav-bar__left:hover,
   .van-nav-bar__right:hover,
+  .van-nav-bar__arrow:hover,
+  .van-nav-bar .nav-action:hover,
+  .nav-action:hover,
   .van-tab:hover,
   button.stat:not(:disabled):hover,
   .hero-stat:hover {
@@ -424,4 +429,19 @@ textarea:disabled,
     transform: none;
     box-shadow: none;
   }
+}
+
+/* 导航栏独立合成层，避免 hover 子元素导致整栏 backdrop-filter 消失 */
+.van-nav-bar,
+.van-tabbar {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.van-nav-bar__left,
+.van-nav-bar__right,
+.van-nav-bar__arrow,
+.van-tabbar-item,
+.van-tabbar-item * {
+  transform: none !important;
 }

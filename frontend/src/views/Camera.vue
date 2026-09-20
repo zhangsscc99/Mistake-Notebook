@@ -1041,7 +1041,7 @@ export default {
 
 :deep(.van-tabbar-item:hover) {
   background: transparent !important;
-  transform: translateY(-1px) !important;
+  transform: none !important;
 }
 
 :deep(.van-tabbar-item--active) {

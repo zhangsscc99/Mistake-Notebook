@@ -59,6 +59,13 @@ export default {
   background: var(--bg-glass) !important;
   backdrop-filter: blur(12px) !important;
   border-bottom: 1px solid var(--border-color) !important;
+  transform: translateZ(0);
+}
+
+:deep(.van-nav-bar__left),
+:deep(.van-nav-bar__right),
+:deep(.van-nav-bar__arrow) {
+  transform: none !important;
 }
 
 :deep(.van-nav-bar__title) {
@@ -77,7 +84,12 @@ export default {
   box-shadow: 
     0 -4px 20px rgba(0, 0, 0, 0.4),
     0 -1px 0 rgba(31, 91, 255, 0.1) !important;
-  position: relative !important;
+  position: fixed !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  transform: translateZ(0);
 }
 
 :deep(.van-tabbar::before) {
@@ -88,11 +100,11 @@ export default {
 .van-tabbar-item,
 :deep(.van-tabbar-item) {
   color: var(--text-secondary) !important;
-  transition: all 0.4s var(--ease-smooth) !important;
-  position: relative !important;
+  transition: background-color 0.18s var(--ease-smooth), color 0.18s var(--ease-smooth) !important;
   overflow: visible !important;
   padding: 8px 4px !important;
   cursor: pointer !important;
+  transform: none !important;
 }
 
 .van-tabbar-item:hover,
@@ -146,8 +158,8 @@ export default {
   filter: 
     drop-shadow(0 0 8px rgba(31, 91, 255, 0.6))
     drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
-  transform: scale(1.15) translateY(-1px) !important;
-  animation: iconFloat 3s ease-in-out infinite !important;
+  transform: none !important;
+  animation: none !important;
 }
 
 :deep(.van-tabbar-item__text) {
@@ -159,7 +171,8 @@ export default {
 
 :deep(.van-tabbar-item__icon) {
   font-size: 20px !important;
-  transition: all 0.4s var(--ease-smooth) !important;
+  transition: color 0.18s var(--ease-smooth) !important;
+  transform: none !important;
 }
 
 /* 添加底部导航栏动画 */
