@@ -1,8 +1,11 @@
 package com.mistake.notebook.service;
 
+import com.mistake.notebook.entity.OrgMember;
 import com.mistake.notebook.entity.Organization;
 import com.mistake.notebook.entity.User;
+import com.mistake.notebook.repository.OrgMemberRepository;
 import com.mistake.notebook.repository.OrganizationRepository;
+import com.mistake.notebook.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * 机构版：三套演示案例 + 教师真实租户（Logo / 品牌色 / 公开主页）。
@@ -22,9 +26,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class OrgShowcaseService {
 
-    private static final Set<String> RESERVED = Set.of("mine", "qiming", "qingteng", "xinghe");
+    private static final Set<String> RESERVED = Set.of("mine", "join", "joined", "qiming", "qingteng", "xinghe");
+    private static final String PENDING = "PENDING";
+    private static final String APPROVED = "APPROVED";
+    private static final String REJECTED = "REJECTED";
 
     private final OrganizationRepository organizationRepository;
+    private final OrgMemberRepository orgMemberRepository;
+    private final UserRepository userRepository;
     private final TeacherWorkspaceService teacherWorkspaceService;
     private final TeacherService teacherService;
 
@@ -32,6 +41,7 @@ public class OrgShowcaseService {
         ensureDemos();
         List<Map<String, Object>> out = new ArrayList<>();
         for (Organization org : organizationRepository.findAllByOrderByDemoDescCreatedAtDesc()) {
+            if (!Boolean.TRUE.equals(org.getDemo()) && !Boolean.TRUE.equals(org.getPublished())) continue;
             out.add(card(org));
         }
         return out;
@@ -46,6 +56,9 @@ public class OrgShowcaseService {
             overlayBrand(demo, org);
             return demo;
         }
+        if (!Boolean.TRUE.equals(org.getPublished())) {
+            throw new IllegalArgumentException("这个机构尚未公开");
+        }
         return liveDetail(org);
     }
 
@@ -54,14 +67,21 @@ public class OrgShowcaseService {
         ensureDemos();
         return organizationRepository.findByOwnerId(teacherId)
                 .map(org -> {
+                    ensureJoinCode(org);
                     Map<String, Object> data = brand(org);
                     data.put("exists", true);
+                    data.put("published", Boolean.TRUE.equals(org.getPublished()));
+                    data.put("joinCode", org.getJoinCode() == null ? "" : org.getJoinCode());
                     data.put("publicPath", "/orgs/" + org.getSlug());
+                    data.put("pending", memberRows(org.getId(), PENDING));
+                    data.put("members", memberRows(org.getId(), APPROVED));
                     return data;
                 })
                 .orElseGet(() -> {
                     Map<String, Object> data = new LinkedHashMap<>();
                     data.put("exists", false);
+                    data.put("published", false);
+                    data.put("joinCode", "");
                     data.put("slug", "");
                     data.put("name", "");
                     data.put("shortName", "");
@@ -78,6 +98,8 @@ public class OrgShowcaseService {
                     theme.put("accent", "#52b7ff");
                     data.put("theme", theme);
                     data.put("demo", false);
+                    data.put("pending", List.of());
+                    data.put("members", List.of());
                     return data;
                 });
     }
@@ -101,7 +123,11 @@ public class OrgShowcaseService {
         if (creating) {
             org.setOwnerId(teacherId);
             org.setDemo(false);
+            org.setPublished(false);
             org.setCreatedAt(LocalDateTime.now());
+        }
+        if (body.containsKey("published")) {
+            org.setPublished(bool(body.get("published")));
         }
         org.setSlug(slug);
         org.setName(name);
@@ -119,8 +145,83 @@ public class OrgShowcaseService {
         org.setQuote(text(body.get("quote"), 400));
         String quoteBy = text(body.get("quoteBy"), 80);
         org.setQuoteBy(quoteBy.isEmpty() ? displayName(teacher) : quoteBy);
+        ensureJoinCode(org);
         organizationRepository.save(org);
         return mine(teacherId);
+    }
+
+    @Transactional
+    public Map<String, Object> join(long studentId, String code) {
+        User me = userRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        if ("TEACHER".equals(me.getRole())) throw new IllegalArgumentException("教师账号不能加入机构");
+        String joinCode = code == null ? "" : code.trim().toUpperCase();
+        if (joinCode.isEmpty()) throw new IllegalArgumentException("请输入机构加入码");
+        Organization org = organizationRepository.findByJoinCode(joinCode)
+                .filter(o -> !Boolean.TRUE.equals(o.getDemo()))
+                .orElseThrow(() -> new IllegalArgumentException("加入码无效"));
+        OrgMember existing = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId).orElse(null);
+        if (existing != null && APPROVED.equals(existing.getStatus())) {
+            return joinResult(org, false, true, "approved");
+        }
+        if (existing != null && PENDING.equals(existing.getStatus())) {
+            return joinResult(org, true, false, "pending");
+        }
+        if (existing == null) {
+            existing = new OrgMember();
+            existing.setOrgId(org.getId());
+            existing.setStudentId(studentId);
+        }
+        existing.setStatus(PENDING);
+        existing.setRequestedAt(LocalDateTime.now());
+        existing.setApprovedAt(null);
+        orgMemberRepository.save(existing);
+        return joinResult(org, true, false, "pending");
+    }
+
+    public List<Map<String, Object>> myOrgs(long studentId) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (OrgMember m : orgMemberRepository.findByStudentId(studentId)) {
+            if (REJECTED.equals(m.getStatus())) continue;
+            Organization org = organizationRepository.findById(m.getOrgId()).orElse(null);
+            if (org == null || Boolean.TRUE.equals(org.getDemo())) continue;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", org.getId());
+            row.put("name", org.getName());
+            row.put("slug", org.getSlug());
+            row.put("city", org.getCity() == null ? "" : org.getCity());
+            row.put("published", Boolean.TRUE.equals(org.getPublished()));
+            row.put("status", statusApi(m.getStatus()));
+            row.put("joinedAt", m.getApprovedAt() == null ? m.getRequestedAt() : m.getApprovedAt());
+            userRepository.findById(org.getOwnerId() == null ? -1L : org.getOwnerId())
+                    .ifPresent(t -> row.put("teacherName", t.getNickName()));
+            out.add(row);
+        }
+        return out;
+    }
+
+    @Transactional
+    public Map<String, Object> approveJoin(long teacherId, long studentId) {
+        Organization org = ownedOrg(teacherId);
+        OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId)
+                .orElseThrow(() -> new IllegalArgumentException("没有这条申请"));
+        if (APPROVED.equals(m.getStatus())) {
+            return Map.of("orgId", org.getId(), "studentId", studentId, "alreadyJoined", true);
+        }
+        m.setStatus(APPROVED);
+        m.setApprovedAt(LocalDateTime.now());
+        orgMemberRepository.save(m);
+        return Map.of("orgId", org.getId(), "studentId", studentId);
+    }
+
+    @Transactional
+    public Map<String, Object> rejectJoin(long teacherId, long studentId) {
+        Organization org = ownedOrg(teacherId);
+        OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId)
+                .orElseThrow(() -> new IllegalArgumentException("没有这条申请"));
+        if (APPROVED.equals(m.getStatus())) throw new IllegalArgumentException("该学生已在机构中");
+        m.setStatus(REJECTED);
+        orgMemberRepository.save(m);
+        return Map.of("orgId", org.getId(), "studentId", studentId);
     }
 
     private Map<String, Object> card(Organization org) {
@@ -220,9 +321,9 @@ public class OrgShowcaseService {
         }
         data.put("analytics", analytics);
         data.put("story", List.of(
-                "老师在网页端开通机构主页，上传 Logo、设置品牌色。",
-                "学生凭加入码申请进班，通过后错题、作业、报告都挂在这个租户下。",
-                "对外分享 /orgs/" + org.getSlug() + " 即可给评委或家长看真实班级数据。"
+                "老师开通机构主页，决定是否公开发布。",
+                "学生输入机构加入码申请，老师通过后才会进入机构。",
+                "班级加入码仍然只管进班，和机构加入是两件事。"
         ));
         return data;
     }
@@ -291,6 +392,7 @@ public class OrgShowcaseService {
             org.setAccentColor(a == null ? "#52b7ff" : String.valueOf(a));
         }
         org.setDemo(true);
+        org.setPublished(true);
         org.setOwnerId(null);
         org.setCreatedAt(LocalDateTime.now());
         organizationRepository.save(org);
@@ -479,6 +581,64 @@ public class OrgShowcaseService {
         row.put("value", value);
         row.put("hint", hint);
         return row;
+    }
+
+    private Organization ownedOrg(long teacherId) {
+        teacherWorkspaceService.requireTeacher(teacherId);
+        return organizationRepository.findByOwnerId(teacherId)
+                .orElseThrow(() -> new IllegalArgumentException("还没有开通机构"));
+    }
+
+    private Map<String, Object> joinResult(Organization org, boolean pending, boolean alreadyJoined, String status) {
+        Map<String, Object> d = new LinkedHashMap<>();
+        d.put("orgId", org.getId());
+        d.put("name", org.getName());
+        d.put("pending", pending);
+        d.put("alreadyJoined", alreadyJoined);
+        d.put("status", status);
+        return d;
+    }
+
+    private List<Map<String, Object>> memberRows(Long orgId, String status) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (OrgMember m : orgMemberRepository.findByOrgIdAndStatusOrderByRequestedAtDesc(orgId, status)) {
+            userRepository.findById(m.getStudentId()).ifPresent(u -> {
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("id", u.getId());
+                row.put("nickName", u.getNickName() == null ? "" : u.getNickName());
+                row.put("username", u.getUsername());
+                row.put("status", statusApi(m.getStatus()));
+                row.put("requestedAt", m.getRequestedAt());
+                row.put("joinedAt", m.getApprovedAt() == null ? m.getRequestedAt() : m.getApprovedAt());
+                out.add(row);
+            });
+        }
+        return out;
+    }
+
+    private void ensureJoinCode(Organization org) {
+        if (org.getJoinCode() != null && !org.getJoinCode().isBlank()) return;
+        org.setJoinCode(newOrgJoinCode());
+        if (org.getId() != null) organizationRepository.save(org);
+    }
+
+    private String newOrgJoinCode() {
+        for (int i = 0; i < 12; i++) {
+            String code = UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+            if (organizationRepository.findByJoinCode(code).isEmpty()) return code;
+        }
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+    }
+
+    private String statusApi(String status) {
+        if (APPROVED.equals(status)) return "approved";
+        if (REJECTED.equals(status)) return "rejected";
+        return "pending";
+    }
+
+    private boolean bool(Object raw) {
+        if (raw instanceof Boolean b) return b;
+        return "true".equalsIgnoreCase(String.valueOf(raw));
     }
 
     private String text(Object raw, int max) {

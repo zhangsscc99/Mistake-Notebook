@@ -4,7 +4,7 @@
     <div class="hero">
       <div class="kicker">INSTITUTION</div>
       <h1>{{ form.exists ? '编辑机构主页' : '开通机构主页' }}</h1>
-      <p>上传真实 Logo，填写机构名和品牌色。保存后会出现在公开的机构目录里，班级和学生来自你的工作台。</p>
+      <p>机构资料由你来管。打开「公开发布」后会出现在机构目录；把加入码发给学生，通过申请后才会进机构。</p>
     </div>
 
     <label class="logo">
@@ -36,8 +36,42 @@
       <textarea v-model="form.quote" maxlength="400" placeholder="老师或校长的一句话"></textarea>
       <label>引用来源</label>
       <input v-model="form.quoteBy" maxlength="80" placeholder="高一备课组长" />
-      <button class="primary" :disabled="saving" @click="save">{{ saving ? '保存中…' : '保存并公开' }}</button>
-      <button v-if="form.exists && form.slug" class="ghost" @click="$router.push('/orgs/' + form.slug)">查看公开页</button>
+      <label class="switch-row">
+        <span>公开发布到机构目录</span>
+        <input type="checkbox" v-model="form.published" />
+      </label>
+      <button class="primary" :disabled="saving" @click="save">{{ saving ? '保存中…' : (form.published ? '保存并公开' : '保存') }}</button>
+      <button v-if="form.exists && form.published && form.slug" class="ghost" @click="$router.push('/orgs/' + form.slug)">查看公开页</button>
+    </div>
+
+    <div v-if="form.exists && form.joinCode" class="card">
+      <label>学生加入码</label>
+      <p class="hint">学生在「我的老师 / 班级」里输入这串码申请加入，你通过后才会进机构。</p>
+      <button class="code" type="button" @click="copyCode">{{ form.joinCode }}</button>
+    </div>
+
+    <div v-if="pending.length" class="card">
+      <label>待审核 {{ pending.length }} 人</label>
+      <div v-for="s in pending" :key="s.id" class="member">
+        <div>
+          <b>{{ s.nickName || '未设置昵称' }}</b>
+          <span>申请加入机构</span>
+        </div>
+        <div class="member-actions">
+          <button class="ghost slim" type="button" @click="reject(s)">拒绝</button>
+          <button class="primary slim" type="button" @click="approve(s)">通过</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="members.length" class="card">
+      <label>已加入 {{ members.length }} 人</label>
+      <div v-for="s in members" :key="s.id" class="member">
+        <div>
+          <b>{{ s.nickName || '未设置昵称' }}</b>
+          <span>已通过</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -52,8 +86,12 @@ export default {
   name: 'TeacherOrg',
   setup() {
     const saving = ref(false)
+    const pending = ref([])
+    const members = ref([])
     const form = reactive({
       exists: false,
+      published: false,
+      joinCode: '',
       name: '',
       shortName: '',
       slug: '',
@@ -71,6 +109,8 @@ export default {
     const apply = (d) => {
       if (!d) return
       form.exists = !!d.exists
+      form.published = !!d.published
+      form.joinCode = d.joinCode || ''
       form.name = d.name || ''
       form.shortName = d.shortName || ''
       form.slug = d.slug || ''
@@ -83,6 +123,8 @@ export default {
       form.accent = d.theme?.accent || '#52b7ff'
       form.quote = d.quote || ''
       form.quoteBy = d.quoteBy || ''
+      pending.value = d.pending || []
+      members.value = d.members || []
     }
 
     const onLogo = async (e) => {
@@ -117,10 +159,11 @@ export default {
           primary: form.primary,
           accent: form.accent,
           quote: form.quote,
-          quoteBy: form.quoteBy
+          quoteBy: form.quoteBy,
+          published: form.published
         })
         apply(res.data || {})
-        showToast({ type: 'success', message: '机构主页已公开' })
+        showToast({ type: 'success', message: form.published ? '机构主页已公开' : '已保存，尚未公开' })
       } catch (err) {
         showToast({ type: 'fail', message: err.response?.data?.message || '保存失败' })
       } finally {
@@ -137,7 +180,42 @@ export default {
       }
     })
 
-    return { form, saving, onLogo, save }
+    const copyCode = async () => {
+      if (!form.joinCode) return
+      try {
+        await navigator.clipboard.writeText(form.joinCode)
+        showToast({ type: 'success', message: '加入码已复制' })
+      } catch {
+        showToast('加入码：' + form.joinCode)
+      }
+    }
+
+    const reloadMine = async () => {
+      const mine = await orgAPI.mine()
+      apply(mine.data || {})
+    }
+
+    const approve = async (s) => {
+      try {
+        await orgAPI.approve(s.id)
+        await reloadMine()
+        showToast({ type: 'success', message: '已通过' })
+      } catch (err) {
+        showToast({ type: 'fail', message: err.response?.data?.message || '操作失败' })
+      }
+    }
+
+    const reject = async (s) => {
+      try {
+        await orgAPI.reject(s.id)
+        await reloadMine()
+        showToast({ type: 'success', message: '已拒绝' })
+      } catch (err) {
+        showToast({ type: 'fail', message: err.response?.data?.message || '操作失败' })
+      }
+    }
+
+    return { form, saving, pending, members, onLogo, save, copyCode, approve, reject }
   }
 }
 </script>
@@ -173,4 +251,23 @@ textarea { min-height: 72px; resize: none; }
 .primary { color: #fff; background: linear-gradient(135deg, #2459ff, #52b7ff); }
 .primary:disabled { opacity: 0.45; }
 .ghost { background: rgba(36,89,255,0.12); color: #2459ff; }
+.primary.slim, .ghost.slim { width: auto; height: 34px; padding: 0 14px; margin-top: 0; }
+.hint { margin: 0 0 10px; font-size: 12px; color: rgba(11,22,51,0.5); line-height: 1.5; }
+.switch-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: 14px 0 4px; font-size: 14px; color: #0b1633;
+}
+.switch-row input { width: 18px; height: 18px; }
+.code {
+  width: 100%; height: 48px; border: none; border-radius: 12px; font-weight: 800;
+  letter-spacing: 4px; color: #2459ff; background: rgba(36,89,255,0.08);
+}
+.member {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 10px 0; border-top: 1px solid rgba(11,22,51,0.06);
+}
+.member:first-of-type { border-top: none; }
+.member b { display: block; color: #0b1633; font-size: 14px; }
+.member span { font-size: 12px; color: rgba(11,22,51,0.5); }
+.member-actions { display: flex; gap: 8px; flex-shrink: 0; }
 </style>

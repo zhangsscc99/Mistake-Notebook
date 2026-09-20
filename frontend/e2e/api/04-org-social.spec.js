@@ -22,6 +22,55 @@ test.describe('Org showcase + community social', () => {
     expect(studentMine.status).toBe(400)
   })
 
+  test('teacher publishes org and student joins by code', async ({ request }) => {
+    const teacher = await register(request, { role: 'TEACHER', nickName: '机构老师' })
+    const student = await register(request, { nickName: '机构学生' })
+    const slug = ('org' + Date.now().toString(36)).toLowerCase()
+    const saved = await call(request, {
+      method: 'PUT',
+      path: '/orgs/mine',
+      token: teacher.token,
+      data: { name: '加入码学堂', slug, city: '上海', published: false }
+    })
+    expectOk(saved, 'save unpublished')
+    expect(data(saved).joinCode).toBeTruthy()
+    const hidden = await call(request, { path: `/orgs/${slug}` })
+    expect(hidden.status).toBe(400)
+
+    const published = await call(request, {
+      method: 'PUT',
+      path: '/orgs/mine',
+      token: teacher.token,
+      data: { name: '加入码学堂', slug, city: '上海', published: true }
+    })
+    expectOk(published, 'publish')
+    const joinCode = data(published).joinCode
+
+    const apply = await call(request, {
+      method: 'POST',
+      path: '/orgs/join',
+      token: student.token,
+      data: { code: joinCode }
+    })
+    expectOk(apply, 'student apply')
+    expect(data(apply).pending).toBeTruthy()
+
+    const mine = await call(request, { path: '/orgs/mine', token: teacher.token })
+    expectOk(mine, 'teacher mine')
+    expect(data(mine).pending.some((s) => s.id === student.id)).toBeTruthy()
+
+    const ok = await call(request, {
+      method: 'POST',
+      path: `/orgs/mine/requests/${student.id}/approve`,
+      token: teacher.token
+    })
+    expectOk(ok, 'approve')
+
+    const joined = await call(request, { path: '/orgs/joined', token: student.token })
+    expectOk(joined, 'joined')
+    expect(data(joined).some((o) => o.slug === slug && o.status === 'approved')).toBeTruthy()
+  })
+
   test('help board: post, filter, like, reply, delete', async ({ request }) => {
     const a = await register(request, { nickName: '求助甲' })
     const b = await register(request, { nickName: '热心乙' })

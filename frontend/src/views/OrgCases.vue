@@ -4,7 +4,7 @@
     <div class="intro">
       <div class="kicker">INSTITUTION</div>
       <h1>演示案例 + 真实入驻机构</h1>
-      <p>启明、青藤、星河是给评委看的白标样板。老师可以在工作台开通真实租户、上传 Logo，公开页会带上自己班级和题库。</p>
+      <p>老师开通并公开发布后会出现在这里。学生用加入码申请，老师通过后才会进入机构。</p>
     </div>
     <article v-for="org in orgs" :key="org.slug" class="card" @click="$router.push('/orgs/' + org.slug)">
       <img v-if="org.logoUrl" class="logo" :src="org.logoUrl" alt="" />

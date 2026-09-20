@@ -293,7 +293,8 @@ test.describe('Teacher workspace + student classroom', () => {
         primary: '#2459ff',
         accent: '#52b7ff',
         quote: '把错题本做成班级工作台。',
-        quoteBy: 'E2E老师'
+        quoteBy: 'E2E老师',
+        published: true
       }
     })
     expectOk(org, 'save org')

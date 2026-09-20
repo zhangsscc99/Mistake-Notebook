@@ -6,8 +6,17 @@
       <h3>加入班级</h3>
       <p class="hint">输入老师给的班级加入码。提交后需老师通过，才会进入班级、收到作业。</p>
       <div class="row">
-        <input v-model="code" maxlength="8" placeholder="邀请码" class="code-input" />
+        <input v-model="code" maxlength="8" placeholder="班级加入码" class="code-input" />
         <button class="primary slim" :disabled="binding" @click="bind">申请加入</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>加入机构</h3>
+      <p class="hint">输入老师机构主页上的加入码。提交后需老师通过，才会进入该机构。</p>
+      <div class="row">
+        <input v-model="orgCode" maxlength="8" placeholder="机构加入码" class="code-input" />
+        <button class="primary slim" :disabled="orgBinding" @click="bindOrg">申请加入</button>
       </div>
     </div>
 
@@ -26,6 +35,17 @@
       </div>
     </div>
 
+    <div v-if="orgs.length" class="card">
+      <h3>我的机构</h3>
+      <div v-for="o in orgs" :key="o.id" class="cls">
+        <div>
+          <b>{{ o.name }}</b>
+          <span>{{ o.teacherName || '教师' }} · {{ o.status === 'pending' ? '待老师审核' : '已加入' }}</span>
+        </div>
+        <em :class="o.status">{{ o.status === 'pending' ? '待审核' : '已通过' }}</em>
+      </div>
+    </div>
+
     <div v-if="(sum.classes || []).length" class="card">
       <h3>我的班级</h3>
       <div v-for="c in sum.classes" :key="c.id" class="cls">
@@ -37,7 +57,7 @@
       </div>
     </div>
 
-    <div v-if="!(sum.teachers || []).length && !(sum.classes || []).length" class="empty">还没有加入班级。把老师给的加入码填在上面。</div>
+    <div v-if="!(sum.teachers || []).length && !(sum.classes || []).length && !orgs.length" class="empty">还没有加入班级或机构。把老师给的加入码填在上面。</div>
 
     <div class="entry-grid">
       <div class="entry" @click="$router.push('/class-notebooks')">
@@ -96,6 +116,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
 import classroomAPI from '../api/classroom'
+import orgAPI from '../api/org'
 import AppTabBar from '../components/AppTabBar.vue'
 
 export default {
@@ -106,6 +127,9 @@ export default {
     const sum = ref({})
     const code = ref('')
     const binding = ref(false)
+    const orgCode = ref('')
+    const orgBinding = ref(false)
+    const orgs = ref([])
     const chatOpen = ref(false)
     const activeTeacher = ref(null)
     const messages = ref([])
@@ -118,6 +142,12 @@ export default {
     const load = async () => {
       const res = await classroomAPI.summary()
       sum.value = res.data || {}
+      try {
+        const orgRes = await orgAPI.joined()
+        orgs.value = orgRes.data || []
+      } catch {
+        orgs.value = []
+      }
     }
 
     const bind = async () => {
@@ -135,6 +165,24 @@ export default {
         fail(e)
       } finally {
         binding.value = false
+      }
+    }
+
+    const bindOrg = async () => {
+      if (!orgCode.value.trim()) {
+        showToast('请输入机构加入码')
+        return
+      }
+      orgBinding.value = true
+      try {
+        await orgAPI.join(orgCode.value.trim())
+        orgCode.value = ''
+        await load()
+        showToast({ type: 'success', message: '已提交加入申请' })
+      } catch (e) {
+        fail(e)
+      } finally {
+        orgBinding.value = false
       }
     }
 
@@ -173,7 +221,7 @@ export default {
 
     const fmt = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '')
     onMounted(() => load().catch(() => {}))
-    return { sum, code, binding, todoCount, chatOpen, activeTeacher, messages, draft, sending, bind, unbind, openChat, send, fmt, router }
+    return { sum, code, binding, orgCode, orgBinding, orgs, todoCount, chatOpen, activeTeacher, messages, draft, sending, bind, bindOrg, unbind, openChat, send, fmt, router }
   }
 }
 </script>

@@ -228,6 +228,20 @@ public class SchemaFixer implements CommandLineRunner {
                   UNIQUE KEY `uk_org_owner` (`owner_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
+        ensureColumn("organizations", "published", "`published` TINYINT(1) NOT NULL DEFAULT 0");
+        ensureColumn("organizations", "join_code", "`join_code` VARCHAR(16) DEFAULT ''");
+        ensureTable("org_members", """
+                CREATE TABLE IF NOT EXISTS `org_members` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `org_id` BIGINT NOT NULL,
+                  `student_id` BIGINT NOT NULL,
+                  `status` VARCHAR(16) NOT NULL DEFAULT 'PENDING',
+                  `requested_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  `approved_at` DATETIME NULL,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_org_member` (`org_id`, `student_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
     }
 
     private void ensureTable(String table, String ddl) {

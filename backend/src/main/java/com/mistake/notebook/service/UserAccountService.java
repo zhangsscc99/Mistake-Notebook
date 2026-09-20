@@ -33,6 +33,7 @@ import com.mistake.notebook.repository.FriendshipRepository;
 import com.mistake.notebook.repository.PkMatchRepository;
 import com.mistake.notebook.repository.HelpPostLikeRepository;
 import com.mistake.notebook.repository.OrganizationRepository;
+import com.mistake.notebook.repository.OrgMemberRepository;
 import com.mistake.notebook.security.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -93,6 +94,7 @@ public class UserAccountService {
     private final PkMatchRepository pkMatchRepository;
     private final HelpPostLikeRepository helpPostLikeRepository;
     private final OrganizationRepository organizationRepository;
+    private final OrgMemberRepository orgMemberRepository;
 
     @Transactional
     public Map<String, Object> register(String username, String password, String nickName) {
@@ -565,7 +567,11 @@ public class UserAccountService {
         purge(failed, removed, "helpPosts", () -> helpPostRepository.deleteByUserId(userId));
         purge(failed, removed, "friendships", () -> friendshipRepository.deleteByUserIdOrFriendId(userId, userId));
         purge(failed, removed, "pkMatches", () -> pkMatchRepository.deleteByChallengerIdOrOpponentId(userId, userId));
-        purge(failed, removed, "organizations", () -> organizationRepository.deleteByOwnerId(userId));
+        purge(failed, removed, "orgMembers", () -> orgMemberRepository.deleteByStudentId(userId));
+        purge(failed, removed, "organizations", () -> {
+            organizationRepository.findByOwnerId(userId).ifPresent(org -> orgMemberRepository.deleteByOrgId(org.getId()));
+            organizationRepository.deleteByOwnerId(userId);
+        });
         purge(failed, removed, "checkinLikes", () -> checkinPostLikeRepository.deleteByUserId(userId));
         purge(failed, removed, "checkinPosts", () -> checkinPostRepository.deleteByUserId(userId));
         purge(failed, removed, "checkins", () -> checkinRepository.deleteByUserId(userId));

@@ -53,7 +53,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (path.contains("/auth/") || path.contains("/uploads/") || path.endsWith("/error")) {
             return true;
         }
-        if (path.contains("/orgs/mine")) return false;
+        if (path.contains("/orgs/mine") || path.endsWith("/orgs/joined") || path.endsWith("/orgs/join")) return false;
         return "GET".equalsIgnoreCase(method) && path.contains("/orgs");
     }
 }

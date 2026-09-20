@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
     Optional<Organization> findBySlug(String slug);
     Optional<Organization> findByOwnerId(Long ownerId);
+    Optional<Organization> findByJoinCode(String joinCode);
     boolean existsBySlug(String slug);
     List<Organization> findAllByOrderByDemoDescCreatedAtDesc();
     void deleteByOwnerId(Long ownerId);

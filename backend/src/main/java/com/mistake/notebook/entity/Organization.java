@@ -56,6 +56,12 @@ public class Organization {
     @Column(nullable = false)
     private Boolean demo = false;
 
+    @Column(nullable = false)
+    private Boolean published = false;
+
+    @Column(name = "join_code", length = 16)
+    private String joinCode = "";
+
     @Column(length = 400)
     private String quote = "";
 

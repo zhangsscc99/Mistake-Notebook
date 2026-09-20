@@ -88,7 +88,7 @@
       <button v-if="isTeacherAccount" @click="$router.push('/teacher/questions')">全班题目</button>
       <button v-if="isTeacherAccount" @click="$router.push('/teacher/paper')">班级组卷</button>
       <template v-if="!isTeacherAccount">
-        <button @click="$router.push('/classroom')">我的老师 / 班级</button>
+        <button @click="$router.push('/classroom')">我的老师 / 班级 / 机构</button>
         <button @click="$router.push('/homework')">我的作业</button>
         <button @click="$router.push('/class-notebooks')">班级错题本</button>
         <button @click="$router.push('/parent-reports')">家长端报告</button>

@@ -390,7 +390,7 @@ public class AIClassificationService {
                     text.contains("短轴") || text.contains("渐近线") || 
                     text.matches(".*x\\^?2.*y\\^?2.*") || // x²/a² + y²/b² 形式
                     text.matches(".*y\\^?2.*x.*") || // y² = 2px 形式
-                    text.contains("圆心") || text.contains("半径") || text.contains("弦长")) {
+                    text.contains("圆心") || text.contains("半径") || text.contains("弦长"))) {
                     tags.add("圆锥曲线");
                     isSpecificTopic = true;
                 }
