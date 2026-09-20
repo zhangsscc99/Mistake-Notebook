@@ -382,8 +382,6 @@ textarea:disabled,
   .row-card:hover,
   .item-main:hover,
   .is-clickable:not(.van-tabbar-item):hover {
-    position: relative;
-    z-index: 2;
     transform: translateY(-4px);
     border-color: rgba(36, 89, 255, 0.35);
     box-shadow:
@@ -433,9 +431,12 @@ textarea:disabled,
 
 /* 导航栏独立合成层，避免 hover 子元素导致整栏 backdrop-filter 消失 */
 .van-nav-bar,
-.van-tabbar {
+.van-tabbar,
+.van-tabbar--fixed,
+.van-nav-bar--fixed {
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
+  z-index: 3000 !important;
 }
 
 .van-nav-bar__left,

@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test')
-const { register, injectSession } = require('../helpers')
+const { register, injectSession, call, expectOk } = require('../helpers')
 
 test.use({
   viewport: { width: 1280, height: 800 },
@@ -56,5 +56,42 @@ test.describe('Desktop nav hover should not hide bars', () => {
 
     const leftTransform = await left.evaluate((el) => getComputedStyle(el).transform)
     expect(leftTransform === 'none' || leftTransform === 'matrix(1, 0, 0, 1, 0, 0)').toBeTruthy()
+  })
+
+  test('hovered community cards stay under the tabbar', async ({ page, request }) => {
+    const user = await register(request, { nickName: '遮挡同学' })
+    for (let i = 0; i < 4; i++) {
+      const res = await call(request, {
+        method: 'POST',
+        path: '/social/help',
+        token: user.token,
+        data: {
+          title: `悬停遮挡测试${i}`,
+          content: '请写清你卡在哪一步啊',
+          subject: '数学'
+        }
+      })
+      expectOk(res, `create help ${i}`)
+    }
+    await injectSession(page, user.token, user.profile)
+    await page.goto('/community')
+    await expect(page.getByRole('heading', { name: '学习社区' })).toBeVisible()
+
+    const tabbar = page.locator('.app-tabbar, .van-tabbar').first()
+    await assertBarVisible(tabbar, 'tabbar on community')
+
+    const lastCard = page.locator('article.card.post').last()
+    await lastCard.scrollIntoViewIfNeeded()
+    await lastCard.hover()
+    await page.waitForTimeout(200)
+    await assertBarVisible(tabbar, 'tabbar after hovering last card')
+
+    const box = await tabbar.boundingBox()
+    const hit = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y)
+      if (!el) return 'none'
+      return el.closest('.van-tabbar, .app-tabbar') ? 'tabbar' : (el.className || el.tagName)
+    }, { x: box.x + box.width / 2, y: box.y + 8 })
+    expect(hit).toBe('tabbar')
   })
 })

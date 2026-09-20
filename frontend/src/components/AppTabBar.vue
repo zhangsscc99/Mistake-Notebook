@@ -17,6 +17,7 @@ export default { name: 'AppTabBar' }
 .app-tabbar {
   background: rgba(255, 255, 255, 0.92) !important;
   border-top: 1px solid rgba(11, 22, 51, 0.06) !important;
+  z-index: 3000 !important;
 }
 .app-tabbar :deep(.van-tabbar-item) {
   padding: 6px 0 !important;

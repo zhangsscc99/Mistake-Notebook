@@ -60,6 +60,7 @@ export default {
   backdrop-filter: blur(12px) !important;
   border-bottom: 1px solid var(--border-color) !important;
   transform: translateZ(0);
+  z-index: 3000 !important;
 }
 
 :deep(.van-nav-bar__left),
@@ -77,8 +78,8 @@ export default {
 .van-tabbar,
 :deep(.van-tabbar),
 :deep(.van-tabbar.van-tabbar--fixed) {
-  background: var(--bg-glass) !important;
-  background-color: var(--bg-glass) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  background-color: rgba(255, 255, 255, 0.96) !important;
   backdrop-filter: blur(16px) !important;
   border-top: 1px solid var(--border-glow) !important;
   box-shadow: 
@@ -88,7 +89,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 100;
+  z-index: 3000 !important;
   transform: translateZ(0);
 }
 
