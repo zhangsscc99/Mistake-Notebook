@@ -126,7 +126,7 @@ Page({
 
     // 题文能看出来是大学（ODE / 高等数学等）时，覆盖资料里的「高中」默认
     const inferredPeriod = inferPeriodFromQuestions(questions, '');
-    const period = inferredPeriod || this.data.selectedPeriod || preferredPeriod();
+    const resolvedPeriod = inferredPeriod || this.data.selectedPeriod || preferredPeriod();
 
     this.setData({
       imagePath: (pages[0] && pages[0].tempFilePath) || draft.tempFilePath || '',
@@ -137,8 +137,8 @@ Page({
       currentOverlays: overlaysForPage(questions, 0),
       questions,
       selectedCount: questions.filter((q) => q.selected).length,
-      selectedPeriod: period,
-      tempPeriod: period
+      selectedPeriod: resolvedPeriod,
+      tempPeriod: resolvedPeriod
     });
 
     this.fetchCategories();
