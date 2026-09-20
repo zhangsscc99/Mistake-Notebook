@@ -1,7 +1,8 @@
 const app = getApp();
 const { STAGES, getCachedProfile } = require('../../utils/profile');
+const { inferPeriodFromQuestions } = require('../../utils/stageGuess');
 
-// 用户没设过学段时的默认值（与改动前保持一致）
+// 用户没设过学段、题文也看不出学段时的默认值
 const DEFAULT_PERIOD = '高中';
 
 // 用户在「我的」页设了学段就拿来当默认。
@@ -107,6 +108,7 @@ Page({
         text: segment.content || segment.text || '',
         type: segment.type || '',
         subject: segment.subject || '',
+        period: segment.period || '',
         confidence: conf,
         confidenceLabel: getConfidenceLabel(conf),
         bounds: (pageSpans[0] && pageSpans[0].bounds) || segment.bounds || null,
@@ -122,6 +124,10 @@ Page({
       };
     }).filter((q) => q.text);
 
+    // 题文能看出来是大学（ODE / 高等数学等）时，覆盖资料里的「高中」默认
+    const inferredPeriod = inferPeriodFromQuestions(questions, '');
+    const period = inferredPeriod || this.data.selectedPeriod || preferredPeriod();
+
     this.setData({
       imagePath: (pages[0] && pages[0].tempFilePath) || draft.tempFilePath || '',
       fileID: (pages[0] && pages[0].fileID) || draft.fileID || '',
@@ -130,7 +136,9 @@ Page({
       currentPageIndex: 0,
       currentOverlays: overlaysForPage(questions, 0),
       questions,
-      selectedCount: questions.filter((q) => q.selected).length
+      selectedCount: questions.filter((q) => q.selected).length,
+      selectedPeriod: period,
+      tempPeriod: period
     });
 
     this.fetchCategories();
@@ -328,6 +336,7 @@ Page({
       category: this.data.selectedCategory,
       categoryId: this.data.selectedCategoryId,
       difficulty: this.data.selectedDifficulty,
+      period: this.data.selectedPeriod,
       imageUrl: this.data.fileID
     };
     const savePromise = (draft.mode === 'parent_child' && draft.studentId)

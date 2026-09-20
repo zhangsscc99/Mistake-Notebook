@@ -6,6 +6,7 @@ const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY;
 const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
 const DASHSCOPE_MODEL = 'qwen3-vl-flash';
+const { inferPeriod, normalizePeriod } = require('./stageGuess');
 
 function callDashScope(messages, temperature = 0.2) {
   return new Promise((resolve, reject) => {
@@ -75,8 +76,14 @@ async function classifyText(event) {
   "category": "题目所属学科分类，如：数学、英语、物理、化学、生物、历史、地理、政治、语文、其他",
   "tags": ["标签1", "标签2"],
   "difficulty": "EASY | MEDIUM | HARD",
+  "period": "小学 | 初中 | 高中 | 大学",
   "confidence": 0.0-1.0
 }
+
+学段判断（必须遵守）：
+- 常微分方程(ODE)、偏微分方程(PDE)、高等数学、线性代数、大学微积分、复变、实变、数理方程、通解/特解/初值问题、拉普拉斯变换等，一律标「大学」
+- 不要因为卷面像中学作业、或默认学段是高中，就把大学题标成高中
+- 高中导数、圆锥曲线、数列仍标高中；只有出现大学课程特征才标大学
 
 题目内容：
 ${text}`;
@@ -90,7 +97,7 @@ ${text}`;
   }
 
   const content = response.choices[0].message.content;
-  let result = { category: '', tags: [], difficulty: 'MEDIUM', confidence: 0 };
+  let result = { category: '', tags: [], difficulty: 'MEDIUM', period: '', confidence: 0 };
 
   try {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -100,6 +107,15 @@ ${text}`;
   } catch (e) {
     console.warn('Failed to parse classification JSON, returning raw text', e);
     result.category = content;
+  }
+
+  const guessed = inferPeriod(text);
+  result.period = guessed || normalizePeriod(result.period) || '';
+  if (guessed === '大学') {
+    result.period = '大学';
+    if (Array.isArray(result.tags) && result.tags.indexOf('大学') === -1) {
+      result.tags = result.tags.concat(['大学']);
+    }
   }
 
   return { success: true, data: result };

@@ -27,9 +27,11 @@ public class AIClassificationService {
               "category": "数学|语文|英语|物理|化学|生物|历史|地理|政治|计算机/编程|综合",
               "tags": ["知识点1","知识点2"],
               "difficulty": "EASY|MEDIUM|HARD",
+              "period": "小学|初中|高中|大学",
               "confidence": 0.0-1.0,
               "reasoning": "简短说明分类原因"
             }
+            学段：ODE/常微分方程/偏微分方程/高等数学/线性代数/通解特解/初值问题/拉普拉斯变换等必须标大学，不要默认高中。
             只返回 JSON，不要额外描述。
             """;
 
@@ -341,7 +343,7 @@ public class AIClassificationService {
         int difficultyScore = 0;
         
         // 困难关键词
-        String[] hardKeywords = {"微积分", "导数", "积分", "复杂", "综合", "证明", "推导", "高级", "深入"};
+        String[] hardKeywords = {"微积分", "常微分", "微分方程", "ODE", "积分", "复杂", "综合", "证明", "推导", "高级", "深入"};
         for (String keyword : hardKeywords) {
             if (text.contains(keyword)) difficultyScore += 2;
         }
@@ -372,8 +374,17 @@ public class AIClassificationService {
                 // 按优先级顺序检查，具体的知识点优先于通用概念
                 boolean isSpecificTopic = false;
                 
+                String lowerMath = text.toLowerCase();
+                if (lowerMath.contains("ode") || text.contains("常微分") || text.contains("偏微分")
+                        || text.contains("微分方程") || text.contains("初值问题") || text.contains("通解")
+                        || text.contains("特解") || text.contains("拉普拉斯") || lowerMath.contains("laplace")) {
+                    tags.add("常微分方程");
+                    tags.add("大学");
+                    isSpecificTopic = true;
+                }
+
                 // 圆锥曲线相关 - 最高优先级
-                if (text.contains("抛物线") || text.contains("椭圆") || text.contains("双曲线") || 
+                if (!isSpecificTopic && (text.contains("抛物线") || text.contains("椭圆") || text.contains("双曲线") || 
                     text.contains("焦点") || text.contains("顶点坐标") || text.contains("圆锥") ||
                     text.contains("准线") || text.contains("离心率") || text.contains("长轴") || 
                     text.contains("短轴") || text.contains("渐近线") || 

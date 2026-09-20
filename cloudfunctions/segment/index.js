@@ -8,6 +8,7 @@ const DASHSCOPE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/co
 const DASHSCOPE_MODEL = 'qwen3-vl-flash';
 const MAX_IMAGES = 10;
 const ONE_SHOT_MAX = 5;
+const { inferPeriod, normalizePeriod } = require('./stageGuess');
 
 function callDashScopeVL(messages, temperature = 0.3) {
   return new Promise((resolve, reject) => {
@@ -173,10 +174,13 @@ function singlePagePrompt() {
     "content": "题目的完整文字内容",
     "type": "选择题 | 填空题 | 解答题 | 判断题 | 其他",
     "subject": "学科分类（只能是：数学、英语、物理、化学、生物、历史、地理、政治、语文、计算机/编程 之一）",
+    "period": "小学 | 初中 | 高中 | 大学",
     "confidence": 0.0-1.0,
     "bounds": { "top": 0, "left": 0, "width": 0, "height": 0 }
   }
 ]
+
+学段：ODE/常微分/偏微分/高等数学/线性代数/通解特解/初值问题等必须标「大学」，不要因为卷面像中学作业就标高中。
 
 bounds 使用该页百分比 0-100。如果图片中只有一道题目，也请按数组格式返回。请确保提取尽可能完整的题目内容。`;
 }
@@ -195,12 +199,15 @@ function multiPagePrompt(pages) {
     "content": "完整题目文字（跨页题请拼接两页内容）",
     "type": "选择题 | 填空题 | 解答题 | 判断题 | 其他",
     "subject": "学科（数学、英语、物理、化学、生物、历史、地理、政治、语文、计算机/编程 之一）",
+    "period": "小学 | 初中 | 高中 | 大学",
     "confidence": 0.0-1.0,
     "pageSpans": [
       { "pageIndex": ${first}, "bounds": { "top": 0, "left": 0, "width": 100, "height": 30 } }
     ]
   }
 ]
+
+学段：ODE/常微分/偏微分/高等数学/线性代数/通解特解/初值问题等必须标「大学」，不要默认高中。
 
 pageIndex 必须使用图上标注的真实编号（${indexes}），不要从 0 重新计数。bounds 是该页百分比 0-100。跨页题的 pageSpans 含多个页。`;
 }
@@ -295,6 +302,7 @@ parts 必须引用上面已有的 pageIndex 和 index。不要发明不存在的
         content,
         type: row.type || sources[0].item.type || '其他',
         subject: row.subject || sources[0].item.subject || '',
+        period: row.period || sources[0].item.period || '',
         confidence: typeof row.confidence === 'number' ? row.confidence : sources[0].item.confidence,
         pageSpans: sources.map((s) => ({
           pageIndex: s.pageIndex,
@@ -414,6 +422,7 @@ function normalizeSegment(segment, index, total, pageCount) {
     text: content,
     type,
     subject: segment.subject || '',
+    period: normalizePeriod(segment.period) || inferPeriod(content) || '',
     confidence: typeof segment.confidence === 'number' ? segment.confidence : 0.5,
     isDifficult: type.includes('解答'),
     pageSpans,

@@ -90,6 +90,7 @@ function buildDetailQuestion(item, index) {
     tags: item.tags || [],
     difficultyText: item.difficultyText,
     difficultyClass: item.difficultyClass,
+    period: item.period || '',
     formattedDate: item.formattedDate
   };
 }
@@ -169,6 +170,7 @@ Page({
               difficultyClass: (q.difficulty || 'medium').toLowerCase(),
               difficultyText: q.difficulty === 'EASY' || q.difficulty === 'easy' ? '简单'
                 : q.difficulty === 'HARD' || q.difficulty === 'hard' ? '困难' : '中等',
+              period: q.period || '',
               formattedDate: q.createdAt ? String(q.createdAt).split('T')[0] : '2026-05-30',
               showAI: false,
               isCorrect: q.isCorrect || false,

@@ -194,6 +194,7 @@ import { showToast } from 'vant'
 import { imageRecognitionAPI } from '../api/recognition'
 import categoryAPI from '../api/category'
 import { API_BASE_URL } from '../api/config'
+import { inferPeriodFromQuestions } from '../utils/stageGuess'
 
 function isDifficultQuestion(segment) {
   const type = segment.type || ''
@@ -311,6 +312,15 @@ export default {
       pages.splice(0, pages.length, ...list.map((p) => ({ ...p, questions: null })))
       const start = Math.max(0, Math.min(draft.pageIndex || 0, pages.length - 1))
       applyPage(start)
+      const allQs = pages.flatMap((p, i) => {
+        if (i === start) return questions
+        return p.questions || mapSegments(p.segments)
+      })
+      const inferred = inferPeriodFromQuestions(allQs, '')
+      if (inferred) {
+        selectedPeriod.value = inferred
+        tempPeriod.value = inferred
+      }
       if (!questions.length) {
         showToast('无识别结果')
         setTimeout(() => router.back(), 800)

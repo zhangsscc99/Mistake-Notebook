@@ -11,6 +11,7 @@ const DEFAULT_CATEGORY_NAMES = [
   '数学', '物理', '化学', '英语', '语文', '生物', '历史', '地理', '计算机/编程', '政治'
 ];
 const DIFFICULTY_MAP = { '简单': 'EASY', '中等': 'MEDIUM', '困难': 'HARD', EASY: 'EASY', MEDIUM: 'MEDIUM', HARD: 'HARD' };
+const { inferPeriod, normalizePeriod, attachPeriodTag } = require('./stageGuess');
 
 function openId() {
   const c = cloud.getWXContext();
@@ -617,12 +618,17 @@ async function saveChildQuestions(event) {
   if (!items.length) return fail('请选择题目');
   const cat = await ensureChildCategory(studentId, event.category);
   const difficulty = DIFFICULTY_MAP[event.difficulty] || 'MEDIUM';
+  const batchPeriod = normalizePeriod(event.period);
   const now = new Date().toISOString();
   const saved = [];
   for (const item of items.slice(0, 40)) {
     const content = String(item.text || item.content || '').trim();
     if (!content) continue;
-    const tags = [];
+    const guessedPeriod = inferPeriod(content);
+    const period = guessedPeriod === '大学'
+      ? '大学'
+      : (batchPeriod || normalizePeriod(item.period) || guessedPeriod);
+    const tags = attachPeriodTag([], period);
     if (item.type) tags.push(item.type);
     if (item.subject) tags.push(item.subject);
     const data = {
@@ -636,6 +642,7 @@ async function saveChildQuestions(event) {
       categoryId: cat._id || '',
       category: cat.name,
       difficulty,
+      period,
       tags,
       ocrConfidence: Number(item.confidence) || 0,
       aiAnswer: '',

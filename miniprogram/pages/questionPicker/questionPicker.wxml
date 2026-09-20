@@ -49,6 +49,8 @@
       <view class="bottom-meta">
         <text class="bottom-category-text">{{selectedCategory}}</text>
         <text class="bottom-dot">·</text>
+        <text class="bottom-difficulty-text">{{selectedPeriod}}</text>
+        <text class="bottom-dot">·</text>
         <text class="bottom-difficulty-text">{{selectedDifficulty}}</text>
       </view>
       <text class="modify-btn" bindtap="openCategoryPicker">修改 ›</text>

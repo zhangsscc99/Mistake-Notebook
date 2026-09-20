@@ -89,6 +89,7 @@
             </view>
             <view class="question-meta">
               <view class="meta-left">
+                <text class="period-badge" wx:if="{{qitem.period}}">{{qitem.period}}</text>
                 <text class="badge badge-{{qitem.difficultyClass}}">{{qitem.difficultyText}}</text>
                 <text class="parse-flag" wx:if="{{qitem.paperReady === false}}">未解析</text>
                 <text class="add-time">{{qitem.formattedDate}}</text>
@@ -149,6 +150,7 @@
 
           <view class="question-meta">
             <view class="meta-left">
+              <text class="period-badge" wx:if="{{item.period}}">{{item.period}}</text>
               <text class="badge badge-{{item.difficultyClass}}">{{item.difficultyText}}</text>
               <text class="parse-flag" wx:if="{{item.paperReady === false}}">未解析</text>
               <text class="add-time">{{item.formattedDate}}</text>
@@ -241,6 +243,10 @@
         <button class="note-save-btn" bindtap="saveDetailNote" disabled="{{noteSaving}}">{{noteSaving ? '保存中…' : '保存笔记'}}</button>
       </view>
 
+      <view class="detail-section" wx:if="{{detailQuestion.period}}">
+        <view class="detail-section-title">学段</view>
+        <text class="period-badge">{{detailQuestion.period}}</text>
+      </view>
       <view class="detail-section" wx:if="{{detailQuestion.tags && detailQuestion.tags.length > 0}}">
         <text class="detail-section-title">标签</text>
         <view class="detail-tags">

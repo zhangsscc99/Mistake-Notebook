@@ -5,6 +5,7 @@ const db = cloud.database();
 const _ = db.command;
 const $ = db.command.aggregate;
 const { normalizeQuestion } = require('./normalize');
+const { inferPeriod, normalizePeriod, attachPeriodTag } = require('./stageGuess');
 
 const MARKS_COLLECTION = 'question_marks';
 
@@ -178,6 +179,10 @@ async function createQuestion(event) {
   if (!openId) return noOpenId();
 
   const { content, imageUrl, category, difficulty, tags, aiAnswer, aiAnalysis } = event;
+  const guessedPeriod = inferPeriod(content);
+  const period = guessedPeriod === '大学'
+    ? '大学'
+    : (normalizePeriod(event.period) || guessedPeriod || '');
 
   const cat = await findExistingCategory(openId, event.categoryId, category);
   const categoryId = cat ? cat._id : '';
@@ -194,7 +199,8 @@ async function createQuestion(event) {
     categoryId: categoryId || '',
     category: categoryName,
     difficulty: difficulty || 'MEDIUM',
-    tags: tags || [],
+    period,
+    tags: attachPeriodTag(tags || [], period),
     aiConfidence: event.aiConfidence || 0,
     aiAnswer: aiAnswer || '',
     aiAnalysis: aiAnalysis || '',
@@ -338,7 +344,7 @@ async function updateQuestion(event) {
   if (!owned) return notFound();
 
   const updateFields = {};
-  const allowedFields = ['content', 'imageUrl', 'categoryId', 'category', 'difficulty', 'tags', 'aiAnswer', 'aiAnalysis', 'aiStatus', 'aiConfidence', 'ocrConfidence'];
+  const allowedFields = ['content', 'imageUrl', 'categoryId', 'category', 'difficulty', 'period', 'tags', 'aiAnswer', 'aiAnalysis', 'aiStatus', 'aiConfidence', 'ocrConfidence'];
 
   allowedFields.forEach(field => {
     if (event[field] !== undefined) {
@@ -1057,6 +1063,7 @@ async function batchSaveQuestions(event) {
   if (!getCallerOpenId()) return noOpenId();
 
   const { questions, category, difficulty, imageUrl, generateAi = false } = event;
+  const batchPeriod = normalizePeriod(event.period);
 
   if (!questions || !Array.isArray(questions) || questions.length === 0) {
     return { success: false, error: 'Missing questions array' };
@@ -1081,6 +1088,11 @@ async function batchSaveQuestions(event) {
       if (item.type) tags.push(item.type);
       if (item.subject) tags.push(item.subject);
 
+      const guessedPeriod = inferPeriod(text);
+      let period = guessedPeriod === '大学'
+        ? '大学'
+        : (batchPeriod || normalizePeriod(item.period) || guessedPeriod);
+
       if (generateAi) {
         const classifyRes = await invokeFunction('classify', {
           action: 'classify',
@@ -1090,6 +1102,9 @@ async function batchSaveQuestions(event) {
           tags = Array.from(new Set([...(classifyRes.data.tags || []), ...tags]));
           if (classifyRes.data.difficulty) {
             finalDifficulty = classifyRes.data.difficulty;
+          }
+          if (!period && classifyRes.data.period) {
+            period = normalizePeriod(classifyRes.data.period);
           }
           aiConfidence = classifyRes.data.confidence || aiConfidence;
         }
@@ -1103,6 +1118,7 @@ async function batchSaveQuestions(event) {
         categoryId: event.categoryId,
         category: category,
         difficulty: finalDifficulty,
+        period,
         tags,
         aiConfidence,
         aiAnswer: '',
