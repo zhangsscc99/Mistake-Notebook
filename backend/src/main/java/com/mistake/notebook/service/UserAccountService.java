@@ -34,6 +34,7 @@ import com.mistake.notebook.repository.PkMatchRepository;
 import com.mistake.notebook.repository.HelpPostLikeRepository;
 import com.mistake.notebook.repository.OrganizationRepository;
 import com.mistake.notebook.repository.OrgMemberRepository;
+import com.mistake.notebook.repository.OrgStaffRepository;
 import com.mistake.notebook.security.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -95,6 +96,7 @@ public class UserAccountService {
     private final HelpPostLikeRepository helpPostLikeRepository;
     private final OrganizationRepository organizationRepository;
     private final OrgMemberRepository orgMemberRepository;
+    private final OrgStaffRepository orgStaffRepository;
 
     @Transactional
     public Map<String, Object> register(String username, String password, String nickName) {
@@ -568,14 +570,23 @@ public class UserAccountService {
         purge(failed, removed, "friendships", () -> friendshipRepository.deleteByUserIdOrFriendId(userId, userId));
         purge(failed, removed, "pkMatches", () -> pkMatchRepository.deleteByChallengerIdOrOpponentId(userId, userId));
         purge(failed, removed, "orgMembers", () -> orgMemberRepository.deleteByStudentId(userId));
+        purge(failed, removed, "orgStaff", () -> orgStaffRepository.deleteByTeacherId(userId));
         purge(failed, removed, "organizations", () -> {
-            organizationRepository.findByOwnerId(userId).ifPresent(org -> orgMemberRepository.deleteByOrgId(org.getId()));
+            organizationRepository.findByOwnerId(userId).ifPresent(org -> {
+                orgMemberRepository.deleteByOrgId(org.getId());
+                orgStaffRepository.deleteByOrgId(org.getId());
+                questionRepository.deleteAll(questionRepository.findByOrgIdAndIsDeletedFalse(org.getId()));
+            });
             organizationRepository.deleteByOwnerId(userId);
         });
         purge(failed, removed, "checkinLikes", () -> checkinPostLikeRepository.deleteByUserId(userId));
         purge(failed, removed, "checkinPosts", () -> checkinPostRepository.deleteByUserId(userId));
         purge(failed, removed, "checkins", () -> checkinRepository.deleteByUserId(userId));
-        purge(failed, removed, "questions", () -> questionRepository.deleteAll(questionRepository.findByUserId(userId)));
+        purge(failed, removed, "questions", () -> {
+            List<com.mistake.notebook.entity.Question> qs = questionRepository.findByUserId(userId);
+            qs.removeIf(q -> q.getOrgId() != null && "org_bank".equals(q.getSource()));
+            questionRepository.deleteAll(qs);
+        });
         purge(failed, removed, "categories", () -> categoryRepository.deleteByUserId(userId));
         purge(failed, removed, "users", () -> userRepository.deleteById(userId));
         Map<String, Object> data = new HashMap<>();

@@ -4,7 +4,7 @@
     <div v-if="post.title" class="card">
       <div class="meta">
         <em v-if="post.subject">{{ post.subject }}</em>
-        <span>{{ post.nickName }} · {{ post.createdAt }}</span>
+        <span>{{ post.nickName }} · {{ fmt(post.createdAt) }}</span>
       </div>
       <h1>{{ post.title }}</h1>
       <p class="body">{{ post.content }}</p>
@@ -20,7 +20,7 @@
     <article v-for="reply in post.replies || []" :key="reply.id" class="card reply">
       <div class="meta">
         <b>{{ reply.nickName }}</b>
-        <span>{{ reply.createdAt }}{{ reply.mine ? ' · 我' : '' }}</span>
+        <span>{{ fmt(reply.createdAt) }}{{ reply.mine ? ' · 我' : '' }}</span>
       </div>
       <p>{{ reply.content }}</p>
       <button v-if="reply.mine" class="tiny" @click="removeReply(reply.id)">删除</button>
@@ -103,7 +103,8 @@ export default {
     }
 
     onMounted(load)
-    return { post, draft, sending, send, like, removePost, removeReply }
+    const fmt = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '')
+    return { post, draft, sending, send, like, removePost, removeReply, fmt }
   }
 }
 </script>

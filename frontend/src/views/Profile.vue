@@ -189,7 +189,7 @@ export default {
           try {
             await showConfirmDialog({
               title: '分享到打卡广场？',
-              message: '网页端可以把今日打卡发到广场，同学能看见并点赞。小程序审核不便做的社区功能，这里可以用。',
+              message: '发到广场后，同学能看见并点赞。',
               confirmButtonText: '去广场发布'
             })
             router.push('/plaza')

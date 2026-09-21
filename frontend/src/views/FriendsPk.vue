@@ -58,7 +58,7 @@
       <div v-for="m in data.pendingPk" :key="m.id" class="person">
         <div>
           <b>{{ m.challenger?.nickName }} 向你发起 {{ m.mode === 'QUIZ' ? '答题 PK' : '战力 PK' }}</b>
-          <span>{{ m.createdAt }}{{ m.questionCount ? ' · ' + m.questionCount + ' 题' : '' }}</span>
+          <span>{{ fmt(m.createdAt) }}{{ m.questionCount ? ' · ' + m.questionCount + ' 题' : '' }}</span>
         </div>
         <button class="mini fill" @click="fight(m)">应战</button>
       </div>
@@ -84,7 +84,7 @@
         <em>{{ scoreOf(m) }}</em>
         <span>{{ m.opponent?.nickName }}</span>
       </div>
-      <p>{{ m.result }} · {{ m.mode === 'QUIZ' ? '答题' : '战力' }} · {{ m.createdAt }}</p>
+      <p>{{ m.result }} · {{ m.mode === 'QUIZ' ? '答题' : '战力' }} · {{ fmt(m.createdAt) }}</p>
     </article>
   </div>
 </template>
@@ -222,10 +222,12 @@ export default {
 
     const relationText = (r) => ({ FRIEND: '已是好友', OUTGOING: '已申请', INCOMING: '待你通过' }[r] || '')
 
+    const fmt = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '')
+
     onMounted(load)
     return {
       data, username, query, found, adding, add, addName, search,
-      accept, reject, cancel, remove, pk, fight, openMatch, scoreOf, relationText
+      accept, reject, cancel, remove, pk, fight, openMatch, scoreOf, relationText, fmt
     }
   }
 }

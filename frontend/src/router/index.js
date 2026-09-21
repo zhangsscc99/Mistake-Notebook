@@ -34,6 +34,8 @@ const FriendsPk = () => import(/* webpackChunkName: "page-pk" */ '../views/Frien
 const PkPlay = () => import(/* webpackChunkName: "page-pk-play" */ '../views/PkPlay.vue')
 const OrgCases = () => import(/* webpackChunkName: "page-orgs" */ '../views/OrgCases.vue')
 const OrgCaseDetail = () => import(/* webpackChunkName: "page-org-detail" */ '../views/OrgCaseDetail.vue')
+const OrgMemberBank = () => import(/* webpackChunkName: "page-org-bank" */ '../views/OrgMemberBank.vue')
+const OrgBankPractice = () => import(/* webpackChunkName: "page-org-practice" */ '../views/OrgBankPractice.vue')
 
 // 教师后台
 const TeacherHome = () => import(/* webpackChunkName: "teacher-home" */ '../views/teacher/TeacherHome.vue')
@@ -91,6 +93,8 @@ const routes = [
   { path: '/community/pk', name: 'FriendsPk', component: FriendsPk, meta: { title: '好友 PK' } },
   { path: '/community/pk/:id', name: 'PkPlay', component: PkPlay, meta: { title: '答题 PK' } },
   { path: '/orgs', name: 'OrgCases', component: OrgCases, meta: { title: '机构版', public: true } },
+  { path: '/orgs/:slug/bank', name: 'OrgMemberBank', component: OrgMemberBank, meta: { title: '机构题库', student: true } },
+  { path: '/orgs/:slug/practice', name: 'OrgBankPractice', component: OrgBankPractice, meta: { title: '机构练习', student: true } },
   { path: '/orgs/:slug', name: 'OrgCaseDetail', component: OrgCaseDetail, meta: { title: '机构主页', public: true } },
 
   { path: '/teacher', name: 'TeacherHome', component: TeacherHome, meta: { title: '班级工作台', teacher: true } },
@@ -102,7 +106,7 @@ const routes = [
   { path: '/teacher/paper', name: 'TeacherPaperHub', component: TeacherPaperHub, meta: { title: '班级组卷', teacher: true } },
   { path: '/teacher/send', name: 'TeacherSend', component: TeacherSend, meta: { title: '发给班级', teacher: true } },
   { path: '/teacher/mine', name: 'TeacherMine', component: TeacherMine, meta: { title: '我的', teacher: true } },
-  { path: '/teacher/org', name: 'TeacherOrg', component: TeacherOrg, meta: { title: '机构主页', teacher: true } },
+      { path: '/teacher/org', name: 'TeacherOrg', component: TeacherOrg, meta: { title: '机构工作台', teacher: true } },
   { path: '/teacher/report', name: 'TeacherClassReport', component: TeacherClassReport, meta: { title: '家长报告', teacher: true } },
   { path: '/teacher/students', name: 'TeacherStudents', component: TeacherStudents, meta: { title: '班级学生', teacher: true } },
   { path: '/teacher/students/:id', name: 'TeacherStudentDetail', component: TeacherStudentDetail, meta: { title: '学生详情', teacher: true } },
@@ -127,6 +131,11 @@ router.beforeEach((to, from, next) => {
   }
   const teacher = isLoggedIn() && isTeacher()
   if (to.path === '/login' && isLoggedIn()) {
+    const redirect = to.query.redirect
+    if (!teacher && typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+      next(redirect)
+      return
+    }
     next(teacher ? '/teacher' : '/homepage')
     return
   }

@@ -38,11 +38,15 @@
     <div v-if="orgs.length" class="card">
       <h3>我的机构</h3>
       <div v-for="o in orgs" :key="o.id" class="cls">
-        <div>
+        <div class="cls-main" @click="openOrg(o)">
           <b>{{ o.name }}</b>
           <span>{{ o.teacherName || '教师' }} · {{ o.status === 'pending' ? '待老师审核' : '已加入' }}</span>
         </div>
-        <em :class="o.status">{{ o.status === 'pending' ? '待审核' : '已通过' }}</em>
+        <div class="cls-side">
+          <em :class="o.status">{{ o.status === 'pending' ? '待审核' : '题库 ›' }}</em>
+          <button v-if="o.status === 'pending'" class="text-btn" type="button" @click.stop="cancelOrg(o)">取消申请</button>
+          <button v-else class="text-btn" type="button" @click.stop="leaveOrg(o)">退出</button>
+        </div>
       </div>
     </div>
 
@@ -219,9 +223,42 @@ export default {
       }
     }
 
+    const openOrg = (o) => {
+      if (!o || !o.slug) return
+      if (o.status === 'pending') {
+        showToast('等待老师通过后即可查看题库')
+        return
+      }
+      router.push('/orgs/' + o.slug + '/bank')
+    }
+
+    const cancelOrg = async (o) => {
+      try {
+        await showConfirmDialog({ title: '取消申请', message: '取消后如需加入，要重新提交申请。' })
+        await orgAPI.leave(o.slug)
+        showToast({ type: 'success', message: '已取消申请' })
+        await load()
+      } catch (e) {
+        if (e === 'cancel') return
+        fail(e)
+      }
+    }
+
+    const leaveOrg = async (o) => {
+      try {
+        await showConfirmDialog({ title: '退出机构', message: `退出「${o.name}」后将无法再看专属题库，可重新申请。` })
+        await orgAPI.leave(o.slug)
+        showToast({ type: 'success', message: '已退出机构' })
+        await load()
+      } catch (e) {
+        if (e === 'cancel') return
+        fail(e)
+      }
+    }
+
     const fmt = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '')
     onMounted(() => load().catch(() => {}))
-    return { sum, code, binding, orgCode, orgBinding, orgs, todoCount, chatOpen, activeTeacher, messages, draft, sending, bind, bindOrg, unbind, openChat, send, fmt, router }
+    return { sum, code, binding, orgCode, orgBinding, orgs, todoCount, chatOpen, activeTeacher, messages, draft, sending, bind, bindOrg, unbind, openChat, openOrg, cancelOrg, leaveOrg, send, fmt, router }
   }
 }
 </script>
@@ -265,10 +302,13 @@ export default {
 .entry-body span { font-size: 12px; color: rgba(11,22,51,0.5); }
 .cls { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid rgba(11,22,51,0.06); }
 .cls:first-of-type { border-top: none; }
+.cls-main { flex: 1; min-width: 0; cursor: pointer; }
 .cls span { display: block; font-size: 12px; color: rgba(11,22,51,0.5); margin-top: 4px; }
 .cls em { font-style: normal; font-size: 12px; font-weight: 700; }
 .cls em.pending { color: #d97706; }
 .cls em.approved { color: #16a34a; }
+.cls-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.text-btn { border: none; background: none; color: #e11d48; font-size: 12px; font-weight: 700; padding: 0; }
 .chat-wrap { display: flex; flex-direction: column; height: 100%; }
 .chat-head { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid rgba(11,22,51,0.06); }
 .chat { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #eef3fb; }

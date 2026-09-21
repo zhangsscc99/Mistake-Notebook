@@ -46,13 +46,13 @@
       </button>
     </div>
     <p class="hint">退出登录后可重新选择学生或老师。注销才会删除云端数据。</p>
-    <button class="cases-link" @click="$router.push('/orgs')">查看机构版（演示案例 + 真实入驻）</button>
+    <button class="cases-link" @click="$router.push('/orgs')">查看机构目录</button>
   </div>
 </template>
 
 <script>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import userAPI from '../api/user'
 import { setSession, getLastRole } from '../utils/auth'
@@ -61,6 +61,7 @@ export default {
   name: 'LoginPage',
   setup() {
     const router = useRouter()
+    const route = useRoute()
     const mode = ref('login')
     const username = ref('')
     const password = ref('')
@@ -82,7 +83,12 @@ export default {
         if (!res.success) throw new Error(res.message || '失败')
         setSession(res.data.token, res.data)
         showToast({ type: 'success', message: res.message || '欢迎回来' })
-        router.replace(res.data.role === 'TEACHER' ? '/teacher' : '/homepage')
+        const redirect = route.query.redirect
+        if (res.data.role !== 'TEACHER' && typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+          router.replace(redirect)
+        } else {
+          router.replace(res.data.role === 'TEACHER' ? '/teacher' : '/homepage')
+        }
       } catch (e) {
         showToast({ type: 'fail', message: e.response?.data?.message || e.message || '登录失败' })
       } finally {

@@ -3,7 +3,7 @@
     <div class="hero">
       <div class="kicker">COMMUNITY</div>
       <h1>学习社区</h1>
-      <p>打卡广场、互助答疑、好友 PK。这些公开互动放在网页端，不走小程序审核。</p>
+      <p>互助答疑、打卡广场和好友 PK，把卡住的题和今日进度晒给同学。</p>
     </div>
 
     <div class="stats">
@@ -45,7 +45,7 @@
     <article v-for="post in home.recentHelp || []" :key="post.id" class="card post" @click="$router.push('/community/help/' + post.id)">
       <div class="meta">
         <em v-if="post.subject">{{ post.subject }}</em>
-        <span>{{ post.nickName }} · {{ post.createdAt }}</span>
+        <span>{{ post.nickName }} · {{ fmt(post.createdAt) }}</span>
       </div>
       <b>{{ post.title }}</b>
       <p>{{ post.preview }}</p>
@@ -56,7 +56,7 @@
     <div class="section-head">最近对战</div>
     <article v-for="m in home.recentPk || []" :key="m.id" class="card pk" @click="$router.push(m.playable || m.mode === 'QUIZ' ? '/community/pk/' + m.id : '/community/pk')">
       <b>{{ (m.challenger && m.challenger.nickName) || '同学' }} vs {{ (m.opponent && m.opponent.nickName) || '同学' }}</b>
-      <span>{{ m.result }} · {{ m.createdAt }}</span>
+      <span>{{ m.result }} · {{ fmt(m.createdAt) }}</span>
     </article>
     <p v-if="!(home.recentPk || []).length" class="empty">加好友后就能发起 PK。</p>
 
@@ -84,7 +84,8 @@ export default {
       }
     }
     onMounted(load)
-    return { home }
+    const fmt = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '')
+    return { home, fmt }
   }
 }
 </script>

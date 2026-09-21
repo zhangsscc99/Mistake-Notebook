@@ -3,9 +3,9 @@
     <van-nav-bar title="打卡广场" left-arrow @click-left="$router.push('/community')" />
 
     <div class="composer card">
-      <div class="kicker">网页端学习社区</div>
+      <div class="kicker">今日打卡</div>
       <h2>把今日打卡晒出来</h2>
-      <p>小程序审核不方便做的公开动态，网页端可以发。每天一条，同学能点赞。</p>
+      <p>每天一条，同学能点赞。连续天数会一起显示。</p>
       <textarea v-model="draft" maxlength="80" placeholder="写一句今天的学习状态，选填"></textarea>
       <div class="composer-row">
         <span>{{ draft.length }}/80</span>

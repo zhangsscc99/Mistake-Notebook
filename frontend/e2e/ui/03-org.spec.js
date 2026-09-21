@@ -16,21 +16,21 @@ test.describe('Org publish and join (headless)', () => {
     const slug = ('hd' + Date.now().toString(36)).toLowerCase()
 
     await openAs(page, teacher.token, teacher.profile, '/teacher/org')
-    await expect(page.getByRole('heading', { name: '开通机构主页' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '开通机构' })).toBeVisible()
 
     await page.getByPlaceholder('例如：启明数理学院').fill('无头测试学堂')
     await page.getByPlaceholder('qiming-sz').fill(slug)
     await page.getByPlaceholder('深圳').fill('成都')
-    await page.getByRole('button', { name: '保存草稿' }).click()
-    await expect(page.getByText('已保存草稿')).toBeVisible()
+    await page.getByRole('button', { name: '开通机构' }).click()
+    await expect(page.getByText('机构已开通')).toBeVisible()
     const joinCode = (await page.locator('button.code').innerText()).trim()
     expect(joinCode.length).toBeGreaterThanOrEqual(6)
 
     const hidden = await request.get(`http://127.0.0.1:8080/api/orgs/${slug}`)
     expect(hidden.status()).toBe(400)
 
-    await page.getByRole('button', { name: '发布' }).click()
-    await expect(page.getByText('机构主页已公开')).toBeVisible()
+    await page.getByRole('button', { name: '发布到目录' }).click()
+    await expect(page.getByText('已公开')).toBeVisible()
     await expect(page.getByRole('button', { name: '查看公开页' })).toBeVisible()
 
     await openAs(page, student.token, student.profile, '/classroom')
@@ -40,15 +40,50 @@ test.describe('Org publish and join (headless)', () => {
     await expect(page.getByText('已提交加入申请')).toBeVisible()
     await expect(page.getByText('我的机构')).toBeVisible()
     await expect(page.getByText('待审核').first()).toBeVisible()
+    await expect(page.getByRole('button', { name: '取消申请' })).toBeVisible()
 
     await openAs(page, teacher.token, teacher.profile, '/teacher/org')
     await expect(page.getByText('待审核 1 人')).toBeVisible()
     await page.getByRole('button', { name: '通过' }).click()
     await expect(page.getByText('已通过').first()).toBeVisible()
     await expect(page.getByText('已加入 1 人')).toBeVisible()
+    await expect(page.getByRole('button', { name: '题库' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '分析' })).toBeVisible()
 
     await openAs(page, student.token, student.profile, '/classroom')
     await expect(page.getByText('已通过').first()).toBeVisible()
+
+    await request.post('http://127.0.0.1:8080/api/orgs/mine/bank', {
+      headers: { Authorization: `Bearer ${teacher.token}` },
+      data: { category: '数学', difficulty: 'MEDIUM', questions: [{ content: '机构专属：求 1+1。' }] }
+    })
+    await openAs(page, student.token, student.profile, '/classroom')
+    await page.getByText('无头测试学堂').click()
+    await expect(page).toHaveURL(/\/orgs\/.+\/bank/)
+    await expect(page.getByText('机构专属：求 1+1。')).toBeVisible()
+    await page.getByRole('button', { name: '开始练习' }).click()
+    await expect(page).toHaveURL(/\/orgs\/.+\/practice/)
+    await expect(page.getByText('机构专属：求 1+1。')).toBeVisible()
+    await page.getByRole('button', { name: '显示答案' }).click()
+    await page.getByRole('button', { name: '我会了' }).click()
+    await expect(page.getByText('练完啦')).toBeVisible()
+  })
+
+  test('student can search directory and apply from public page', async ({ page, request }) => {
+    const teacher = await register(request, { role: 'TEACHER', nickName: '目录申请老师' })
+    const student = await register(request, { nickName: '目录申请学生' })
+    const slug = ('ap' + Date.now().toString(36)).toLowerCase()
+    await request.put('http://127.0.0.1:8080/api/orgs/mine', {
+      headers: { Authorization: `Bearer ${teacher.token}` },
+      data: { name: '页上申请学堂', slug, city: '南京', published: true }
+    })
+
+    await openAs(page, student.token, student.profile, '/orgs')
+    await page.getByPlaceholder('搜索机构名称、城市或介绍').fill('页上申请学堂')
+    await expect(page.getByRole('heading', { name: '页上申请学堂' })).toBeVisible()
+    await page.getByRole('heading', { name: '页上申请学堂' }).click()
+    await page.getByRole('button', { name: '申请加入' }).click()
+    await expect(page.getByText('已申请，等待通过')).toBeVisible()
   })
 
   test('teacher can leave org directory back to mine', async ({ page, request }) => {
@@ -56,7 +91,7 @@ test.describe('Org publish and join (headless)', () => {
     await openAs(page, teacher.token, teacher.profile, '/teacher/mine')
     await page.getByRole('button', { name: '机构目录' }).click()
     await expect(page).toHaveURL(/\/orgs$/)
-    await expect(page.getByRole('heading', { name: '演示案例 + 真实入驻机构' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '机构目录' })).toBeVisible()
     await page.locator('.van-nav-bar__left').click()
     await expect(page).toHaveURL(/\/teacher\/mine/)
     await expect(page.getByRole('button', { name: '机构目录' })).toBeVisible()

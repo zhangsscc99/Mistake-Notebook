@@ -924,14 +924,20 @@ public class TeacherService {
 
     public Map<String, Object> analytics(long teacherId) {
         requireTeacher(teacherId);
-        List<Long> ids = studentIdsOf(teacherId);
+        return analyticsFor(teacherId, studentIdsOf(teacherId));
+    }
+
+    public Map<String, Object> analyticsFor(long teacherId, List<Long> ids) {
+        requireTeacher(teacherId);
+        List<Long> studentIds = ids == null ? List.of() : ids;
+        Set<Long> idSet = new HashSet<>(studentIds);
         LocalDate today = LocalDate.now(CN);
         long total = 0, mastered = 0, activeWeek = 0, checkedToday = 0;
         Map<String, Long> byCategory = new HashMap<>();
         Map<String, Long> byTag = new HashMap<>();
         List<Map<String, Object>> perStudent = new ArrayList<>();
         long[] daily = new long[14];
-        for (Long sid : ids) {
+        for (Long sid : studentIds) {
             User s = userRepository.findById(sid).orElse(null);
             if (s == null) continue;
             List<Question> qs = questionRepository.findByUserIdAndIsDeletedFalseOrderByCreatedAtDesc(sid);
@@ -975,12 +981,13 @@ public class TeacherService {
         long subCount = 0; double scoreSum = 0; long scored = 0;
         for (Homework hw : hws) {
             for (HomeworkSubmission s : homeworkSubmissionRepository.findByHomeworkIdOrderBySubmittedAtDesc(hw.getId())) {
+                if (!idSet.contains(s.getStudentId())) continue;
                 subCount++;
                 if (s.getScore() != null) { scoreSum += s.getScore(); scored++; }
             }
         }
         Map<String, Object> d = new HashMap<>();
-        d.put("studentCount", ids.size());
+        d.put("studentCount", studentIds.size());
         d.put("totalQuestions", total);
         d.put("masteredQuestions", mastered);
         d.put("masteryRate", total == 0 ? 0 : Math.round(mastered * 100.0 / total));

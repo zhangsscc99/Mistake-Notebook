@@ -13,6 +13,16 @@ test.describe('Org showcase + community social', () => {
     expectOk(demo, 'qiming')
     expect(data(demo).demo).toBeTruthy()
     expect(data(demo).name).toBeTruthy()
+    expect(data(demo).bank || []).toEqual([])
+    expect(data(demo).roster || []).toEqual([])
+    expect(data(demo).story || []).toEqual([])
+
+    const searched = await call(request, { path: '/orgs?q=' + encodeURIComponent('启明') })
+    expectOk(searched, 'search qiming')
+    expect(data(searched).some((o) => o.slug === 'qiming')).toBeTruthy()
+    const missed = await call(request, { path: '/orgs?q=zzzznotanorg' })
+    expectOk(missed, 'search miss')
+    expect(data(missed)).toEqual([])
 
     const mine = await call(request, { path: '/orgs/mine' })
     expect(mine.status).toBe(401)
@@ -46,6 +56,13 @@ test.describe('Org showcase + community social', () => {
     expectOk(published, 'publish')
     const joinCode = data(published).joinCode
 
+    const publicPage = await call(request, { path: `/orgs/${slug}` })
+    expectOk(publicPage, 'public live org')
+    expect(data(publicPage).demo).toBeFalsy()
+    expect(data(publicPage).bank || []).toEqual([])
+    expect(data(publicPage).roster || []).toEqual([])
+    expect(data(publicPage).story || []).toEqual([])
+
     const apply = await call(request, {
       method: 'POST',
       path: '/orgs/join',
@@ -69,6 +86,104 @@ test.describe('Org showcase + community social', () => {
     const joined = await call(request, { path: '/orgs/joined', token: student.token })
     expectOk(joined, 'joined')
     expect(data(joined).some((o) => o.slug === slug && o.status === 'approved')).toBeTruthy()
+
+    const added = await call(request, {
+      method: 'POST',
+      path: '/orgs/mine/bank',
+      token: teacher.token,
+      data: { category: '数学', difficulty: 'MEDIUM', questions: [{ content: '机构专属：求 1+1。' }] }
+    })
+    expectOk(added, 'add org bank')
+    const bank = await call(request, { path: '/orgs/mine/bank', token: teacher.token })
+    expectOk(bank, 'list org bank')
+    expect(data(bank).some((q) => String(q.content || '').includes('机构专属'))).toBeTruthy()
+
+    const seen = await call(request, { path: `/orgs/${slug}`, token: student.token })
+    expectOk(seen, 'student public org')
+    expect(data(seen).membership).toBe('approved')
+
+    const memberBank = await call(request, { path: `/orgs/${slug}/bank`, token: student.token })
+    expectOk(memberBank, 'student member bank')
+    const bankQ = data(memberBank).find((q) => String(q.content || '').includes('机构专属'))
+    expect(bankQ).toBeTruthy()
+
+    const practice = await call(request, { path: `/orgs/${slug}/practice`, token: student.token })
+    expectOk(practice, 'org practice')
+    expect(data(practice).some((q) => String(q.content || '').includes('机构专属'))).toBeTruthy()
+    const marked = await call(request, {
+      method: 'POST',
+      path: `/orgs/${slug}/practice/mark`,
+      token: student.token,
+      data: { questionId: bankQ.id, mastered: true }
+    })
+    expectOk(marked, 'mark practice')
+    const again = await call(request, { path: `/orgs/${slug}/practice?onlyUnmastered=true`, token: student.token })
+    expectOk(again, 'unmastered practice')
+    expect(data(again).some((q) => q.id === bankQ.id)).toBeFalsy()
+
+    const teacherBank = await call(request, { path: '/teacher/bank', token: teacher.token })
+    expectOk(teacherBank, 'teacher personal bank')
+    expect(data(teacherBank).some((q) => String(q.content || '').includes('机构专属'))).toBeFalsy()
+
+    const analytics = await call(request, { path: '/orgs/mine/analytics', token: teacher.token })
+    expectOk(analytics, 'org analytics after practice')
+    expect(data(analytics).memberCount).toBe(1)
+    expect(data(analytics).orgPracticeMastered).toBeGreaterThanOrEqual(1)
+    expect(data(analytics).bankCount).toBeGreaterThanOrEqual(1)
+
+    const admin = await register(request, { role: 'TEACHER', nickName: '机构管理员' })
+    const addedStaff = await call(request, {
+      method: 'POST',
+      path: '/orgs/mine/staff',
+      token: teacher.token,
+      data: { username: admin.username }
+    })
+    expectOk(addedStaff, 'add staff')
+    const adminMine = await call(request, { path: '/orgs/mine', token: admin.token })
+    expectOk(adminMine, 'admin mine')
+    expect(data(adminMine).exists).toBeTruthy()
+    expect(data(adminMine).canEditBrand).toBeFalsy()
+    expect(data(adminMine).canManageBank).toBeTruthy()
+    const adminAdd = await call(request, {
+      method: 'POST',
+      path: '/orgs/mine/bank',
+      token: admin.token,
+      data: { category: '数学', difficulty: 'EASY', questions: [{ content: '管理员写入：2+2。' }] }
+    })
+    expectOk(adminAdd, 'admin add org bank')
+
+    const other = await register(request, { nickName: '页上申请学生' })
+    const applyPage = await call(request, {
+      method: 'POST',
+      path: `/orgs/${slug}/apply`,
+      token: other.token
+    })
+    expectOk(applyPage, 'apply by slug')
+    expect(data(applyPage).pending).toBeTruthy()
+    const blocked = await call(request, { path: `/orgs/${slug}/bank`, token: other.token })
+    expect(blocked.status).toBe(400)
+
+    const cancelled = await call(request, {
+      method: 'DELETE',
+      path: `/orgs/${slug}/membership`,
+      token: other.token
+    })
+    expectOk(cancelled, 'cancel apply')
+    expect(data(cancelled).pending).toBeTruthy()
+
+    const students = await call(request, { path: '/orgs/mine/students', token: teacher.token })
+    expectOk(students, 'org students')
+    expect(data(students).members.some((s) => s.id === student.id)).toBeTruthy()
+
+    const left = await call(request, {
+      method: 'DELETE',
+      path: `/orgs/${slug}/membership`,
+      token: student.token
+    })
+    expectOk(left, 'student leave')
+    expect(data(left).pending).toBeFalsy()
+    const afterLeave = await call(request, { path: '/orgs/mine/students', token: teacher.token })
+    expect(data(afterLeave).members.some((s) => s.id === student.id)).toBeFalsy()
   })
 
   test('help board: post, filter, like, reply, delete', async ({ request }) => {

@@ -24,15 +24,18 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         String path = request.getRequestURI() == null ? "" : request.getRequestURI();
-        if (isPublic(path, request.getMethod())) {
-            return true;
-        }
         String header = request.getHeader("Authorization");
         String token = null;
         if (header != null && header.startsWith("Bearer ")) {
             token = header.substring(7).trim();
         }
         Long userId = tokenService.parse(token);
+        if (isPublic(path, request.getMethod())) {
+            if (userId != null) {
+                AuthContext.setUserId(userId);
+            }
+            return true;
+        }
         if (userId == null) {
             response.setStatus(401);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
@@ -54,6 +57,8 @@ public class AuthInterceptor implements HandlerInterceptor {
             return true;
         }
         if (path.contains("/orgs/mine") || path.endsWith("/orgs/joined") || path.endsWith("/orgs/join")) return false;
+        if (path.contains("/orgs/") && (path.endsWith("/bank") || path.endsWith("/apply") || path.contains("/practice")
+                || path.endsWith("/membership"))) return false;
         return "GET".equalsIgnoreCase(method) && path.contains("/orgs");
     }
 }

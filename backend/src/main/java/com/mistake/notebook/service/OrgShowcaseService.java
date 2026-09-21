@@ -1,17 +1,26 @@
 package com.mistake.notebook.service;
 
+import com.mistake.notebook.entity.Category;
 import com.mistake.notebook.entity.OrgMember;
+import com.mistake.notebook.entity.OrgStaff;
 import com.mistake.notebook.entity.Organization;
+import com.mistake.notebook.entity.Question;
+import com.mistake.notebook.entity.QuestionMark;
 import com.mistake.notebook.entity.User;
 import com.mistake.notebook.repository.OrgMemberRepository;
+import com.mistake.notebook.repository.OrgStaffRepository;
 import com.mistake.notebook.repository.OrganizationRepository;
+import com.mistake.notebook.repository.QuestionMarkRepository;
+import com.mistake.notebook.repository.QuestionRepository;
 import com.mistake.notebook.repository.UserRepository;
+import com.mistake.notebook.security.AuthContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -30,19 +39,28 @@ public class OrgShowcaseService {
     private static final String PENDING = "PENDING";
     private static final String APPROVED = "APPROVED";
     private static final String REJECTED = "REJECTED";
+    private static final String ORG_BANK = "org_bank";
+    private static final String OWNER = "OWNER";
+    private static final String ADMIN = "ADMIN";
 
     private final OrganizationRepository organizationRepository;
     private final OrgMemberRepository orgMemberRepository;
+    private final OrgStaffRepository orgStaffRepository;
     private final UserRepository userRepository;
+    private final QuestionRepository questionRepository;
+    private final QuestionMarkRepository questionMarkRepository;
     private final TeacherWorkspaceService teacherWorkspaceService;
     private final TeacherService teacherService;
+    private final CategorySeedService categorySeedService;
 
-    public List<Map<String, Object>> list() {
+    public List<Map<String, Object>> list(String q) {
         ensureDemos();
+        String needle = q == null ? "" : q.trim().toLowerCase(Locale.ROOT);
         List<Map<String, Object>> out = new ArrayList<>();
         for (Organization org : organizationRepository.findAllByOrderByDemoDescCreatedAtDesc()) {
             if (!Boolean.TRUE.equals(org.getDemo()) && !Boolean.TRUE.equals(org.getPublished())) continue;
-            out.add(card(org));
+            if (!needle.isEmpty() && !matchesQuery(org, needle)) continue;
+            out.add(publicCard(org));
         }
         return out;
     }
@@ -51,57 +69,31 @@ public class OrgShowcaseService {
         ensureDemos();
         Organization org = organizationRepository.findBySlug(slug)
                 .orElseThrow(() -> new IllegalArgumentException("没有这个机构"));
-        if (Boolean.TRUE.equals(org.getDemo())) {
-            Map<String, Object> demo = demoPayload(slug);
-            overlayBrand(demo, org);
-            return demo;
-        }
-        if (!Boolean.TRUE.equals(org.getPublished())) {
+        if (!Boolean.TRUE.equals(org.getDemo()) && !Boolean.TRUE.equals(org.getPublished())) {
             throw new IllegalArgumentException("这个机构尚未公开");
         }
-        return liveDetail(org);
+        Map<String, Object> data = publicCard(org);
+        attachViewer(data, org);
+        return data;
     }
 
-    public Map<String, Object> mine(long teacherId) {
+    public Map<String, Object> mine(long teacherId, String slug) {
         teacherWorkspaceService.requireTeacher(teacherId);
         ensureDemos();
-        return organizationRepository.findByOwnerId(teacherId)
-                .map(org -> {
-                    ensureJoinCode(org);
-                    Map<String, Object> data = brand(org);
-                    data.put("exists", true);
-                    data.put("published", Boolean.TRUE.equals(org.getPublished()));
-                    data.put("joinCode", org.getJoinCode() == null ? "" : org.getJoinCode());
-                    data.put("publicPath", "/orgs/" + org.getSlug());
-                    data.put("pending", memberRows(org.getId(), PENDING));
-                    data.put("members", memberRows(org.getId(), APPROVED));
-                    return data;
-                })
-                .orElseGet(() -> {
-                    Map<String, Object> data = new LinkedHashMap<>();
-                    data.put("exists", false);
-                    data.put("published", false);
-                    data.put("joinCode", "");
-                    data.put("slug", "");
-                    data.put("name", "");
-                    data.put("shortName", "");
-                    data.put("city", "");
-                    data.put("mark", "");
-                    data.put("tagline", "");
-                    data.put("headline", "");
-                    data.put("pitch", "");
-                    data.put("logoUrl", "");
-                    data.put("quote", "");
-                    data.put("quoteBy", "");
-                    Map<String, Object> theme = new LinkedHashMap<>();
-                    theme.put("primary", "#2459ff");
-                    theme.put("accent", "#52b7ff");
-                    data.put("theme", theme);
-                    data.put("demo", false);
-                    data.put("pending", List.of());
-                    data.put("members", List.of());
-                    return data;
-                });
+        Organization org = resolveWorkspace(teacherId, slug, false);
+        List<Map<String, Object>> staffOrgs = staffOrgRows(teacherId);
+        if (org == null) {
+            Map<String, Object> data = emptyMine();
+            data.put("staffOrgs", staffOrgs);
+            data.put("pendingCount", 0);
+            data.put("canEditBrand", true);
+            data.put("canManageStaff", false);
+            data.put("canManageBank", false);
+            data.put("myRole", "");
+            data.put("staff", List.of());
+            return data;
+        }
+        return packWorkspace(org, teacherId, staffOrgs);
     }
 
     @Transactional
@@ -147,35 +139,27 @@ public class OrgShowcaseService {
         org.setQuoteBy(quoteBy.isEmpty() ? displayName(teacher) : quoteBy);
         ensureJoinCode(org);
         organizationRepository.save(org);
-        return mine(teacherId);
+        if (creating) ensureOwnerStaff(org);
+        return mine(teacherId, org.getSlug());
     }
 
     @Transactional
     public Map<String, Object> join(long studentId, String code) {
-        User me = userRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("用户不存在"));
-        if ("TEACHER".equals(me.getRole())) throw new IllegalArgumentException("教师账号不能加入机构");
         String joinCode = code == null ? "" : code.trim().toUpperCase();
         if (joinCode.isEmpty()) throw new IllegalArgumentException("请输入机构加入码");
         Organization org = organizationRepository.findByJoinCode(joinCode)
                 .filter(o -> !Boolean.TRUE.equals(o.getDemo()))
                 .orElseThrow(() -> new IllegalArgumentException("加入码无效"));
-        OrgMember existing = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId).orElse(null);
-        if (existing != null && APPROVED.equals(existing.getStatus())) {
-            return joinResult(org, false, true, "approved");
-        }
-        if (existing != null && PENDING.equals(existing.getStatus())) {
-            return joinResult(org, true, false, "pending");
-        }
-        if (existing == null) {
-            existing = new OrgMember();
-            existing.setOrgId(org.getId());
-            existing.setStudentId(studentId);
-        }
-        existing.setStatus(PENDING);
-        existing.setRequestedAt(LocalDateTime.now());
-        existing.setApprovedAt(null);
-        orgMemberRepository.save(existing);
-        return joinResult(org, true, false, "pending");
+        return applyTo(studentId, org);
+    }
+
+    @Transactional
+    public Map<String, Object> applyBySlug(long studentId, String slug) {
+        Organization org = organizationRepository.findBySlug(slug)
+                .orElseThrow(() -> new IllegalArgumentException("没有这个机构"));
+        if (Boolean.TRUE.equals(org.getDemo())) throw new IllegalArgumentException("示例机构不能加入");
+        if (!Boolean.TRUE.equals(org.getPublished())) throw new IllegalArgumentException("这个机构尚未公开");
+        return applyTo(studentId, org);
     }
 
     public List<Map<String, Object>> myOrgs(long studentId) {
@@ -200,8 +184,8 @@ public class OrgShowcaseService {
     }
 
     @Transactional
-    public Map<String, Object> approveJoin(long teacherId, long studentId) {
-        Organization org = ownedOrg(teacherId);
+    public Map<String, Object> approveJoin(long teacherId, long studentId, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
         OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId)
                 .orElseThrow(() -> new IllegalArgumentException("没有这条申请"));
         if (APPROVED.equals(m.getStatus())) {
@@ -214,8 +198,8 @@ public class OrgShowcaseService {
     }
 
     @Transactional
-    public Map<String, Object> rejectJoin(long teacherId, long studentId) {
-        Organization org = ownedOrg(teacherId);
+    public Map<String, Object> rejectJoin(long teacherId, long studentId, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
         OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId)
                 .orElseThrow(() -> new IllegalArgumentException("没有这条申请"));
         if (APPROVED.equals(m.getStatus())) throw new IllegalArgumentException("该学生已在机构中");
@@ -224,108 +208,314 @@ public class OrgShowcaseService {
         return Map.of("orgId", org.getId(), "studentId", studentId);
     }
 
-    private Map<String, Object> card(Organization org) {
+    public List<Map<String, Object>> listBank(long teacherId, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
+        return mapOrgBank(loadOrgBank(org.getId()));
+    }
+
+    public List<Map<String, Object>> memberBank(long studentId, String slug) {
+        return enrichBank(studentId, loadMemberBank(studentId, slug));
+    }
+
+    public List<Map<String, Object>> memberPractice(long studentId, String slug, boolean onlyUnmastered) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> q : memberBank(studentId, slug)) {
+            boolean mastered = Boolean.TRUE.equals(q.get("mastered"));
+            if (onlyUnmastered && mastered) continue;
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", q.get("id"));
+            row.put("content", q.get("content"));
+            row.put("answer", q.get("aiAnswer") == null ? "" : q.get("aiAnswer"));
+            row.put("analysis", q.get("aiAnalysis") == null ? "" : q.get("aiAnalysis"));
+            row.put("category", q.get("category"));
+            row.put("difficulty", q.get("difficulty"));
+            row.put("imageUrl", q.get("imageUrl"));
+            row.put("mastered", mastered);
+            out.add(row);
+        }
+        return out;
+    }
+
+    @Transactional
+    public Map<String, Object> markMemberQuestion(long studentId, String slug, long questionId, boolean mastered) {
+        List<Map<String, Object>> bank = loadMemberBank(studentId, slug);
+        boolean found = false;
+        for (Map<String, Object> q : bank) {
+            Object id = q.get("id");
+            if (id instanceof Number n && n.longValue() == questionId) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) throw new IllegalArgumentException("题目不在该机构题库中");
+        QuestionMark mark = questionMarkRepository.findByUserIdAndQuestionId(studentId, questionId)
+                .orElseGet(() -> {
+                    QuestionMark m = new QuestionMark();
+                    m.setUserId(studentId);
+                    m.setQuestionId(questionId);
+                    m.setFavorite(false);
+                    m.setPinned(false);
+                    return m;
+                });
+        mark.setMastered(mastered);
+        questionMarkRepository.save(mark);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("questionId", questionId);
+        data.put("mastered", mastered);
+        return data;
+    }
+
+    @Transactional
+    public Map<String, Object> leaveOrg(long studentId, String slug) {
+        Organization org = organizationRepository.findBySlug(slug)
+                .orElseThrow(() -> new IllegalArgumentException("没有这个机构"));
+        OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId)
+                .orElseThrow(() -> new IllegalArgumentException("你不在该机构中"));
+        if (REJECTED.equals(m.getStatus())) throw new IllegalArgumentException("你不在该机构中");
+        boolean pending = PENDING.equals(m.getStatus());
+        orgMemberRepository.delete(m);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("orgId", org.getId());
+        data.put("pending", pending);
+        data.put("left", true);
+        return data;
+    }
+
+    private List<Map<String, Object>> loadMemberBank(long studentId, String slug) {
+        Organization org = organizationRepository.findBySlug(slug)
+                .orElseThrow(() -> new IllegalArgumentException("没有这个机构"));
+        if (Boolean.TRUE.equals(org.getDemo())) throw new IllegalArgumentException("示例机构没有专属题库");
+        requireMemberOrStaff(studentId, org);
+        return mapOrgBank(loadOrgBank(org.getId()));
+    }
+
+    private List<Map<String, Object>> enrichBank(long studentId, List<Map<String, Object>> rows) {
+        List<Long> ids = new ArrayList<>();
+        for (Map<String, Object> q : rows) {
+            Object id = q.get("id");
+            if (id instanceof Number n) ids.add(n.longValue());
+        }
+        Map<Long, QuestionMark> marks = new HashMap<>();
+        if (!ids.isEmpty()) {
+            for (QuestionMark m : questionMarkRepository.findByUserIdAndQuestionIdIn(studentId, ids)) {
+                marks.put(m.getQuestionId(), m);
+            }
+        }
+        for (Map<String, Object> q : rows) {
+            Object id = q.get("id");
+            long qid = id instanceof Number n ? n.longValue() : -1;
+            QuestionMark mark = marks.get(qid);
+            q.put("mastered", mark != null && Boolean.TRUE.equals(mark.getMastered()));
+        }
+        return rows;
+    }
+
+    @Transactional
+    public Map<String, Object> addBank(long teacherId, Map<String, Object> body, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
+        Object raw = body.get("questions");
+        if (!(raw instanceof List<?> items) || items.isEmpty()) throw new IllegalArgumentException("请选择题目");
+        String category = text(body.get("category"), 50);
+        if (category.isEmpty()) category = "未分类";
+        Question.DifficultyLevel difficulty = parseDifficulty(body.get("difficulty"));
+        Category cat = categorySeedService.findForUser(teacherId, category);
+        String defaultAnswer = text(body.get("answer"), 2000);
+        String defaultAnalysis = text(body.get("analysis"), 4000);
+        List<Long> ids = new ArrayList<>();
+        int saved = 0;
+        for (Object o : items) {
+            if (saved >= 40) break;
+            if (!(o instanceof Map<?, ?> mm)) continue;
+            String content = firstText(mm.get("text"), mm.get("content"));
+            if (content.isBlank()) continue;
+            Question q = new Question();
+            q.setUserId(teacherId);
+            q.setClassId(null);
+            q.setOrgId(org.getId());
+            q.setSource(ORG_BANK);
+            q.setContent(content);
+            q.setImageUrl(firstText(mm.get("imageUrl"), body.get("imageUrl")));
+            q.setCategory(category);
+            q.setCategoryId(cat == null ? 1L : cat.getId());
+            q.setDifficulty(difficulty);
+            String answer = firstText(mm.get("answer"), defaultAnswer);
+            String analysis = firstText(mm.get("analysis"), defaultAnalysis);
+            q.setAiAnswer(answer);
+            q.setAiAnalysis(analysis);
+            q.setAiStatus(Question.AiStatus.COMPLETED);
+            q.setIsDeleted(false);
+            q.setCreatedAt(LocalDateTime.now());
+            q.setUpdatedAt(LocalDateTime.now());
+            q = questionRepository.save(q);
+            ids.add(q.getId());
+            saved++;
+        }
+        if (ids.isEmpty()) throw new IllegalArgumentException("没有可保存的题目");
+        Map<String, Object> d = new LinkedHashMap<>();
+        d.put("ids", ids);
+        d.put("savedCount", ids.size());
+        return d;
+    }
+
+    @Transactional
+    public void deleteBank(long teacherId, long questionId, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
+        Question q = requireOrgQuestion(org.getId(), questionId);
+        q.setIsDeleted(true);
+        q.setUpdatedAt(LocalDateTime.now());
+        questionRepository.save(q);
+    }
+
+    public Map<String, Object> students(long teacherId, String q, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
+        String needle = q == null ? "" : q.trim().toLowerCase(Locale.ROOT);
+        List<Map<String, Object>> members = new ArrayList<>();
+        for (OrgMember m : orgMemberRepository.findByOrgIdAndStatusOrderByRequestedAtDesc(org.getId(), APPROVED)) {
+            User u = userRepository.findById(m.getStudentId()).orElse(null);
+            if (u == null) continue;
+            String nick = u.getNickName() == null ? "" : u.getNickName();
+            String username = u.getUsername() == null ? "" : u.getUsername();
+            if (!needle.isEmpty()
+                    && !nick.toLowerCase(Locale.ROOT).contains(needle)
+                    && !username.toLowerCase(Locale.ROOT).contains(needle)) {
+                continue;
+            }
+            long questions = questionRepository.countByUserIdAndIsDeleted(u.getId(), false);
+            long mastered = questionMarkRepository.countByUserIdAndMasteredTrue(u.getId());
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("id", u.getId());
+            row.put("nickName", nick);
+            row.put("username", username);
+            row.put("stage", u.getStage() == null ? "" : u.getStage());
+            row.put("questionCount", questions);
+            row.put("masteredCount", mastered);
+            row.put("masteryRate", questions == 0 ? 0 : Math.round(mastered * 100.0 / questions));
+            row.put("checkinStreak", u.getCheckinStreak() == null ? 0 : u.getCheckinStreak());
+            row.put("joinedAt", m.getApprovedAt() == null ? m.getRequestedAt() : m.getApprovedAt());
+            members.add(row);
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("pending", memberRows(org.getId(), PENDING));
+        data.put("members", members);
+        data.put("memberCount", members.size());
+        return data;
+    }
+
+    @Transactional
+    public Map<String, Object> removeMember(long teacherId, long studentId, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
+        OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId)
+                .orElseThrow(() -> new IllegalArgumentException("该学生不在机构中"));
+        orgMemberRepository.delete(m);
+        return Map.of("orgId", org.getId(), "studentId", studentId);
+    }
+
+    public Map<String, Object> analytics(long teacherId, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
+        List<Long> ids = orgMemberRepository.findByOrgIdAndStatusOrderByRequestedAtDesc(org.getId(), APPROVED)
+                .stream().map(OrgMember::getStudentId).toList();
+        Map<String, Object> data = new LinkedHashMap<>(teacherService.analyticsFor(teacherId, ids));
+        List<Question> bank = loadOrgBank(org.getId());
+        List<Long> bankIds = bank.stream().map(Question::getId).toList();
+        long tried = 0;
+        long mastered = 0;
+        long practicedStudents = 0;
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> students = (List<Map<String, Object>>) data.get("students");
+        if (students == null) students = List.of();
+        for (Map<String, Object> row : students) {
+            Object rawId = row.get("id");
+            long sid = rawId instanceof Number n ? n.longValue() : -1;
+            long sTried = 0;
+            long sMastered = 0;
+            if (sid > 0 && !bankIds.isEmpty()) {
+                for (QuestionMark mark : questionMarkRepository.findByUserIdAndQuestionIdIn(sid, bankIds)) {
+                    sTried++;
+                    if (Boolean.TRUE.equals(mark.getMastered())) sMastered++;
+                }
+            }
+            if (sTried > 0) practicedStudents++;
+            tried += sTried;
+            mastered += sMastered;
+            row.put("orgPracticeTried", sTried);
+            row.put("orgPracticeMastered", sMastered);
+            row.put("orgPracticeRate", bankIds.isEmpty() ? 0 : Math.round(sMastered * 100.0 / bankIds.size()));
+        }
+        data.put("bankCount", bankIds.size());
+        data.put("memberCount", ids.size());
+        data.put("orgPracticeTried", tried);
+        data.put("orgPracticeMastered", mastered);
+        data.put("orgPracticeStudents", practicedStudents);
+        data.put("orgPracticeRate", tried == 0 ? 0 : Math.round(mastered * 100.0 / tried));
+        return data;
+    }
+
+    public List<Map<String, Object>> listStaff(long teacherId, String slug) {
+        Organization org = staffedOrg(teacherId, slug);
+        return staffRows(org);
+    }
+
+    @Transactional
+    public Map<String, Object> addStaff(long teacherId, String username) {
+        Organization org = ownedOrg(teacherId);
+        String name = username == null ? "" : username.trim();
+        if (name.isEmpty()) throw new IllegalArgumentException("请填写老师账号");
+        User teacher = userRepository.findByUsername(name)
+                .orElseThrow(() -> new IllegalArgumentException("没有这个账号"));
+        if (!"TEACHER".equals(teacher.getRole())) throw new IllegalArgumentException("只能添加老师账号");
+        if (teacher.getId().equals(org.getOwnerId())) throw new IllegalArgumentException("创建者已在机构中");
+        if (orgStaffRepository.findByOrgIdAndTeacherId(org.getId(), teacher.getId()).isPresent()) {
+            throw new IllegalArgumentException("这位老师已在机构中");
+        }
+        OrgStaff staff = new OrgStaff();
+        staff.setOrgId(org.getId());
+        staff.setTeacherId(teacher.getId());
+        staff.setRole(ADMIN);
+        staff.setCreatedAt(LocalDateTime.now());
+        orgStaffRepository.save(staff);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("orgId", org.getId());
+        data.put("teacherId", teacher.getId());
+        data.put("staff", staffRows(org));
+        return data;
+    }
+
+    @Transactional
+    public Map<String, Object> removeStaff(long teacherId, long staffTeacherId) {
+        Organization org = ownedOrg(teacherId);
+        if (org.getOwnerId() != null && org.getOwnerId().equals(staffTeacherId)) {
+            throw new IllegalArgumentException("不能移除创建者");
+        }
+        OrgStaff staff = orgStaffRepository.findByOrgIdAndTeacherId(org.getId(), staffTeacherId)
+                .orElseThrow(() -> new IllegalArgumentException("这位老师不在机构中"));
+        orgStaffRepository.delete(staff);
+        return Map.of("orgId", org.getId(), "teacherId", staffTeacherId);
+    }
+
+    private Map<String, Object> publicCard(Organization org) {
         Map<String, Object> card = brand(org);
+        card.put("pitch", "");
+        card.put("quote", "");
+        card.put("quoteBy", "");
+        card.put("headline", "");
+        card.put("bank", List.of());
+        card.put("roster", List.of());
+        card.put("modules", List.of());
+        card.put("analytics", List.of());
+        card.put("story", List.of());
+        card.put("classes", List.of());
         if (Boolean.TRUE.equals(org.getDemo())) {
             Map<String, Object> demo = demoPayload(org.getSlug());
             card.put("studentCount", demo.get("studentCount"));
-            card.put("classCount", demo.get("classCount"));
-            if (blank(org.getHeadline())) card.put("headline", demo.get("headline"));
+            card.put("classCount", 0);
             if (blank(org.getTagline())) card.put("tagline", demo.get("tagline"));
         } else {
-            try {
-                Map<String, Object> dash = teacherWorkspaceService.dashboard(org.getOwnerId());
-                card.put("studentCount", dash.getOrDefault("studentCount", 0));
-                card.put("classCount", dash.get("classes") instanceof List<?> list ? list.size() : 0);
-            } catch (Exception e) {
-                card.put("studentCount", 0);
-                card.put("classCount", 0);
-            }
-            if (blank(org.getHeadline())) card.put("headline", "真实入驻机构，班级与题库来自老师工作台");
+            int members = orgMemberRepository
+                    .findByOrgIdAndStatusOrderByRequestedAtDesc(org.getId(), APPROVED).size();
+            card.put("studentCount", members);
+            card.put("classCount", 0);
         }
         return card;
-    }
-
-    private Map<String, Object> liveDetail(Organization org) {
-        Map<String, Object> data = brand(org);
-        data.put("exists", true);
-        List<Map<String, Object>> classes = new ArrayList<>();
-        List<Map<String, Object>> roster = new ArrayList<>();
-        List<Map<String, Object>> bank = new ArrayList<>();
-        int studentCount = 0;
-        try {
-            List<Map<String, Object>> cls = teacherWorkspaceService.listClasses(org.getOwnerId());
-            for (Map<String, Object> c : cls) {
-                Map<String, Object> row = new LinkedHashMap<>();
-                row.put("name", c.get("name"));
-                row.put("grade", c.get("grade"));
-                Object n = c.get("studentCount");
-                int students = n instanceof Number num ? num.intValue() : 0;
-                row.put("students", students);
-                studentCount += students;
-                classes.add(row);
-                Long classId = c.get("id") instanceof Number id ? id.longValue() : null;
-                if (classId == null) continue;
-                if (roster.size() < 12) {
-                    for (Map<String, Object> s : teacherWorkspaceService.listStudents(org.getOwnerId(), classId)) {
-                        if (roster.size() >= 12) break;
-                        Map<String, Object> stu = new LinkedHashMap<>();
-                        stu.put("name", s.get("nickName") != null ? s.get("nickName") : s.get("username"));
-                        stu.put("className", c.get("name"));
-                        stu.put("questions", s.getOrDefault("questionCount", 0));
-                        stu.put("mastered", s.getOrDefault("masteredCount", 0));
-                        roster.add(stu);
-                    }
-                }
-                if (bank.size() < 8) {
-                    for (Map<String, Object> q : teacherWorkspaceService.listBank(org.getOwnerId(), classId)) {
-                        if (bank.size() >= 8) break;
-                        String content = String.valueOf(q.getOrDefault("content", "")).trim();
-                        if (content.isEmpty()) continue;
-                        Map<String, Object> item = new LinkedHashMap<>();
-                        item.put("title", content.length() <= 20 ? content : content.substring(0, 20) + "…");
-                        item.put("subject", q.getOrDefault("category", ""));
-                        item.put("difficulty", q.getOrDefault("difficulty", "MEDIUM"));
-                        item.put("content", content);
-                        bank.add(item);
-                    }
-                }
-            }
-        } catch (Exception ignored) {
-            // keep empty lists
-        }
-        data.put("classCount", classes.size());
-        data.put("studentCount", studentCount);
-        data.put("classes", classes);
-        data.put("roster", roster);
-        data.put("bank", bank);
-        data.put("modules", List.of("真实租户", "Logo 与品牌色", "多班级审批", "班级题库", "作业与练习", "教学分析"));
-        if (blank(org.getPitch())) {
-            data.put("pitch", "这是老师自己开通的机构主页。班级、学生和题库来自教师工作台的真实数据，不是演示案例。");
-        }
-        if (blank(org.getHeadline())) {
-            data.put("headline", classes.isEmpty() ? "刚入驻，班级还在建设中" : "在读 " + studentCount + " 人 · " + classes.size() + " 个班");
-        }
-        List<Map<String, Object>> analytics = new ArrayList<>();
-        try {
-            Map<String, Object> a = teacherService.analytics(org.getOwnerId());
-            analytics.add(metric("在读学生", String.valueOf(a.getOrDefault("studentCount", studentCount)), "工作台名册"));
-            analytics.add(metric("错题总量", String.valueOf(a.getOrDefault("totalQuestions", 0)), "学生错题本"));
-            analytics.add(metric("掌握率", a.getOrDefault("masteryRate", 0) + "%", "已掌握 / 错题"));
-            analytics.add(metric("本周活跃", String.valueOf(a.getOrDefault("activeWeek", 0)), "近 7 天有录入"));
-            analytics.add(metric("作业份数", String.valueOf(a.getOrDefault("homeworkCount", 0)), "已布置"));
-            analytics.add(metric("作业提交", String.valueOf(a.getOrDefault("submissionCount", 0)), "累计回收"));
-        } catch (Exception e) {
-            analytics.add(metric("在读学生", String.valueOf(studentCount), "工作台名册"));
-            analytics.add(metric("班级", String.valueOf(classes.size()), "已创建"));
-        }
-        data.put("analytics", analytics);
-        data.put("story", List.of(
-                "老师开通机构主页，决定是否公开发布。",
-                "学生输入机构加入码申请，老师通过后才会进入机构。",
-                "班级加入码仍然只管进班，和机构加入是两件事。"
-        ));
-        return data;
     }
 
     private Map<String, Object> brand(Organization org) {
@@ -350,19 +540,6 @@ public class OrgShowcaseService {
         return data;
     }
 
-    private void overlayBrand(Map<String, Object> demo, Organization org) {
-        demo.put("logoUrl", org.getLogoUrl() == null ? "" : org.getLogoUrl());
-        demo.put("demo", true);
-        if (!blank(org.getName())) demo.put("name", org.getName());
-        if (!blank(org.getShortName())) demo.put("shortName", org.getShortName());
-        if (!blank(org.getTagline())) demo.put("tagline", org.getTagline());
-        if (!blank(org.getHeadline())) demo.put("headline", org.getHeadline());
-        Map<String, Object> theme = new LinkedHashMap<>();
-        theme.put("primary", org.getPrimaryColor());
-        theme.put("accent", org.getAccentColor());
-        demo.put("theme", theme);
-    }
-
     private synchronized void ensureDemos() {
         seedDemo(qiming());
         seedDemo(qingteng());
@@ -371,19 +548,19 @@ public class OrgShowcaseService {
 
     private void seedDemo(Map<String, Object> payload) {
         String slug = String.valueOf(payload.get("slug"));
-        if (organizationRepository.existsBySlug(slug)) return;
-        Organization org = new Organization();
+        Organization org = organizationRepository.findBySlug(slug).orElseGet(Organization::new);
+        boolean creating = org.getId() == null;
         org.setSlug(slug);
         org.setName(String.valueOf(payload.get("name")));
         org.setShortName(String.valueOf(payload.get("shortName")));
         org.setCity(String.valueOf(payload.get("city")));
         org.setMark(String.valueOf(payload.get("mark")));
         org.setTagline(String.valueOf(payload.get("tagline")));
-        org.setHeadline(String.valueOf(payload.get("headline")));
-        org.setPitch(String.valueOf(payload.getOrDefault("pitch", "")));
-        org.setQuote(String.valueOf(payload.getOrDefault("quote", "")));
-        org.setQuoteBy(String.valueOf(payload.getOrDefault("quoteBy", "")));
-        org.setLogoUrl("");
+        org.setHeadline("");
+        org.setPitch("");
+        org.setQuote("");
+        org.setQuoteBy("");
+        if (creating) org.setLogoUrl("");
         Object theme = payload.get("theme");
         if (theme instanceof Map<?, ?> t) {
             Object p = t.get("primary");
@@ -394,7 +571,7 @@ public class OrgShowcaseService {
         org.setDemo(true);
         org.setPublished(true);
         org.setOwnerId(null);
-        org.setCreatedAt(LocalDateTime.now());
+        if (creating) org.setCreatedAt(LocalDateTime.now());
         organizationRepository.save(org);
     }
 
@@ -407,7 +584,7 @@ public class OrgShowcaseService {
     private Map<String, Object> qiming() {
         Map<String, Object> org = base(
                 "qiming", "启明数理学院", "启明", "深圳", "启",
-                "竞赛向高中数学专训。专属题库、班级作业、家长周报一套走完。",
+                "面向高中的数学竞赛培训。",
                 "#1e3a5f", "#c9a227", 3, 86,
                 "接入 12 周后，高一期中均分 +11.4"
         );
@@ -447,7 +624,7 @@ public class OrgShowcaseService {
     private Map<String, Object> qingteng() {
         Map<String, Object> org = base(
                 "qingteng", "青藤学业", "青藤", "广州", "藤",
-                "初中全科托管。作业回收、互助答疑、打卡社区一起开给学生和家长看。",
+                "初中全科托管，关注作业与日常学习。",
                 "#0f6b4c", "#7bc47f", 4, 124,
                 "托管班作业回收率做到 98%"
         );
@@ -488,7 +665,7 @@ public class OrgShowcaseService {
     private Map<String, Object> xinghe() {
         Map<String, Object> org = base(
                 "xinghe", "星河艺文塾", "星河", "杭州", "河",
-                "语文专项。文言文、作文错因、朗读打卡，给教培机构做白标皮肤。",
+                "语文专项，覆盖文言文、作文和朗读。",
                 "#4a1c2a", "#d4a574", 2, 54,
                 "作文错因报告让家长第一次看懂「为什么只有 42 分」"
         );
@@ -585,8 +762,296 @@ public class OrgShowcaseService {
 
     private Organization ownedOrg(long teacherId) {
         teacherWorkspaceService.requireTeacher(teacherId);
-        return organizationRepository.findByOwnerId(teacherId)
+        Organization org = organizationRepository.findByOwnerId(teacherId)
                 .orElseThrow(() -> new IllegalArgumentException("还没有开通机构"));
+        ensureOwnerStaff(org);
+        return org;
+    }
+
+    private Organization staffedOrg(long teacherId, String slug) {
+        Organization org = resolveWorkspace(teacherId, slug, true);
+        if (org == null) throw new IllegalArgumentException("还没有开通机构");
+        return org;
+    }
+
+    private Organization resolveWorkspace(long teacherId, String slug, boolean required) {
+        teacherWorkspaceService.requireTeacher(teacherId);
+        if (slug != null && !slug.isBlank()) {
+            Organization org = organizationRepository.findBySlug(slug.trim())
+                    .orElseThrow(() -> new IllegalArgumentException("没有这个机构"));
+            if (Boolean.TRUE.equals(org.getDemo())) throw new IllegalArgumentException("示例机构不能管理");
+            if (!isStaff(org, teacherId)) throw new IllegalArgumentException("无权管理该机构");
+            if (isOwner(org, teacherId)) ensureOwnerStaff(org);
+            return org;
+        }
+        Organization owned = organizationRepository.findByOwnerId(teacherId).orElse(null);
+        if (owned != null) {
+            ensureOwnerStaff(owned);
+            return owned;
+        }
+        for (OrgStaff staff : orgStaffRepository.findByTeacherId(teacherId)) {
+            Organization org = organizationRepository.findById(staff.getOrgId()).orElse(null);
+            if (org == null || Boolean.TRUE.equals(org.getDemo())) continue;
+            return org;
+        }
+        if (required) throw new IllegalArgumentException("还没有开通机构");
+        return null;
+    }
+
+    private Map<String, Object> packWorkspace(Organization org, long teacherId, List<Map<String, Object>> staffOrgs) {
+        ensureJoinCode(org);
+        if (isOwner(org, teacherId)) ensureOwnerStaff(org);
+        boolean owner = isOwner(org, teacherId);
+        List<Map<String, Object>> pending = memberRows(org.getId(), PENDING);
+        Map<String, Object> data = brand(org);
+        data.put("exists", true);
+        data.put("published", Boolean.TRUE.equals(org.getPublished()));
+        data.put("joinCode", org.getJoinCode() == null ? "" : org.getJoinCode());
+        data.put("publicPath", "/orgs/" + org.getSlug());
+        data.put("pending", pending);
+        data.put("pendingCount", pending.size());
+        data.put("members", memberRows(org.getId(), APPROVED));
+        data.put("bankCount", loadOrgBank(org.getId()).size());
+        data.put("memberCount", orgMemberRepository
+                .findByOrgIdAndStatusOrderByRequestedAtDesc(org.getId(), APPROVED).size());
+        data.put("canEditBrand", owner);
+        data.put("canManageStaff", owner);
+        data.put("canManageBank", true);
+        data.put("myRole", staffRole(org, teacherId));
+        data.put("staff", staffRows(org));
+        data.put("staffOrgs", staffOrgs);
+        return data;
+    }
+
+    private Map<String, Object> emptyMine() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("exists", false);
+        data.put("published", false);
+        data.put("joinCode", "");
+        data.put("slug", "");
+        data.put("name", "");
+        data.put("shortName", "");
+        data.put("city", "");
+        data.put("mark", "");
+        data.put("tagline", "");
+        data.put("headline", "");
+        data.put("pitch", "");
+        data.put("logoUrl", "");
+        data.put("quote", "");
+        data.put("quoteBy", "");
+        Map<String, Object> theme = new LinkedHashMap<>();
+        theme.put("primary", "#2459ff");
+        theme.put("accent", "#52b7ff");
+        data.put("theme", theme);
+        data.put("demo", false);
+        data.put("pending", List.of());
+        data.put("members", List.of());
+        data.put("bankCount", 0);
+        data.put("memberCount", 0);
+        return data;
+    }
+
+    private List<Map<String, Object>> staffOrgRows(long teacherId) {
+        Map<Long, Map<String, Object>> byId = new LinkedHashMap<>();
+        organizationRepository.findByOwnerId(teacherId).ifPresent(org -> byId.put(org.getId(), staffOrgRow(org, OWNER)));
+        for (OrgStaff staff : orgStaffRepository.findByTeacherId(teacherId)) {
+            if (byId.containsKey(staff.getOrgId())) continue;
+            Organization org = organizationRepository.findById(staff.getOrgId()).orElse(null);
+            if (org == null || Boolean.TRUE.equals(org.getDemo())) continue;
+            byId.put(org.getId(), staffOrgRow(org, staff.getRole()));
+        }
+        return new ArrayList<>(byId.values());
+    }
+
+    private Map<String, Object> staffOrgRow(Organization org, String role) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", org.getId());
+        row.put("slug", org.getSlug());
+        row.put("name", org.getName());
+        row.put("shortName", org.getShortName());
+        row.put("role", role);
+        row.put("pendingCount", orgMemberRepository.findByOrgIdAndStatusOrderByRequestedAtDesc(org.getId(), PENDING).size());
+        return row;
+    }
+
+    private List<Map<String, Object>> staffRows(Organization org) {
+        Map<Long, Map<String, Object>> byId = new LinkedHashMap<>();
+        if (org.getOwnerId() != null) {
+            byId.put(org.getOwnerId(), staffUserRow(org.getOwnerId(), OWNER));
+        }
+        for (OrgStaff staff : orgStaffRepository.findByOrgIdOrderByCreatedAtAsc(org.getId())) {
+            if (byId.containsKey(staff.getTeacherId())) continue;
+            byId.put(staff.getTeacherId(), staffUserRow(staff.getTeacherId(), staff.getRole()));
+        }
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> row : byId.values()) {
+            if (row != null) out.add(row);
+        }
+        return out;
+    }
+
+    private Map<String, Object> staffUserRow(long teacherId, String role) {
+        User u = userRepository.findById(teacherId).orElse(null);
+        if (u == null) return null;
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("id", u.getId());
+        row.put("nickName", u.getNickName() == null ? "" : u.getNickName());
+        row.put("username", u.getUsername());
+        row.put("role", OWNER.equals(role) ? OWNER : ADMIN);
+        return row;
+    }
+
+    private void ensureOwnerStaff(Organization org) {
+        if (org.getId() == null || org.getOwnerId() == null) return;
+        OrgStaff existing = orgStaffRepository.findByOrgIdAndTeacherId(org.getId(), org.getOwnerId()).orElse(null);
+        if (existing != null) {
+            if (!OWNER.equals(existing.getRole())) {
+                existing.setRole(OWNER);
+                orgStaffRepository.save(existing);
+            }
+            return;
+        }
+        OrgStaff staff = new OrgStaff();
+        staff.setOrgId(org.getId());
+        staff.setTeacherId(org.getOwnerId());
+        staff.setRole(OWNER);
+        staff.setCreatedAt(LocalDateTime.now());
+        orgStaffRepository.save(staff);
+    }
+
+    private boolean isOwner(Organization org, long teacherId) {
+        return org.getOwnerId() != null && org.getOwnerId().equals(teacherId);
+    }
+
+    private boolean isStaff(Organization org, long teacherId) {
+        if (isOwner(org, teacherId)) return true;
+        return orgStaffRepository.findByOrgIdAndTeacherId(org.getId(), teacherId).isPresent();
+    }
+
+    private String staffRole(Organization org, long teacherId) {
+        if (isOwner(org, teacherId)) return OWNER;
+        return orgStaffRepository.findByOrgIdAndTeacherId(org.getId(), teacherId)
+                .map(OrgStaff::getRole)
+                .orElse("");
+    }
+
+    private void requireMemberOrStaff(long userId, Organization org) {
+        if (isStaff(org, userId)) return;
+        OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), userId)
+                .orElseThrow(() -> new IllegalArgumentException("通过后才能查看题库"));
+        if (!APPROVED.equals(m.getStatus())) throw new IllegalArgumentException("通过后才能查看题库");
+    }
+
+    private List<Question> loadOrgBank(Long orgId) {
+        if (orgId == null) return List.of();
+        return questionRepository.findByOrgIdAndSourceAndIsDeletedFalseOrderByCreatedAtDesc(orgId, ORG_BANK);
+    }
+
+    private List<Map<String, Object>> mapOrgBank(List<Question> questions) {
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Question q : questions) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", q.getId());
+            m.put("content", q.getContent());
+            m.put("category", q.getCategory() == null || q.getCategory().isBlank() ? "未分类" : q.getCategory());
+            m.put("difficulty", q.getDifficulty() == null ? "MEDIUM" : q.getDifficulty().name());
+            m.put("aiAnswer", q.getAiAnswer() == null ? "" : q.getAiAnswer());
+            m.put("aiAnalysis", q.getAiAnalysis() == null ? "" : q.getAiAnalysis());
+            m.put("imageUrl", q.getImageUrl());
+            m.put("source", ORG_BANK);
+            m.put("orgId", q.getOrgId());
+            out.add(m);
+        }
+        return out;
+    }
+
+    private Question requireOrgQuestion(Long orgId, long questionId) {
+        Question q = questionRepository.findById(questionId)
+                .orElseThrow(() -> new IllegalArgumentException("题目不存在"));
+        if (Boolean.TRUE.equals(q.getIsDeleted()) || !ORG_BANK.equals(q.getSource())
+                || q.getOrgId() == null || !q.getOrgId().equals(orgId)) {
+            throw new IllegalArgumentException("题目不在该机构题库中");
+        }
+        return q;
+    }
+
+    private Question.DifficultyLevel parseDifficulty(Object raw) {
+        String s = raw == null ? "" : String.valueOf(raw).trim().toUpperCase(Locale.ROOT);
+        if (s.contains("EASY") || s.contains("简单")) return Question.DifficultyLevel.EASY;
+        if (s.contains("HARD") || s.contains("困难")) return Question.DifficultyLevel.HARD;
+        return Question.DifficultyLevel.MEDIUM;
+    }
+
+    private String firstText(Object... vals) {
+        if (vals == null) return "";
+        for (Object v : vals) {
+            if (v == null) continue;
+            String s = String.valueOf(v).trim();
+            if (!s.isEmpty() && !"null".equalsIgnoreCase(s)) return s;
+        }
+        return "";
+    }
+
+    private Map<String, Object> applyTo(long studentId, Organization org) {
+        User me = userRepository.findById(studentId).orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        if ("TEACHER".equals(me.getRole())) throw new IllegalArgumentException("教师账号不能加入机构");
+        OrgMember existing = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), studentId).orElse(null);
+        if (existing != null && APPROVED.equals(existing.getStatus())) {
+            return joinResult(org, false, true, "approved");
+        }
+        if (existing != null && PENDING.equals(existing.getStatus())) {
+            return joinResult(org, true, false, "pending");
+        }
+        if (existing == null) {
+            existing = new OrgMember();
+            existing.setOrgId(org.getId());
+            existing.setStudentId(studentId);
+        }
+        existing.setStatus(PENDING);
+        existing.setRequestedAt(LocalDateTime.now());
+        existing.setApprovedAt(null);
+        orgMemberRepository.save(existing);
+        return joinResult(org, true, false, "pending");
+    }
+
+    private void attachViewer(Map<String, Object> data, Organization org) {
+        data.put("membership", "none");
+        data.put("canApply", false);
+        Long uid = AuthContext.getUserId();
+        if (uid == null || Boolean.TRUE.equals(org.getDemo())) return;
+        if (org.getOwnerId() != null && org.getOwnerId().equals(uid)) {
+            data.put("membership", "owner");
+            return;
+        }
+        if (orgStaffRepository.findByOrgIdAndTeacherId(org.getId(), uid).isPresent()) {
+            data.put("membership", "staff");
+            return;
+        }
+        User u = userRepository.findById(uid).orElse(null);
+        if (u == null || "TEACHER".equals(u.getRole())) {
+            data.put("membership", "teacher");
+            return;
+        }
+        OrgMember m = orgMemberRepository.findByOrgIdAndStudentId(org.getId(), uid).orElse(null);
+        if (m != null && APPROVED.equals(m.getStatus())) {
+            data.put("membership", "approved");
+            return;
+        }
+        if (m != null && PENDING.equals(m.getStatus())) {
+            data.put("membership", "pending");
+            return;
+        }
+        data.put("canApply", Boolean.TRUE.equals(org.getPublished()));
+    }
+
+    private boolean matchesQuery(Organization org, String needle) {
+        String hay = ((org.getName() == null ? "" : org.getName())
+                + " " + (org.getShortName() == null ? "" : org.getShortName())
+                + " " + (org.getCity() == null ? "" : org.getCity())
+                + " " + (org.getTagline() == null ? "" : org.getTagline())
+                + " " + (org.getSlug() == null ? "" : org.getSlug()))
+                .toLowerCase(Locale.ROOT);
+        return hay.contains(needle);
     }
 
     private Map<String, Object> joinResult(Organization org, boolean pending, boolean alreadyJoined, String status) {

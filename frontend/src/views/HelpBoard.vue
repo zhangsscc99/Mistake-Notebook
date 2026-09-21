@@ -23,7 +23,7 @@
     <article v-for="post in posts" :key="post.id" class="card post" @click="$router.push('/community/help/' + post.id)">
       <div class="meta">
         <em v-if="post.subject">{{ post.subject }}</em>
-        <span>{{ post.nickName }} · {{ post.createdAt }}</span>
+        <span>{{ post.nickName }} · {{ fmt(post.createdAt) }}</span>
       </div>
       <b>{{ post.title }}</b>
       <p>{{ post.preview }}</p>
@@ -93,7 +93,8 @@ export default {
     }
 
     onMounted(load)
-    return { posts, loading, posting, form, publish, subjects, filter, setFilter }
+    const fmt = (t) => (t ? String(t).replace('T', ' ').slice(0, 16) : '')
+    return { posts, loading, posting, form, publish, subjects, filter, setFilter, fmt }
   }
 }
 </script>

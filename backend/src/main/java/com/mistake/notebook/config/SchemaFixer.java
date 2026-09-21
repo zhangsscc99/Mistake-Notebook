@@ -50,6 +50,7 @@ public class SchemaFixer implements CommandLineRunner {
         ensureColumn("mistake_reports", "question_count", "`question_count` INT DEFAULT 1");
         ensureColumn("questions", "source", "`source` VARCHAR(32) DEFAULT ''");
         ensureColumn("questions", "class_id", "`class_id` BIGINT NULL");
+        ensureColumn("questions", "org_id", "`org_id` BIGINT NULL");
         ensureColumn("homeworks", "class_id", "`class_id` BIGINT NULL");
         ensureColumn("homework_submissions", "marks_json", "`marks_json` TEXT");
         ensureColumn("class_notebooks", "class_id", "`class_id` BIGINT NULL");
@@ -240,6 +241,18 @@ public class SchemaFixer implements CommandLineRunner {
                   `approved_at` DATETIME NULL,
                   PRIMARY KEY (`id`),
                   UNIQUE KEY `uk_org_member` (`org_id`, `student_id`)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                """);
+        ensureTable("org_staff", """
+                CREATE TABLE IF NOT EXISTS `org_staff` (
+                  `id` BIGINT NOT NULL AUTO_INCREMENT,
+                  `org_id` BIGINT NOT NULL,
+                  `teacher_id` BIGINT NOT NULL,
+                  `role` VARCHAR(16) NOT NULL DEFAULT 'ADMIN',
+                  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                  PRIMARY KEY (`id`),
+                  UNIQUE KEY `uk_org_staff` (`org_id`, `teacher_id`),
+                  KEY `idx_org_staff_teacher` (`teacher_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
                 """);
     }

@@ -33,12 +33,16 @@ public class Question {
     @Column(name = "source_question_ids", columnDefinition = "TEXT")
     private String sourceQuestionIds;
 
-    /** student_notebook / teacher_bank */
+    /** student_notebook / teacher_bank / org_bank */
     @Column(length = 32)
     private String source = "";
 
     @Column(name = "class_id")
     private Long classId;
+
+    /** 机构专属题库所属机构；老师个人题库为空 */
+    @Column(name = "org_id")
+    private Long orgId;
 
     /**
      * 题目内容

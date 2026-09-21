@@ -20,7 +20,13 @@
       <button @click="$router.push('/teacher/questions')">全班题目 <span>›</span></button>
       <button @click="$router.push('/teacher/class-notebooks')">班级错题本 <span>›</span></button>
       <button @click="$router.push('/teacher/analytics')">教学效果分析 <span>›</span></button>
-      <button @click="$router.push('/teacher/org')">我的机构主页 <span>›</span></button>
+      <button @click="$router.push('/teacher/org')">
+        机构工作台
+        <span>
+          <i v-if="orgPending" class="badge">{{ orgPending }}</i>
+          ›
+        </span>
+      </button>
       <button @click="$router.push('/orgs')">机构目录 <span>›</span></button>
       <button @click="$router.push('/community')">学习社区 <span>›</span></button>
     </div>
@@ -40,6 +46,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
 import teacherAPI from '../../api/teacher'
+import orgAPI from '../../api/org'
 import userAPI from '../../api/user'
 import TeacherTabBar from '../../components/TeacherTabBar.vue'
 import { clearSession, getProfile } from '../../utils/auth'
@@ -51,11 +58,18 @@ export default {
     const router = useRouter()
     const profile = getProfile() || {}
     const dash = ref({ classCount: 0 })
+    const orgPending = ref(0)
     onMounted(async () => {
       try {
         const res = await teacherAPI.dashboard()
         const d = res.data || {}
         dash.value = { ...d, classCount: (d.classes || []).length }
+      } catch { /* ignore */ }
+      try {
+        const org = await orgAPI.mine()
+        const list = org.data?.staffOrgs || []
+        const sum = list.reduce((n, o) => n + (o.pendingCount || 0), 0)
+        orgPending.value = sum || org.data?.pendingCount || 0
       } catch { /* ignore */ }
     })
     const logout = async () => {
@@ -79,7 +93,7 @@ export default {
         showToast({ type: 'fail', message: e.response?.data?.message || '注销失败' })
       }
     }
-    return { profile, dash, logout, deleteAccount }
+    return { profile, dash, orgPending, logout, deleteAccount }
   }
 }
 </script>
@@ -98,7 +112,12 @@ export default {
 .card.list { background: #fff; border-radius: 16px; overflow: hidden; border: 1px solid rgba(11,22,51,0.06); }
 .card.list button { width: 100%; display: flex; justify-content: space-between; background: none; border: none; padding: 14px 16px; font-size: 15px; color: #0b1633; border-top: 1px solid rgba(11,22,51,0.06); }
 .card.list button:first-child { border-top: none; }
-.card.list span { color: rgba(11,22,51,0.3); }
+.card.list span { color: rgba(11,22,51,0.3); display: flex; align-items: center; gap: 8px; }
+.badge {
+  min-width: 18px; height: 18px; padding: 0 6px; border-radius: 999px;
+  background: #e11d48; color: #fff; font-size: 11px; font-weight: 800;
+  display: inline-flex; align-items: center; justify-content: center;
+}
 .danger { color: #e11d48 !important; }
 .foot { margin: 14px 4px; font-size: 12px; color: rgba(11,22,51,0.45); line-height: 1.5; }
 </style>
